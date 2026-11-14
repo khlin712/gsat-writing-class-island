@@ -9,3 +9,12 @@
 @media(max-width:1050px){.entry-actions button{min-width:130px}.entry-bar{gap:15px;padding:14px 24px}}
 @media(max-width:720px){.entry-bar{display:block;padding:18px 18px 16px}.entry-bar>div:first-child{display:none}.entry-actions{gap:7px}.entry-actions button{flex:1;min-width:0;padding:12px 8px;font-size:12px;text-align:center}.entry-actions button span{font-size:9px;line-height:1.5}.entry-actions button:last-child span{font-size:9px}main{display:flex;flex-direction:column;height:auto;min-height:0}.index{order:-1;padding:25px 20px 0;overflow:visible}.index .eyebrow{margin-bottom:10px}.index h2{font-size:25px}.index-top>p:not(.eyebrow){font-size:12px;margin-bottom:10px}.concern-list{margin:12px 0 18px;gap:7px}.concern-list button{padding:13px;font-size:13px;min-height:48px}.index .quiz-card{padding:10px 12px;margin:12px 0}.index .index-footer{display:none}.topic-directory{margin-bottom:5px}.topic-directory:not([open]){border-bottom:1px solid var(--line)}.world{height:600px;flex:none}.detail{top:auto;left:0;right:0;bottom:0;max-height:88dvh;width:100%;padding:0 22px 18px;border-radius:18px 18px 0 0;box-shadow:0 -12px 55px #203b3440}.detail-top{padding:12px 0;margin-bottom:16px}.detail-top::before{content:'';position:absolute;width:36px;height:4px;background:#ccd4c2;top:6px;left:calc(50% - 18px);border-radius:3px}.detail-actions{bottom:-18px;padding-bottom:max(16px,env(safe-area-inset-bottom))}.hero h1{font-size:30px}.hero .eyebrow{font-size:8px}.outline{overflow-wrap:anywhere}.map-caption{font-size:10px}}
 .consult-question{display:flex;align-items:start;justify-content:space-between;gap:12px;border-bottom:1px solid #d6dfc8;padding:7px 0}.consult-question:last-child{border-bottom:0}.consult-question p{margin:0}.consult-question button{font-size:20px;padding:2px 5px}
+
+/* Labels form their own layer so the detail card and dialogs always sit above them. */
+.world-labels{z-index:1;isolation:isolate}
+/* Once a topic is open the camera moves there; the headline steps aside instead of covering the island. */
+.hero{transition:opacity .35s,visibility .35s}
+.detail-open .hero{opacity:0;visibility:hidden}
+.intro-actions{justify-content:space-between}
+/* The detail card sits over the right half of the map; keep the camera tools reachable in the freed top-left corner. */
+@media(min-width:721px){.detail-open .map-tools{right:auto;left:24px}}

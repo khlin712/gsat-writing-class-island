@@ -10,6 +10,13 @@
 
 `npm test`（Node.js），不需安裝套件。
 
+## 地圖互動與首次導覽
+
+- 點島或點右側問題時，鏡頭以約 0.8 秒頭尾放緩的飛行移到該島，並避開詳細卡片遮住的範圍；拖曳或滾輪會立即交還鏡頭控制。系統設定「減少動態」時直接切換、不飛行。
+- 左鍵／單指拖曳平移，右鍵或「旋轉」模式拖曳旋轉，滾輪／雙指縮放；「⌂ 全景」飛回起點。
+- 首次造訪顯示三步導覽，看過後以 `writing-island-onboarded` 記錄，不動到收藏、筆記與問題（`writing-island-course`）。
+- 手動驗收可在主控台執行 `__islandView()` 讀取鏡頭目標、距離與角度（唯讀）。
+
 ## GitHub Pages
 
 儲存庫 Settings → Pages → Source 選 Deploy from a branch，使用 gh-pages 分支與 /(root)。main 保存完整原始碼，gh-pages 保存 dist/ 的網站內容。所有網站資源使用相對路徑，可在 /gsat-writing-class-island/ 下運作。

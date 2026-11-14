@@ -17,6 +17,12 @@
 - 首次造訪顯示三步導覽，看過後以 `writing-island-onboarded` 記錄，不動到收藏、筆記與問題（`writing-island-course`）。
 - 手動驗收可在主控台執行 `__islandView()` 讀取鏡頭目標、距離與角度（唯讀）。
 
+## 整體介面與閱讀
+
+首頁、角色入口、問題清單、搜尋分類、地圖標籤、導覽、詳細卡片、諮詢表單及提綱共用 `dist/readability.css` 的文字層級。主要內文與輸入框16px，主要操作15–16px、島名14px、輔助說明13px；手機保留清單優先，卡片可展開閱讀。頁首「操作說明」可重看三步導覽。
+
+整體對標、採用判斷與實測限制見 [research/SURFACES-REVIEW.md](research/SURFACES-REVIEW.md)，前輪鏡頭與標籤證據見 [research/GAP-ANALYSIS.md](research/GAP-ANALYSIS.md)。
+
 ## GitHub Pages
 
 儲存庫 Settings → Pages → Source 選 Deploy from a branch，使用 gh-pages 分支與 /(root)。main 保存完整原始碼，gh-pages 保存 dist/ 的網站內容。所有網站資源使用相對路徑，可在 /gsat-writing-class-island/ 下運作。

@@ -39,7 +39,7 @@ export const concerns = [
 export function concernsFor(entry){return entry?concerns.filter(c=>c.audience===entry):concerns.filter(c=>['motivation','progress','foundation','blank-page'].includes(c.id));}
 // First-visit walkthrough (3 short cards). Wording describes how the map works only; it promises no service or result.
 export const introSteps=[
- {title:'每座島，是一件你想了解的事',body:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從右側問題清單開始。',touchBody:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從上方問題清單開始。'},
+ {title:'每座島，是一件你想了解的事',body:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從問題清單開始。',touchBody:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從上方問題清單開始。'},
  {title:'用你的角度看地圖',body:'左鍵拖曳上下左右平移，右鍵拖曳旋轉，滾輪縮放；選一座島時，鏡頭會飛過去。按「⌂ 全景」回到起點。',touchBody:'單指拖曳平移，雙指捏合縮放、轉動旋轉；選一座島時，鏡頭會飛過去。按「⌂ 全景」回到起點。'},
  {title:'把問題整理好，再來聊',body:'收藏主題、寫下自己的情況，最後可產生諮詢提綱，複製或下載後透過你平常聯絡老師的管道分享。內容只存在這個瀏覽器，網站不會代你寄送訊息。'}
 ];

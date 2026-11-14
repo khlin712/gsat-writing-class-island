@@ -12,7 +12,16 @@
 
 ## GitHub Pages
 
-儲存庫 Settings → Pages → Source 選 GitHub Actions。main 分支更新後，工作流程測試並發布 dist/。所有網站資源使用相對路徑，可在 /gsat-writing-class-island/ 下運作。
+儲存庫 Settings → Pages → Source 選 Deploy from a branch，使用 gh-pages 分支與 /(root)。main 保存完整原始碼，gh-pages 保存 dist/ 的網站內容。所有網站資源使用相對路徑，可在 /gsat-writing-class-island/ 下運作。
+
+修改後先執行 npm test，再提交 main 並推送；發布網站使用：
+
+```sh
+git push origin main
+git subtree push --prefix dist origin gh-pages
+```
+
+目前帳號的自訂 GitHub Actions 工作因付款／額度狀態無法啟動，因此使用 Pages 原生分支發布，未變更帳務設定。
 
 ## 內容與授權
 

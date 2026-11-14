@@ -14,4 +14,12 @@ test('首頁先建立教學理解，收費仍可主動查找',()=>{assert.deepEq
 
 test('首次導覽三步說明地圖操作與提綱，不宣稱代寄訊息',async()=>{const {introSteps,INTRO_KEY}=await import('../dist/content.js');assert.equal(introSteps.length,3);for(const s of introSteps)assert.ok(s.title&&s.body);assert.notEqual(INTRO_KEY,'writing-island-course');const text=introSteps.map(s=>s.body+(s.touchBody||'')).join('');for(const word of ['平移','旋轉','縮放','全景'])assert.match(text,new RegExp(word));assert.match(introSteps[2].body,/不會代你寄送/);assert.doesNotMatch(text,/保證|提分|已寄出|即時聊天/);});
 test('鏡頭飛行使用頭尾放緩的曲線',async()=>{const {easeInOutCubic,FLY_MS}=await import('../dist/motion.js');assert.equal(easeInOutCubic(0),0);assert.equal(easeInOutCubic(1),1);assert.equal(easeInOutCubic(.5),.5);assert.ok(easeInOutCubic(.1)<.1&&easeInOutCubic(.9)>.9);assert.ok(FLY_MS>=500&&FLY_MS<=1200);});
-test('選島時避開詳細卡片遮住的地圖範圍',async()=>{const {coveredInset}=await import('../dist/motion.js');const map={left:0,right:930,top:183,bottom:800,width:930,height:617};assert.deepEqual(coveredInset(map,{left:550,right:915,top:110,bottom:770}),{right:380,bottom:0});assert.deepEqual(coveredInset(map,{left:0,right:930,top:500,bottom:800}),{right:0,bottom:300});assert.deepEqual(coveredInset(map,{left:0,right:390,top:900,bottom:1500}),{right:0,bottom:0});assert.deepEqual(coveredInset(map,{left:0,right:930,top:190,bottom:800}),{right:0,bottom:0});});
+test('選島時避開浮動面板遮住的地圖範圍（上方工具、左側卡片、底部面板）',async()=>{const {mapInsets}=await import('../dist/motion.js');const map={left:0,right:1000,top:0,bottom:800,width:1000,height:800};const zero={left:0,right:0,top:0,bottom:0};
+assert.deepEqual(mapInsets(map,[{left:20,right:420,top:104,bottom:780}]),{...zero,left:420});
+assert.deepEqual(mapInsets(map,[{left:600,right:980,top:104,bottom:780}]),{...zero,right:400});
+assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:0,bottom:96}]),{...zero,top:96});
+assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:500,bottom:800}]),{...zero,bottom:300});
+assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:0,bottom:96},{left:20,right:420,top:104,bottom:780}]),{...zero,top:96,left:420});
+assert.deepEqual(mapInsets(map,[{left:0,right:390,top:900,bottom:1500}]),zero);
+assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:80,bottom:800}]),zero);
+assert.deepEqual(mapInsets({width:0,height:0},[{left:0,right:1,top:0,bottom:1}]),zero);});

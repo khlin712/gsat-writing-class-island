@@ -18,3 +18,19 @@
 .intro-actions{justify-content:space-between}
 /* The detail card sits over the right half of the map; keep the camera tools reachable in the freed top-left corner. */
 @media(min-width:721px){.detail-open .map-tools{right:auto;left:24px}}
+
+.island-3d-label .island-title{font:inherit;color:inherit;margin:0}.island-3d-label.compact{min-width:34px;height:34px;padding:4px;display:inline-grid;place-items:center}.island-3d-label.compact>span:first-child{margin:0;font-size:11px}.island-3d-label.compact .island-title{display:none}
+.sheet-handle,#detail-size,.index-sheet-tools{display:none}
+@media(max-width:720px){
+ .detail{height:max(220px,34dvh);max-height:88dvh;transition:height .25s ease}.detail.sheet-full{height:88dvh}
+ .detail-top{min-height:56px;padding-top:20px;gap:10px}.detail-top::before{display:none}
+ .sheet-handle{display:block;position:absolute;top:0;left:50%;transform:translateX(-50%);width:70px;height:25px;touch-action:none;cursor:ns-resize;padding:9px 15px}
+ .sheet-handle>span{display:block;background:#bcc8af;height:4px;border-radius:4px}
+ #detail-size{display:block;margin-left:auto;font-size:11px;padding:8px;border:1px solid #ccd5c0;border-radius:5px}
+ .detail-top .close{min-width:36px;min-height:36px}.detail-actions{position:static;padding:14px 0 max(16px,env(safe-area-inset-bottom))}
+ .index{position:relative;max-height:55dvh;overflow-y:auto;overscroll-behavior:contain;padding-top:0}.index.sheet-full{max-height:85dvh}
+ .index-sheet-tools{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;background:var(--paper);padding:22px 0 12px;border-bottom:1px solid var(--line);margin-bottom:18px;font-size:11px}
+ #index-size{margin-left:auto;padding:7px 10px;border:1px solid #ccd5c0;border-radius:5px;font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.detail{transition:none}}
+@media(max-width:720px){.detail-open .world{height:100dvh}.detail-open #map{top:0;bottom:0}}

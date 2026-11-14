@@ -1,5 +1,6 @@
 import {createWorld} from './world.js';
-import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor} from './content.js';
+import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY} from './content.js';
+import {coveredInset} from './motion.js';
 const $=s=>document.querySelector(s), list=$('#topic-list'), modal=$('#modal');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let selected=null,category='全部',world,showConnections=true,previousFocus=null,entry=null,selectedConcern=null,detailOpener=null;
@@ -15,10 +16,10 @@ world?.filter(visible.map(t=>t.id));}
 list.addEventListener('click',e=>{const row=e.target.closest('[data-id]');if(row)selectTopic(row.dataset.id);});
 function updateMap(){world?.select(selected);world?.connections(showConnections);}
 function selectTopic(id,{focus=true,concern=null}={}){
- const t=topics.find(t=>t.id===id);if(!t)return;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
+ const t=topics.find(t=>t.id===id);if(!t)return;const moveCamera=id!==selected||$('#detail').hidden;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
  const related=[...new Set([...(selectedConcern?.related||[]),...t.links])];
  $('#detail-content').innerHTML=`<p class="eyebrow">ISLAND ${t.n} / ${t.title}</p><h2 id="detail-title">${selectedConcern?selectedConcern.question:t.title}</h2><div class="answer-first"><span class="draft-label">待老師補充</span><p class="lead">${selectedConcern?selectedConcern.answer:t.intro}</p></div><section class="card-section"><h3>01 · 具體做法，先確認這些</h3><ol>${t.steps.map(s=>`<li>${s}</li>`).join('')}</ol></section><details class="card-section evidence-section"><summary>02 · 目前資訊與證據 <span>待補充</span></summary><p>${t.body}</p><dl class="topic-facts">${t.facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></details><details class="card-section question-notes" ${answers[id]?'open':''}><summary>03 · 補充你的情況 <span>選填</span></summary><div class="exercise"><label for="exercise-answer">${t.task}</label><textarea id="exercise-answer" maxlength="2000" placeholder="寫下你的顧慮、期待，或還想了解的事…">${escape(typeof answers[id]==='string'?answers[id]:'')}</textarea><small class="helper">只儲存在這個瀏覽器，不會傳送。</small><p class="question-example">${t.example}</p></div></details><section class="card-section"><h3>也可以一起了解</h3><div class="related">${related.map(id=>`<button data-related="${id}">${topics.find(t=>t.id===id).title} ↗</button>`).join('')}</div></section><div class="detail-actions"><button class="ask-topic" id="ask-topic">就這件事問老師 ↗</button><button class="save-topic" id="save-topic" aria-pressed="${saved.has(id)}">${saved.has(id)?'✓ 已收藏這個主題':'＋ 先收藏，晚點再聊'}</button><small>先整理諮詢提綱，不會直接送出訊息。</small></div>`;
- $('#detail').hidden=false;$('#map-message').textContent=`正在探索 ${t.title} · ${t.tag}`;
+ $('#detail').hidden=false;document.body.classList.add('detail-open');if(moveCamera)world?.focus(id,coveredInset($('#map').getBoundingClientRect(),$('#detail').getBoundingClientRect()));$('#map-message').textContent=`正在探索 ${t.title} · ${t.tag}`;
  $('#exercise-answer').oninput=e=>{answers[id]=e.target.value;persist();};
  $('#save-topic').onclick=()=>{saved.has(id)?saved.delete(id):saved.add(id);persist();updateCount();selectTopic(id,{focus:false,concern:selectedConcern?.id});$('#save-topic').focus();toast(saved.has(id)?'已加入討論清單':'已從討論清單移除');};
  $('#ask-topic').onclick=()=>{saved.add(id);const question=selectedConcern?.question||t.question;if(!consultQuestions.includes(question))consultQuestions.push(question);persist();updateCount();$('#save-topic').setAttribute('aria-pressed','true');$('#save-topic').textContent='✓ 已收藏這個主題';discussion();};
@@ -28,7 +29,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
 function renderConcerns(){const items=concernsFor(entry);$('#concerns-list').innerHTML=items.map(c=>`<button data-concern="${c.id}"><span>${c.question}</span><span aria-hidden="true">↗</span></button>`).join('');$('#entry-note').textContent=entry?entryRoutes[entry].intro:'選一個問題，看看相關做法與待確認資訊。';world?.emphasize(entry?entryRoutes[entry].topics:[]);}
 $('#concerns-list').onclick=e=>{const b=e.target.closest('[data-concern]');if(!b)return;const c=concerns.find(c=>c.id===b.dataset.concern);selectTopic(c.topic,{concern:c.id});};
 for(const button of document.querySelectorAll('[data-entry]'))button.onclick=()=>{entry=button.dataset.entry;if(entryRoutes[entry].role){role=entryRoutes[entry].role;persist();}for(const b of document.querySelectorAll('[data-entry]'))b.setAttribute('aria-pressed',b===button);renderConcerns();if(entry==='teacher')selectTopic('teacher');else{if(!$('#detail').hidden)closeDetail();if(matchMedia('(max-width:720px)').matches)document.querySelector('.index').scrollIntoView({block:'start'});}};
-function closeDetail(){const id=selected;$('#detail').hidden=true;selected=null;updateMap();renderList();$('#map-message').textContent='點一座島，開始你的寫作旅程';const row=document.querySelector(`.topic-row[data-id="${id}"]`);const target=[detailOpener,row,$('#concerns-list button'),$('#topic-directory summary')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
+function closeDetail(){const id=selected;$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;updateMap();renderList();$('#map-message').textContent='點一座島，開始你的寫作旅程';const row=document.querySelector(`.topic-row[data-id="${id}"]`);const target=[detailOpener,row,$('#concerns-list button'),$('#topic-directory summary')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
 $('#close-detail').onclick=closeDetail;
 $('#detail').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeDetail();}});
 $('#search').oninput=renderList;for(const b of document.querySelectorAll('[data-category]'))b.onclick=()=>{category=b.dataset.category;for(const el of document.querySelectorAll('[data-category]')){el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',el===b);}renderList();};
@@ -54,6 +55,13 @@ $('#pause').onclick=()=>{const paused=document.body.classList.toggle('paused');$
 $('#day').onclick=()=>{const night=document.body.classList.toggle('night');$('#day').setAttribute('aria-pressed',night);world?.night(night);};
 $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')!=='true';$('#rotate').setAttribute('aria-pressed',rotate);world?.mode(rotate);$('#map-message').textContent=rotate?'旋轉模式 · 拖曳改變視角':'平移模式 · 拖曳上下左右移動';};
 try{world=createWorld($('#map'),topics,id=>selectTopic(id));if(matchMedia('(prefers-reduced-motion: reduce)').matches){world.pause(true);document.body.classList.add('paused');$('#pause').setAttribute('aria-pressed','true');}}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+let introStep=0;const touch=matchMedia('(hover: none) and (pointer: coarse)').matches;
+function finishIntro(){try{localStorage.setItem(INTRO_KEY,'1');}catch{}}
+function intro(){const s=introSteps[introStep],last=introStep===introSteps.length-1;showModal(`<p class="eyebrow">HELLO, WRITER / 0${introStep+1}</p><h2>${s.title}</h2><p>${touch&&s.touchBody?s.touchBody:s.body}</p><div class="progress"><span style="width:${(introStep+1)/introSteps.length*100}%"></span></div><div class="modal-actions intro-actions"><button id="intro-skip">${introStep?'← 上一步':'略過'}</button><button class="primary" id="intro-next">${last?'開始探索 →':'下一步 →'}</button></div>`);$('#intro-next').focus();$('#intro-skip').onclick=()=>{if(introStep){introStep--;intro();}else modal.close();};$('#intro-next').onclick=()=>{if(last)modal.close();else{introStep++;intro();}};}
+modal.addEventListener('close',()=>{if($('#intro-next'))finishIntro();});
 updateCount();
 $('#topic-directory').open=matchMedia('(min-width:721px)').matches;
 renderConcerns();
+let seenIntro=false;try{seenIntro=localStorage.getItem(INTRO_KEY)==='1';}catch{}if(!seenIntro&&world)intro();
+// Read-only camera state for manual QA of pan / rotate / zoom / fly (no effect on the page).
+window.__islandView=()=>world?.view();

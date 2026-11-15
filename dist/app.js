@@ -4,7 +4,7 @@ import {buildRelations,findRelations} from './relations.js';
 import {SUMMIT,SPAWN_FROM} from './summit.js';
 import {mapInsets} from './motion.js';
 import {bindSheet} from './sheets.js';
-import {AVATAR_KEY,AVATAR_ROLES,SHIRTS,readAvatar} from './walkers.js';
+import {AVATAR_KEY,AVATAR_ROLES,SHIRTS,STUDENTS,readAvatar} from './walkers.js';
 import {HAIR_STYLES} from './people.js';
 const $=s=>document.querySelector(s), list=$('#topic-list'), modal=$('#modal');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -154,7 +154,7 @@ function quiz(){const q=questions[quizIndex];showModal(`<p class="kicker">FIND Y
 function quizResult(){role=quizAnswers[0]===1?'家長':'學生';persist();const ids=explorationRoute(quizAnswers);world?.emphasize(ids);showModal(`<p class="kicker">YOUR ROUTE · 你的探索路線</p><h2>從這三座島開始。</h2><p>這是依照你的選擇安排的探索順序，地圖上已標出這三座島。它不會評定能力，也不會判定你是否適合報名。</p><div class="quiz-options route">${ids.map((id,i)=>`<button data-route="${id}"><b>${i+1}</b><span>${topicOf(id).n} ${topicOf(id).title}<small>${topicOf(id).intro}</small></span><i aria-hidden="true">↗</i></button>`).join('')}</div><div class="modal-actions"><button id="quiz-restart">重新選擇</button></div>`);for(const b of document.querySelectorAll('[data-route]'))b.onclick=()=>{modal.close();selectTopic(b.dataset.route);};$('#quiz-restart').onclick=()=>{quizIndex=0;quizAnswers=[];quiz();};}
 $('#quiz').onclick=()=>{quizIndex=0;quizAnswers=[];quiz();};
 
-// ---- People on the map: the guide, island residents, relation walkers and the visitor's own character. ----
+// ---- People on the map: the guide, a parent on each island, the students and the visitor's own character. ----
 // All of them are map characters; none stands for a real teacher, student, parent or case.
 let avatarLook=(()=>{try{return readAvatar(localStorage.getItem(AVATAR_KEY));}catch{return readAvatar('');}})();
 let castCard=null,castTab='look',placingAvatar=false,avatarStatus='在「01 認識老師」散步',arrivedAt=null;
@@ -171,10 +171,12 @@ function openCastCard(kind,crumb,html){const opener=document.activeElement;if(!$
  detailOpener=opener?.isConnected&&opener!==document.body&&!$('#detail').contains(opener)?opener:$('#avatar-button');updateMap();renderList();$('#detail').scrollTop=0;}
 const followLabel=()=>world?.following()?'鏡頭跟隨中 · 按下停止':'讓鏡頭跟隨';
 function bindFollow(w){const b=$('#cast-follow');if(!b)return;b.onclick=()=>{if(world?.following())world.stopFollow();else world?.walkerFocus(castCard==='avatar'?world.me():w,insets());b.textContent=followLabel();b.setAttribute('aria-pressed',!!world?.following());};}
-function onWalker(w){if(w.kind==='messenger'){openRelation(w.key);world?.walkerSelect(w);toast('這位行人帶著兩座島之間的關聯問題');return;}if(w.kind==='avatar'){openAvatar();return;}if(w.kind==='guide'){openGuide();return;}openResident(w);}
-function openResident(w){const t=topicOf(w.island);if(!t)return;
- openCastCard('resident',`島上居民 · ${t.n} ${t.title}`,`<div class="detail-head"><span class="detail-badge cast-badge" aria-hidden="true">☻</span><div><p class="eyebrow">島上居民 · ${t.n} ${t.title}</p><h2 id="detail-title">在「${t.title}」散步的人</h2></div></div><p class="relation-notice">島上居民是讓地圖熱鬧起來的裝飾角色，不代表真實的學生、家長或案例。</p><div class="detail-actions"><button class="ask-topic" id="cast-island">看「${t.title}」這座島 ↗</button><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
- world?.walkerSelect(w);world?.walkerFocus(w,insets());bindFollow(w);$('#cast-island').onclick=()=>selectTopic(t.id);$('#map-message').textContent=`正在看 ${t.title}的島上居民`;$('#close-detail').focus();}
+function onWalker(w){if(w.kind==='messenger'){openRelation(w.key);world?.walkerSelect(w);toast('這位學生帶著兩座島之間的關聯問題');return;}if(w.kind==='avatar'){openAvatar();return;}if(w.kind==='guide'){openGuide();return;}openResident(w);}
+function openResident(w){const t=topicOf(w.island);if(!t)return;const parent=w.kind==='parent';
+ const doing=parent?`在「${t.title}」散步`:w.up?'正走向大學（爬上階梯、經過獎盃，走進大學門口）':w.target&&topicOf(w.target)?`正從「${t.title}」走向「${topicOf(w.target).title}」`:`在「${t.title}」走走看看`;
+ const note=parent?'家長是地圖角色，不代表任何真實家長。':`地圖上共有 ${STUDENTS} 位學生，對應老師目前的教學人數。每一位都是地圖角色，不代表特定學生或案例。`;
+ openCastCard(w.kind,`${parent?'島上的家長':'學生'} · ${t.n} ${t.title}`,`<div class="detail-head"><span class="detail-badge cast-badge" aria-hidden="true">${parent?'☻':'✎'}</span><div><p class="eyebrow">${parent?'島上的家長':'學生'} · 地圖角色</p><h2 id="detail-title">${escape(doing)}</h2></div></div><p class="relation-notice">${note}</p><div class="detail-actions"><button class="ask-topic" id="cast-island">看「${t.title}」這座島 ↗</button><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
+ world?.walkerSelect(w);world?.walkerFocus(w,insets());bindFollow(w);$('#cast-island').onclick=()=>selectTopic(t.id);$('#map-message').textContent=parent?`正在看 ${t.title}的家長`:'正在看一位學生';$('#close-detail').focus();}
 function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t=topicOf(g.target||g.island);return g.target?`正走向 ${t.n} ${t.title}`:`停在 ${t.n} ${t.title}`;}
 function openGuide(){const g=world?.guide();if(!g)return;
  openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">導覽員</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">導覽員依 01 到 09 的順序走過每座島，每到一座就停一下，再走向下一座。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions"><button class="ask-topic" id="guide-tour">從導覽員所在的島開始導覽 ↗</button><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
@@ -251,5 +253,5 @@ for(const button of document.querySelectorAll('.map-tools button,.top-actions bu
 // Read-only camera state for manual QA of pan / rotate / zoom / fly (no effect on the page).
 window.__islandView=()=>world?.view();
 window.__islandPeople=()=>world?.walkerState();window.__walkerPoint=(kind,i)=>world?.walkerPoint(kind,i);window.__islandPoint=(id,dx,dz)=>world?.islandPoint(id,dx,dz);
-window.__islandClimb=()=>({stairs:world?.stairsLit(),trophy:world?.trophy()});window.__stairPoint=t=>world?.stairPoint(t);
+window.__islandClimb=()=>({stairs:world?.stairsLit(),trophy:world?.trophy(),sparkle:world?.sparkle()});window.__stairPoint=t=>world?.stairPoint(t);
 setInterval(()=>{if(world)$('#map').dataset.cameraView=JSON.stringify(world.view());},150);

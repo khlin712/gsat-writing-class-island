@@ -6,7 +6,7 @@ const up=new THREE.Vector3(0,1,0);
 function frames(pts){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const t=new THREE.Vector3(b.x-a.x,0,b.z-a.z).normalize();const side=new THREE.Vector3().crossVectors(t,up).normalize();return {p:new THREE.Vector3(p.x,p.y,p.z),t,side,yaw:Math.atan2(t.x,t.z)};});}
 function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length)),o=new THREE.Object3D();list.forEach((x,i)=>{o.position.copy(x.p);o.rotation.set(x.rx||0,x.yaw||0,0);o.scale.copy(x.s||new THREE.Vector3(1,1,1));o.updateMatrix();m.setMatrixAt(i,o.matrix);});m.count=list.length;m.castShadow=m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;m.computeBoundingSphere();return m;}
 
-export function createRoute({scene,centers,walkways,stairs,reduced}){
+export function createRoute({scene,centers,walkways,stairs,trophyAt,reduced}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
  // ---- Plank walkways between islands, with low rails. ----
@@ -36,13 +36,28 @@ export function createRoute({scene,centers,walkways,stairs,reduced}){
  // Light motes drifting up the stairs once they are lit.
  const motes=[],moteMat=new THREE.MeshBasicMaterial({color:'#fff3cf',transparent:true,opacity:0,depthWrite:false});
  for(let i=0;i<16;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),moteMat);m.raycast=()=>{};m.visible=false;group.add(m);motes.push({m,phase:i/16,lift:.14+(i%3)*.07});}
+ // ---- Gold sparkles: stars twinkle round the trophy and along the stairs while they are lit, with a burst each time they are chosen. ----
+ const star=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.25,'rgba(255,236,170,.9)');g.addColorStop(1,'rgba(255,200,80,0)');x.fillStyle=g;x.fillRect(0,0,64,64);
+  x.strokeStyle='rgba(255,250,220,.95)';x.lineWidth=2.5;x.beginPath();x.moveTo(32,2);x.lineTo(32,62);x.moveTo(2,32);x.lineTo(62,32);x.stroke();const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})();
+ const sparkle=[];
+ if(trophyAt)for(let i=0;i<70;i++){const a=Math.random()*Math.PI*2,r=.25+Math.random()*1.05;sparkle.push({x:trophyAt.x+Math.cos(a)*r,y:trophyAt.y+.9+Math.random()*2,z:trophyAt.z+Math.sin(a)*r,rise:.5+Math.random()*1.4,base:trophyAt.y+.9,span:2.2});}
+ for(let i=0;i<130;i++){const x=f[Math.floor(Math.random()*f.length)],k=(Math.random()-.5)*.9;sparkle.push({x:x.p.x+x.side.x*k,y:x.p.y+.1+Math.random()*.6,z:x.p.z+x.side.z*k,rise:.2+Math.random()*.5,base:x.p.y+.05,span:.75});}
+ const sp=new Float32Array(sparkle.length*3),sc=new Float32Array(sparkle.length*3);sparkle.forEach((p,i)=>{sp.set([p.x,p.y,p.z],i*3);p.phase=Math.random()*Math.PI*2;p.speed=2+Math.random()*4;});
+ const sGeo=new THREE.BufferGeometry();sGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));sGeo.setAttribute('color',new THREE.BufferAttribute(sc,3));
+ const sMat=new THREE.PointsMaterial({size:.26,map:star,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+ const stars=new THREE.Points(sGeo,sMat);stars.name='gold-sparkles';stars.raycast=()=>{};stars.visible=false;stars.frustumCulled=false;group.add(stars);
+ let burst=0;
  let want=0,lit=0;
  return {group,stairGroup,
   pickables:[stairGroup],
-  light(on){want=on?1:0;},
+  light(on){if(on&&!want)burst=1;want=on?1:0;},
+  sparkle:()=>({on:stars.visible,count:sparkle.length,burst:Math.round(burst*100)/100}),
   lit:()=>Math.round(lit*100)/100,
   update(dt,elapsed){const k=reduced?.matches?1:Math.min(1,dt*7);lit+=(want-lit)*k;if(Math.abs(want-lit)<.002)lit=want;
    silver.emissiveIntensity=lit*.5;gold.emissiveIntensity=lit*.6;lampGlow.emissiveIntensity=.2+lit*1.4;
+   burst=Math.max(0,burst-dt*.7);stars.visible=lit>.01;if(stars.visible){const still=reduced?.matches;sMat.size=.26*(1+burst*1.2);
+    sparkle.forEach((p,i)=>{const tw=still?.7:Math.max(0,Math.sin(elapsed*p.speed+p.phase)),b=lit*(.15+.85*tw*tw)+burst*.6;sc[i*3]=b;sc[i*3+1]=b*.82;sc[i*3+2]=b*.42;
+     if(!still){p.y+=p.rise*dt*.25;if(p.y>p.base+p.span)p.y=p.base;sp[i*3+1]=p.y;}});sGeo.attributes.color.needsUpdate=true;sGeo.attributes.position.needsUpdate=true;}
    const show=lit>.3&&!reduced?.matches;moteMat.opacity=Math.min(.9,lit);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
   points(){return stairs;},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}

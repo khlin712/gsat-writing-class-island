@@ -195,3 +195,9 @@ body.shell{height:100dvh;overflow:hidden}
  .index-collapsed .index{visibility:visible}
 }
 @media(prefers-reduced-motion:reduce){.shell main,.shell .index{transition:none}}
+/* Sky islands: the map shows open sky before (and behind) the 3D canvas. */
+.shell .world{background:linear-gradient(180deg,#84b6e2 0%,#a9d0ec 38%,#dcebf4 62%,#eef1ee 72%,#ffffff 100%)}
+.night.shell .world{background:linear-gradient(180deg,#0b1530 0%,#14223f 40%,#33456a 70%,#16233a 100%)}
+/* Over moving clouds and the night sky, the caption and legend sit on the same frosted glass as the toolbar. */
+.shell .map-caption{right:auto;width:fit-content;max-width:calc(100% - 48px);border:1px solid #ffffff99;border-radius:999px;padding:7px 14px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 16px #2a4a6a1f}
+.shell .legend{border:1px solid #ffffff99;border-radius:999px;padding:5px 14px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}

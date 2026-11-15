@@ -72,6 +72,9 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   const row=Math.floor(k/4);place(w,{x:lectureAt.x-.36+(k%4)*.24,y:islandTop(lectureAt)+.08+row*.035-.17*w.size,z:lectureAt.z+.16+row*.36},Math.PI);sit(w);});
  const lecturer=spawn('lecturer',{shirt:'#315e64',pants:'#3f4f63',hairStyle:'short',prop:'book',accent:'#e8c672'},{island:'signup'});
  place(lecturer,{x:lectureAt.x-.18,y:islandTop(lectureAt)+.09,z:lectureAt.z-.35});
+ // 03: a parent and a student sit talking at the pavilion's round table (extra map characters, not counted among the 47 students).
+ const talkAt=positions.get('questions');if(talkAt)[['parent',PARENTS[1],-1],['student',studentLook(5),1]].forEach(([role,lk,side])=>{const w=spawn('visitor',{...lk,prop:null},{island:'questions',role,grown:role==='parent'?1.12:1});w.seated=true;w.fig.userData.rig.hit.raycast=()=>{};
+  place(w,{x:talkAt.x+side*.27,y:islandTop(talkAt)+.12-.17*w.size,z:talkAt.z+.02},side<0?Math.PI/2:-Math.PI/2);sit(w);});
  // My character.
  let look=readAvatar(JSON.stringify(initial||{})),onClickAll=()=>{},frozen=false;
  let me=null;

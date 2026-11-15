@@ -28,6 +28,9 @@ export function sheetGesture(full,delta){return delta < -36?'full':delta > 36?(f
 // away from the island name that hangs on the front edge, alternating heights so stems do not line up.
 export function pinSpots(count){
  const spots=[];
- for(let k=0;k<count;k++){const a=Math.PI*(1.1+.8*(count>1?k/(count-1):.5));spots.push({x:Math.cos(a)*.62,z:Math.sin(a)*.55,lift:1.15+(k%2)*.32});}
+ // Up to three key points fit in a small arc behind the building. More than three spread over a wider arc round the back of the
+ // island, at three staggered heights, so the pins never sit on top of each other.
+ const wide=count>3;
+ for(let k=0;k<count;k++){const a=Math.PI*(wide?1.04+.92*k/(count-1):1.1+.8*(count>1?k/(count-1):.5));spots.push(wide?{x:Math.cos(a)*1.02,z:Math.sin(a)*.85,lift:1.05+(k%3)*.42}:{x:Math.cos(a)*.62,z:Math.sin(a)*.55,lift:1.15+(k%2)*.32});}
  return spots;
 }

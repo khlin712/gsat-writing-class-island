@@ -59,6 +59,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // The university: a raised island next to the summit; students walk in through its door. Clicking it opens the results summit.
  const uniGroup=new THREE.Group();uniGroup.position.set(UNIVERSITY_AT.x,UNIVERSITY_AT.y,UNIVERSITY_AT.z);uniGroup.name='university';scene.add(uniGroup);
  mesh(uniGroup,baseGeometry,'#a3aa84',0,.025,0);mesh(uniGroup,topGeometry,'#cdb98f',0,.2,0);box(uniGroup,0,.245,.59,1.52,.012,.15,'#e5dabb');architecture.build(uniGroup,{kind:'university'});underside(uniGroup,{lift:RISE,kind:'university'},topics.length);
+ // 02: three stepping stones for before, during and after class, where those key points' pins stand (keys 3–5 of five).
+ {const g=groups.get('teaching'),t=topics.find(x=>x.id==='teaching');if(g&&t){const spots=pinSpots(t.steps.length);['#e8c27a','#f2a76a','#e07a5f'].forEach((c,i)=>{const sp=spots[i+2];if(!sp)return;const st=mesh(g,new THREE.CylinderGeometry(.13,.15,.05,10),c,sp.x,.255,sp.z);st.castShadow=false;mesh(g,new THREE.CylinderGeometry(.09,.1,.02,10),'#fff4d6',sp.x,.29,sp.z).castShadow=false;});}}
  // ---- The journey stops (see summit.js / journey.js): start, trailhead, the two cliff tops on the rough road, the foot of the
  // steep wall, calendar, trial-class & sign-up (an open-air cinema) and the service desk. ----
  const stopGroups=new Map(),stationLabels=new Map(),stationOf={start:'start',fork:'fork',wallfoot:'fork',pass1:'fork',pass2:'fork',calendar:'calendar',signup:'signup',contact:'contact',[UNIVERSITY]:'university'};
@@ -123,7 +125,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  function showPins(id,items=[],{onPick=()=>{},onHover=()=>{}}={}){for(const v of pinViews){pinGroup.remove(v.line,v.label);v.line.geometry.dispose();v.el.remove();}pinViews=[];pinIsland=id;if(!id||!positions.has(id))return;
   const p=positions.get(id),spots=pinSpots(items.length);
   items.forEach((item,k)=>{const base=p.clone().add(new THREE.Vector3(spots[k].x,.3,spots[k].z)),tip=base.clone().add(new THREE.Vector3(0,spots[k].lift+(p.y>0?1:0),0));
-   const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,tip]),pinMaterial);const el=document.createElement('button');el.className='step-pin';el.type='button';el.innerHTML=`<b>${item.mark}</b><span>${item.label}</span>`;el.setAttribute('aria-label',`了解重點 ${k+1}：${item.label}`);
+   const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,tip]),pinMaterial);const el=document.createElement('button');el.className='step-pin'+(items.length>3?' compact':'');el.title=item.label;el.type='button';el.innerHTML=`<b>${item.mark}</b><span>${item.label}</span>`;el.setAttribute('aria-label',`了解重點 ${k+1}：${item.label}`);
    el.onclick=e=>{e.stopPropagation();onPick(k);};el.onpointerenter=e=>{if(e.pointerType==='mouse')onHover(k,true);};el.onpointerleave=e=>{if(e.pointerType==='mouse')onHover(k,false);};el.onfocus=()=>onHover(k,true);el.onblur=()=>onHover(k,false);
    const label=new CSS2DObject(el);label.position.copy(tip);pinGroup.add(line,label);pinViews.push({line,label,el});});
   lastLayout=-Infinity;}

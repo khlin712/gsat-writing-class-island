@@ -1,5 +1,6 @@
 import {TRAIL_WIDTH} from './hazards.js';
 import * as THREE from './vendor/three.module.min.js';
+import {PLANE,planeMat} from './people.js';
 
 // Draws the walkways between islands, ③ the silver-and-gold bridge from the top of the steep wall to the trophy,
 // the holds up the steep wall, and the stone stairs down from the university to the calendar island.
@@ -14,7 +15,7 @@ export const SWEEP_MS=2600;
 // How much a step brightens under a foot; the sweep up the bridge (choosing the trophy) lights each step by the same amount.
 export const FOOT_GLOW=.95;
 export const ROPES=[-.48,-.16,.16,.48];
-export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced,hazards}){
+export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],flight=[],trophyAt,reduced,hazards}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
  // ---- Plank walkways between islands, with low rails. ----
@@ -78,6 +79,18 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
    group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),20,.016,6,false),ropeMat));for(let y=bottom.y+.15;y<top.y;y+=.28)knots.push({p:new THREE.Vector3(x,y,z),s:new THREE.Vector3(.03,.03,.03)});
    const peg=new THREE.Mesh(post,new THREE.MeshStandardMaterial({color:'#6b5a45',roughness:.9}));peg.scale.set(.03,.14,.03);peg.position.set(x-dir.x*.05,top.y+.05,z-dir.z*.05);group.add(peg);}
   group.add(instanced(ball,ropeMat,knots));}
+ // ④ The paper-plane flight from the trophy to the university: a launch pad at the trophy island's rim with a plane parked on it,
+ // a faint dotted line over the gap, and a landing mat on the university's rim.
+ if(flight.length>2){const a=flight[0],b=flight[1],yaw=Math.atan2(b.x-a.x,b.z-a.z),z=flight.at(-1);
+  const pad=new THREE.Group();pad.name='launch-pad';pad.position.set(a.x,a.y,a.z);pad.rotation.y=yaw;group.add(pad);
+  const part=(geo,color,x,y,zz,sx,sy,sz)=>{const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color,roughness:.85}));m.position.set(x,y,zz);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;pad.add(m);return m;};
+  part(unit,'#b4855b',0,.012,.05,.5,.04,.62);part(unit,'#e9d6aa',0,.035,.36,.5,.012,.03);
+  for(const x of [-.22,.22])part(post,'#6b5a45',x,.1,-.22,.012,.2,.012);part(unit,'#f2c14e',0,.2,-.22,.46,.06,.01);
+  const parked=new THREE.Mesh(PLANE,planeMat);parked.position.set(.08,.07,.02);parked.scale.setScalar(.75);parked.rotation.y=.25;parked.castShadow=true;pad.add(parked);
+  part(unit,'#fbf6e8',-.15,.05,-.06,.14,.04,.18);
+  const dots=flight.filter((_,i)=>i>2&&i<flight.length-3&&i%2===0).map(p=>({p:new THREE.Vector3(p.x,p.y+.12,p.z),s:new THREE.Vector3(.022,.022,.022)}));
+  const line=instanced(ball,new THREE.MeshBasicMaterial({color:'#fff3cf',transparent:true,opacity:.6,depthWrite:false}),dots);line.name='flight-line';line.castShadow=false;group.add(line);
+  const mat=new THREE.Mesh(new THREE.CircleGeometry(.24,24).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:'#e8c27a',roughness:.9}));mat.name='landing-mat';mat.position.set(z.x,z.y+.012,z.z);mat.receiveShadow=true;group.add(mat);}
  // Light motes drifting along the golden bridge once it is lit.
  const motes=[],moteMat=new THREE.MeshBasicMaterial({color:'#fff3cf',transparent:true,opacity:0,depthWrite:false});
  for(let i=0;i<16;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),moteMat);m.raycast=()=>{};m.visible=false;group.add(m);motes.push({m,phase:i/16,lift:.14+(i%3)*.07});}

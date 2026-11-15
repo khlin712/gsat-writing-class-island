@@ -63,10 +63,14 @@ export function makeFigure(look={}){
 export function pose(phase,amount,sliding=0,climbing=0){const s=Math.sin(phase),k=amount*(1-sliding)*(1-climbing),c=climbing;return {leg:s*.6*k-1.35*sliding-(.5+.4*s)*c,legB:-s*.6*k-1.35*sliding-(.5-.4*s)*c,arm:-s*.5*k-2.7*sliding-(2.6+.4*s)*c,armB:s*.5*k-2.7*sliding-(2.6-.4*s)*c,bob:Math.abs(Math.cos(phase))*.016*k,turn:s*.05*k};}
 export function applyPose(fig,p){const r=fig.userData.rig;r.legs[0].rotation.x=p.leg;r.legs[1].rotation.x=p.legB;r.arms[0].rotation.x=p.arm;r.arms[1].rotation.x=p.armB;r.torso.position.y=.17+p.bob;r.torso.rotation.y=p.turn;}
 
+// A folded paper plane (two wings and a keel): what students fly on from the trophy to the university.
+export const PLANE=(()=>{const n=[0,0,.34],l=[-.26,.02,-.24],r=[.26,.02,-.24],c=[0,0,-.24],k=[0,-.08,-.24],g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute([...n,...l,...c,...n,...c,...r,...n,...c,...k],3));g.computeVertexNormals();return g;})();
+export const planeMat=new THREE.MeshStandardMaterial({color:'#fbf6e8',roughness:.7,side:THREE.DoubleSide});
 export const FRONT_Z=.62;
 export const islandTop=p=>(p.y||0)+.25;
 export function makeRoute(pts){const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y,pts[i].z-pts[i-1].z));return {pts,cum,total:cum[cum.length-1]};}
 // Where a walker is after covering distance s, which way it faces, and whether it is on the slide.
 export function along(route,s){const {pts,cum,total}=route;if(pts.length===1||total===0)return {...pts[pts.length-1],heading:null,slide:false};const d=Math.max(0,Math.min(total,s));let i=1;while(i<pts.length-1&&cum[i]<d)i++;
  const a=pts[i-1],b=pts[i],t=(d-cum[i-1])/((cum[i]-cum[i-1])||1);
- return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,island:a.island===b.island?a.island:null,slide:!!(a.slide&&b.slide),climb:a.path==='climb'&&b.path==='climb',trail:a.path==='trail'&&b.path==='trail',trailId:a.trailId===b.trailId?a.trailId:null,trailU:a.trailU+(b.trailU-a.trailU)*t};}
+ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,island:a.island===b.island?a.island:null,slide:!!(a.slide&&b.slide),climb:a.path==='climb'&&b.path==='climb',trail:a.path==='trail'&&b.path==='trail',flight:a.path==='flight'&&b.path==='flight',trailId:a.trailId===b.trailId?a.trailId:null,trailU:a.trailU+(b.trailU-a.trailU)*t};}

@@ -10,9 +10,9 @@ import {createWeather} from './weather.js';
 import {walkingObstacles} from './navigation.js';
 import {createDecor} from './decor.js';
 import {placeLabels,fitDistance,pinSpots} from './layout.js';
-import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,descentPath,climbPath,buildGraph} from './summit.js';
+import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,descentPath,climbPath,flightPath,buildGraph} from './summit.js';
 import {STATIONS} from './journey.js';
-import {createRoute,SWEEP_MS} from './route3d.js';
+import {createRoute,SWEEP_MS,FOOT_GLOW} from './route3d.js';
 import {createTrailHazards} from './hazards.js';
 import {createWalkers} from './walkers.js';
 
@@ -95,13 +95,14 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const [id,g] of [...groups,[UNIVERSITY,uniGroup],...stopGroups]){const c=centers.get(id);if(c)c.obstacles=walkingObstacles(g,c.y||0);}
  createDecor({scene,centers,graph});
  const hazards=createTrailHazards(TRAIL.length,{reduced});
- const route=createRoute({hazards,scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
+ const route=createRoute({hazards,scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),flight:flightPath(positions.get(SUMMIT),positions.get(UNIVERSITY)),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
  {const m=bridge[Math.floor(bridge.length/2)];stationLabel('bridge',`<b>${st('bridge').n}</b><span>${st('bridge').short}</span>`,new THREE.Vector3(m.x,m.y+.75,m.z),'','bridge');}
  // Choosing the summit (trophy or bridge) lights the bridge step by step from the bottom up; the trophy itself always shines.
- let trophyLit=0,summitOn=false;
+ let trophyLit=0,summitOn=false,launchFlash=0;
  function climb(on){summitOn=!!on&&on!==-1;route.light(summitOn);}
  // The trophy always shines gold; choosing it (or the bridge) lights the bridge step by step from the bottom up.
- function updateStairs(now,delta){route.update(paused?0:delta,elapsed,walkers.feet());trophyLit=1;architecture.shine(1);}
+ // Each take-off for the university makes the trophy flash as bright as a step under someone's foot, then fade.
+ function updateStairs(now,delta){route.update(paused?0:delta,elapsed,walkers.feet());launchFlash=Math.max(0,launchFlash-(paused?0:delta)*1.6);trophyLit=1+launchFlash*FOOT_GLOW/.6;architecture.shine(trophyLit);}
  const routePoints=[...route.points().filter((_,i)=>i%6===0),...Object.values(STOPS).flatMap(s=>[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:s.x+x*1.3,y:s.y+(s.ledge?.6:1.3),z:s.z+z*1.2}))),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:UNIVERSITY_AT.x+x*1.3,y:UNIVERSITY_AT.y+1.7,z:UNIVERSITY_AT.z+z*1.2}))];
  function stairBox(){const box=new THREE.Box3();for(const id of [SUMMIT]){const p=positions.get(id);box.expandByPoint(p.clone().add(new THREE.Vector3(-1.3,0,-1.2)));box.expandByPoint(p.clone().add(new THREE.Vector3(1.3,id===SUMMIT?1.9:1.1,1.2)));}for(const p of routePoints)box.expandByPoint(new THREE.Vector3(p.x,p.y,p.z));return box;}
  // Choosing the trophy: the camera rides along the bridge with the light as it climbs, then closes in on the trophy.
@@ -119,7 +120,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   if(instant||reduced.matches){zoomAt=null;const position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,inset),true);return;}
   const view=bridgeView(inset),position=view.target.clone().addScaledVector(RIDE_DIR,view.distance);flyTo(...shifted(position,view.target.clone(),view.distance,inset));
   route.light(false);route.light(true,FLY_MS);summitOn=true;zoomAt=performance.now()+FLY_MS+SWEEP_MS+300;}
- function trophyZoom(){zoomAt=null;const end=trophyView(lastInset),position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,lastInset));framing={kind:'climb-done'};}
+ function trophyZoom(){zoomAt=null;const end=trophyView(lastInset),position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,lastInset));framing={kind:'climb-done'};walkers.launchDemo();}
  // Key-point pins: numbered tags on stems standing over the selected island.
  const pinGroup=new THREE.Group();scene.add(pinGroup);const pinMaterial=new THREE.LineBasicMaterial({color:'#5b6f60',transparent:true,opacity:.75});let pinViews=[],pinIsland=null;
  function showPins(id,items=[],{onPick=()=>{},onHover=()=>{}}={}){for(const v of pinViews){pinGroup.remove(v.line,v.label);v.line.geometry.dispose();v.el.remove();}pinViews=[];pinIsland=id;if(!id||!positions.has(id))return;
@@ -149,7 +150,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  const flows=[],seen=new Set();
  for(const t of topics)for(const id of t.links){const key=relationKey(t.id,id);if(seen.has(key))continue;seen.add(key);const a=positions.get(t.id).clone(),b=positions.get(id).clone();a.y+=.3;b.y+=.3;const mid=a.clone().lerp(b,.5);mid.y=Math.max(a.y,b.y)+.17;const curve=new THREE.QuadraticBezierCurve3(a,mid,b);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineDashedMaterial({color:'#fff0ba',dashSize:.12,gapSize:.12,transparent:true,opacity:.9}));line.computeLineDistances();scene.add(line);const dot=mesh(scene,new THREE.SphereGeometry(.035,6,4),'#fff4c5',0,.3,0);dot.castShadow=false;line.userData.relation=key;flows.push({key,line,dot,curve,a:t.id,b:id});}
  // People walking on the map (see walkers.js); the visitor's own character is one of them.
- const walkers=createWalkers({hazards,rain:()=>weather.rain(),scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide});walkers.onClick(w=>onWalker(w));
+ const walkers=createWalkers({hazards,rain:()=>weather.rain(),scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide,onLaunch:()=>{launchFlash=1;}});walkers.onClick(w=>onWalker(w));
  let follow=null,followLast=null,followFalling=false,placing=false,peopleOn=true;
  let selected=null,selectedRelation=null,hoveredRelation=null,connections=true,paused=false,frame=0,elapsed=0,lastTime=0,fly=null,framing=null,lastLayout=-Infinity;
  function redrawSelection(){const pair=(hoveredRelation||selectedRelation)?.split(':')||[];

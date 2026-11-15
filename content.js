@@ -44,3 +44,6 @@ export const introSteps=[
  {title:'把問題整理好，再來聊',body:'收藏主題、寫下自己的情況，最後可產生諮詢提綱，複製或下載後透過你平常聯絡老師的管道分享。內容只存在這個瀏覽器，網站不會代你寄送訊息。'}
 ];
 export const INTRO_KEY='writing-island-onboarded';
+// A key point is written as "label：question". Split it for pins, list rows and the key-point card.
+export function stepParts(step){const i=step.indexOf('：');return i<0?{label:step,question:''}:{label:step.slice(0,i),question:step.slice(i+1)};}
+export const CIRCLED=['①','②','③','④','⑤','⑥','⑦','⑧','⑨'];

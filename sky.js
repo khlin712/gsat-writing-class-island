@@ -3,6 +3,8 @@ import * as THREE from 'three';
 // The islands float in open sky: a gradient dome that follows the camera, a sea of clouds far below,
 // a ring of slow clouds at island height, and stars that only show at night.
 const DAY={stops:[[-1,'#8fbde0'],[-.35,'#aed0e9'],[-.05,'#e3edf2'],[.12,'#d4e8f4'],[.5,'#a3cbea'],[1,'#7cafdf']],fog:'#cbe0ee',cloud:'#ffffff',glow:.12};
+const DAWN={stops:[[-1,'#b9acd2'],[-.35,'#dcc3d3'],[-.05,'#ffdcc6'],[.12,'#f7d6c8'],[.5,'#c8c8e4'],[1,'#98aedb']],fog:'#ead7d6',cloud:'#fff2ec',glow:.14};
+const DUSK={stops:[[-1,'#7d76a8'],[-.35,'#c3979f'],[-.05,'#ffc28c'],[.12,'#f3a87c'],[.5,'#9a87b9'],[1,'#4b5d98']],fog:'#d8a99c',cloud:'#ffe3cf',glow:.12};
 const NIGHT={stops:[[-1,'#16233a'],[-.08,'#33456a'],[.12,'#24365a'],[.5,'#14223f'],[1,'#0b1530']],fog:'#2a3a5a',cloud:'#9fb0cc',glow:.05};
 
 export function random(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -12,6 +14,8 @@ export function skyColor(stops,h){
  for(let i=1;i<stops.length;i++)if(h<=stops[i][0]){const [h0,c0]=stops[i-1],[h1,c1]=stops[i];return '#'+new THREE.Color(c0).lerp(new THREE.Color(c1),(h-h0)/(h1-h0)).getHexString();}
  return stops[stops.length-1][1];
 }
+
+export const TIMES={dawn:DAWN,day:DAY,dusk:DUSK,night:NIGHT};
 
 export function createSky(scene,{reduced}){
  const dome=new THREE.Mesh(new THREE.SphereGeometry(90,40,20),new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));
@@ -36,10 +40,10 @@ export function createSky(scene,{reduced}){
  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(stars,3));
  const starField=new THREE.Points(starGeometry,new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false}));starField.visible=false;dome.add(starField);
 
- function theme(night){const t=night?NIGHT:DAY;paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
- theme(false);
+ function theme(name){const t=TIMES[name]||DAY,night=name==='night';paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
+ theme('day');
  return {
-  night:theme,
+  time:theme,
   update(elapsed,camera){dome.position.copy(camera.position);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
  };
 }

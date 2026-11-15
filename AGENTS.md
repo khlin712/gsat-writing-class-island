@@ -4,3 +4,4 @@
 帶路／跌落／重生變更須驗角色、鏡頭與導覽卡的完整恢復；依 CASE-20261115-guide-fall.md 執行。
 橋上人物初始路徑須同驗from/to與幾何前進方向，見CASE-20261115-trail-direction.md。
 完整橋面墜落須先越過側邊，缺口才可直接下落；檢查座標與可見比例，見CASE-20261115-intact-bridge-fall.md。
+懸崖／平台上的跌落須先移出支撐面外再下墜，下墜初期保持可見，見CASE-20261116-cliff-fall-through.md。

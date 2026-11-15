@@ -25,7 +25,7 @@ export const STATIONS=[
   body:'',
   next:'university',nextLabel:'看學生回饋'},
  {id:'university',n:'④',title:'學生回饋',short:'學生回饋',
-  lead:'走過獎盃，學生走進大學。點開來看看學生寫下的回饋。',
+  lead:'在獎盃這裡拿到理想的成績，搭上紙飛機，飛往想去的大學。點開來看看學生寫下的回饋。',
   next:'calendar',nextLabel:'走樓梯下到課程行事曆'},
  {id:'calendar',n:'⑤',title:'課程教學行事曆',short:'行事曆',
   lead:'先看116學測班的教學行事曆，了解課程安排；開班、插班與報名狀態，請再向老師確認。',document:'calendar',

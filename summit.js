@@ -37,7 +37,7 @@ export const CLIFFS=['pass1','pass2'];
 export const islandOf=(x,z)=>({x:(x-470)*.0127,z:(z-340)*.018});
 // Plank walkways between neighbouring islands and along the journey.
 export const WALKWAYS=[['teacher','teaching'],['teacher','questions'],['teaching','questions'],
- ['teacher','start'],['start','fork'],['calendar','signup'],['signup','contact'],['contact','start']];
+ ['teacher','start'],['start','fork'],[SUMMIT,UNIVERSITY],['calendar','signup'],['signup','contact'],['contact','start']];
 const angle=(from,to)=>Math.atan2(to.z-from.z,to.x-from.x);
 const smooth=t=>t*t*(3-2*t);
 // Points spaced evenly along a curve given as u → {x,z} (with y as a function of the fraction along it).
@@ -55,11 +55,6 @@ export function trailPath(from=STOPS.fork,to=STOPS.pass1,spacing=.2,out){const y
  return alongArc(from,to,f=>y0+(y1-y0)*f+.32*Math.sin(Math.PI*f)+.06*Math.sin(2*Math.PI*f),spacing,rimA,rimB,out??(from.ring?0:.35),side).map((p,i,pts)=>({...p,path:'trail',trailId:TRAIL.findIndex(([a,b])=>STOPS[a]===from&&STOPS[b]===to||STOPS[a]?.x===from.x&&STOPS[b]?.x===to.x),trailU:i/(pts.length-1)}));}
 // The last stretch keeps well outside the golden bridge before dropping in to the foot of the wall.
 export const TRAIL=[['fork','pass1'],['pass1','pass2'],['pass2','wallfoot',2.2]];
-// ④ From the trophy to the university by paper plane: off the launch pad at the trophy island's rim, up in an arc over the gap
-// and down onto the university's rim. It only goes one way (nobody flies back to the trophy).
-export function flightPath(summit=SUMMIT_AT,uni=UNIVERSITY_AT,spacing=.12){const y0=summit.y+TOP,y1=uni.y+TOP;return alongArc(summit,uni,f=>y0+(y1-y0)*f+1.15*Math.sin(Math.PI*f),spacing,.92,.92,-.55).map(p=>({...p,path:'flight'}));}
-// Where people stop on the trophy island before taking off: between the trophy and the launch pad, facing the trophy.
-export function launchSpot(summit=SUMMIT_AT,uni=UNIVERSITY_AT){const p=flightPath(summit,uni)[0],dx=p.x-summit.x,dz=p.z-summit.z,d=Math.hypot(dx,dz)||1;return {x:dx/d*.7,z:dz/d*.7};}
 // The way down after the university: a slide, much quicker than stairs, landing on the calendar island.
 export function slidePath(uni=UNIVERSITY_AT,cal=STOPS.calendar,spacing=.12){const y0=uni.y+TOP,y1=(cal.y||0)+TOP;return alongArc(uni,cal,f=>y1+(y0-y1)*(1-smooth(f)),spacing,1.15,1.15,.55).map(p=>({...p,path:'slide',slide:true}));}
 export function descentPath(uni=UNIVERSITY_AT,cal=STOPS.calendar,spacing=.17){const y0=uni.y+TOP,y1=(cal.y||0)+TOP;return alongArc(uni,cal,f=>y0+(y1-y0)*f,spacing).map(p=>({...p,path:'descent'}));}
@@ -79,7 +74,6 @@ export function buildGraph(centers){
  for(const [a,b,out]of TRAIL){const A=centers.get(a),B=centers.get(b);if(A&&B)add(a,b,'trail',trailPath(A,B,.2,out));}
  // The wall only goes up (nobody climbs down it), and it is slow.
  if(F&&S){const pts=[ringAt(F,angle(F,S)),...climbPath(F,S)];edges.push({from:'wallfoot',to:SUMMIT,kind:'climb',exit:angle(F,S),entry:angle(S,pts.at(-1)),pts});}
- if(S&&U){const pts=flightPath(S,U);edges.push({from:SUMMIT,to:UNIVERSITY,kind:'flight',exit:angle(S,pts[0]),entry:angle(U,pts.at(-1)),pts});}
  // The stairs after the university only go down: the ways up are the bridge and the steep wall.
  if(U&&K){const pts=descentPath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'descent',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
  return {centers,edges};}

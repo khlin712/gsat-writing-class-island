@@ -11,21 +11,24 @@ export const STATIONS=[
    {q:'為什麼要選擇我？為什麼要選擇這堂課？',label:'主題二 · 選擇',body:''}],
   next:'fork',nextLabel:'走到入口指引牌'},
  {id:'fork',n:'②',title:'入口指引牌：選哪一條路？',short:'指引牌',
-  lead:'像登山步道入口的指引牌：照著指引走上橋，路最順。另一條是險峻的路，要翻山越嶺；走錯了，就會難以接近目標。導覽員可以帶你先去看看錯的路。',
-  // The right way, then short metaphor captions for the three wrong ways (editable). They describe ways of practising, not any teacher or school.
-  right:{name:'走上橋',caption:'照著指引，一路順順地走到獎盃。',ends:'對的路'},
+  lead:'通往理想成果的路不只一條。這座橋呈現的是我提供的一種學習方法；另一側則呈現練習時可能遇到的誤區。',
+  // Shown right under the lead: how to read the two sides.
+  view:'站在入口往前看：左邊的橋是有方向的練習，右邊是容易繞遠的練習。導覽員可以帶你去看看右邊的誤區。',
+  // The bridge (one way the teacher offers — not the only one), then short metaphor captions for the pitfalls on the other side
+  // (editable). They describe ways of practising, not any teacher or school.
+  right:{name:'走上橋',caption:'我提供的一種學習方法：照著指引一步一步走，方向清楚；每個人的速度仍不一樣。',ends:'其中一條路'},
   paths:[
    {id:'cliff',name:'懸崖',caption:'只靠背範文、套模板，或埋頭寫卻沒人告訴你哪裡要改，遇到新題目就踩空。',ends:'一不小心就掉下去'},
    {id:'wall',name:'陡峭山壁',caption:'方法不對，但真的很努力：攀著繩子一點一點往上爬，還是有機會爬到獎盃；只是很慢，爬一爬還可能掉下來。',ends:'爬得到，但很辛苦'}],
-  rough:'險峻的路：沒有護欄的棧道翻過兩座懸崖，有人會在懸崖邊掉下去；走到盡頭，還要攀繩爬上陡峭山壁。',
+  rough:'沒有護欄的棧道翻過兩座懸崖，有人會在懸崖邊掉下去；走到盡頭，還要攀繩爬上陡峭山壁。也有人走到第一座懸崖前發現不對，回頭改走橋——方法隨時可以調整。',
   next:'bridge',nextLabel:'照著指引，走上橋'},
  {id:'bridge',n:'③',title:'走上橋，通往獎盃',short:'橋',
-  lead:'我能引導你走向正確的路。',
-  note:'照著指引走上橋，比自己爬陡峭山壁順得多，也不會半路掉下來。',
+  lead:'這是我能陪你走的一條路。',
+  note:'有方向地練習，比摸索著爬陡峭山壁順得多；路還是要自己一步一步走。',
   body:'',
   next:'university',nextLabel:'看學生回饋'},
  {id:'university',n:'④',title:'學生回饋',short:'學生回饋',
-  lead:'在獎盃這裡拿到理想的成績，搭上紙飛機，飛往想去的大學。點開來看看學生寫下的回饋。',
+  lead:'走過獎盃，學生走進大學。點開來看看學生寫下的回饋。',
   next:'calendar',nextLabel:'走樓梯下到課程行事曆'},
  {id:'calendar',n:'⑤',title:'課程教學行事曆',short:'行事曆',
   lead:'先看116學測班的教學行事曆，了解課程安排；開班、插班與報名狀態，請再向老師確認。',document:'calendar',

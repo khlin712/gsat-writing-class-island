@@ -10,9 +10,9 @@ import {createWeather} from './weather.js';
 import {walkingObstacles} from './navigation.js';
 import {createDecor} from './decor.js';
 import {placeLabels,fitDistance,pinSpots} from './layout.js';
-import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,descentPath,climbPath,flightPath,buildGraph} from './summit.js';
+import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,descentPath,climbPath,buildGraph} from './summit.js';
 import {STATIONS} from './journey.js';
-import {createRoute,SWEEP_MS,FOOT_GLOW} from './route3d.js';
+import {createRoute,SWEEP_MS} from './route3d.js';
 import {createTrailHazards} from './hazards.js';
 import {createWalkers} from './walkers.js';
 
@@ -75,8 +75,16 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   else{mesh(g,baseGeometry,'#a3aa84',0,.025,0);mesh(g,topGeometry,stopColor[id]||'#cdb98f',0,.2,0);architecture.build(g,{kind:s.kind});underside(g,{lift:s.y,kind:s.kind},topics.length+1+k);}});
  // ② The trailhead: a roofed notice board like the one at the start of a mountain trail, standing off to the back-left so the way in
  // from the start, the bridge and the rough road all stay clear; two arrows point to the bridge and to the rough road.
- {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',bx=-.42,bz=-.5,board=new THREE.Group();board.position.set(bx,0,bz);board.rotation.y=.35;f.add(board);
-  for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06,wood);box(board,0,.62,0,.74,.42,.05,wood);box(board,0,.63,.03,.66,.34,.01,'#fff4d6');const roof=mesh(board,new THREE.BoxGeometry(1,1,1),'#5f5047',0,1.08,0,.84,.05,.2);roof.rotation.x=.18;
+ // ② The trailhead sign says plainly that the bridge is one way among others, and the other side shows common pitfalls.
+ function forkSignMaterial(){const m=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});if(typeof document==='undefined')return m;
+  const c=document.createElement('canvas');c.width=768;c.height=396;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,768,396);x.textAlign='center';
+  x.fillStyle='#c4612f';x.font='bold 50px "Noto Sans TC",sans-serif';x.fillText('通往理想成果的路不只一條。',384,92);
+  x.fillStyle='#2f3b33';x.font='bold 38px "Noto Sans TC",sans-serif';[['這座橋呈現的是',190],['我提供的一種學習方法；',245],['另一側則呈現練習時',315],['可能遇到的誤區。',368]].forEach(([t,y])=>x.fillText(t,384,y));
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;m.map=tex;m.color.set('#ffffff');return m;}
+ {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',bx=-.42,bz=-.5,board=new THREE.Group();board.position.set(bx,0,bz);
+  // The board faces the way people come from the start (and the stop's camera), so its words can be read there.
+  board.rotation.y=Math.atan2(STOPS.start.x-F.x,STOPS.start.z-F.z);board.scale.setScalar(1.3);f.add(board);
+  for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06,wood);box(board,0,.62,0,.74,.42,.05,wood);{const face=box(board,0,.63,.03,.66,.34,.01,'#fff4d6');face.name='fork-sign-face';face.material=forkSignMaterial();}const roof=mesh(board,new THREE.BoxGeometry(1,1,1),'#5f5047',0,1.08,0,.84,.05,.2);roof.rotation.x=.18;
   const post=new THREE.Group();post.position.set(bx+.45,0,bz+.2);f.add(post);box(post,0,.27,0,.05,.72,.05,wood);
   [['bridge','#d9a521'],['pass1','#6b5a45']].forEach(([to,c],i)=>{const T=to==='bridge'?bridgePath()[6]:STOPS[to],a=Math.atan2(T.z-F.z-post.position.z,T.x-F.x-post.position.x),arm=new THREE.Group();arm.position.set(0,.84-i*.13,0);arm.rotation.y=-a;post.add(arm);box(arm,.17,0,0,.34,.1,.025,c).castShadow=true;});}
  {const w=stopGroups.get('wallfoot');for(let i=0;i<3;i++)mesh(w,new THREE.TorusGeometry(.12-i*.025,.018,6,16),'#d8b679',.15,.29+i*.02,-.1).rotation.x=Math.PI/2;}
@@ -95,14 +103,13 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const [id,g] of [...groups,[UNIVERSITY,uniGroup],...stopGroups]){const c=centers.get(id);if(c)c.obstacles=walkingObstacles(g,c.y||0);}
  createDecor({scene,centers,graph});
  const hazards=createTrailHazards(TRAIL.length,{reduced});
- const route=createRoute({hazards,scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),flight:flightPath(positions.get(SUMMIT),positions.get(UNIVERSITY)),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
+ const route=createRoute({hazards,scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
  {const m=bridge[Math.floor(bridge.length/2)];stationLabel('bridge',`<b>${st('bridge').n}</b><span>${st('bridge').short}</span>`,new THREE.Vector3(m.x,m.y+.75,m.z),'','bridge');}
  // Choosing the summit (trophy or bridge) lights the bridge step by step from the bottom up; the trophy itself always shines.
- let trophyLit=0,summitOn=false,launchFlash=0;
+ let trophyLit=0,summitOn=false;
  function climb(on){summitOn=!!on&&on!==-1;route.light(summitOn);}
  // The trophy always shines gold; choosing it (or the bridge) lights the bridge step by step from the bottom up.
- // Each take-off for the university makes the trophy flash as bright as a step under someone's foot, then fade.
- function updateStairs(now,delta){route.update(paused?0:delta,elapsed,walkers.feet());launchFlash=Math.max(0,launchFlash-(paused?0:delta)*1.6);trophyLit=1+launchFlash*FOOT_GLOW/.6;architecture.shine(trophyLit);}
+ function updateStairs(now,delta){route.update(paused?0:delta,elapsed,walkers.feet());trophyLit=1;architecture.shine(1);}
  const routePoints=[...route.points().filter((_,i)=>i%6===0),...Object.values(STOPS).flatMap(s=>[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:s.x+x*1.3,y:s.y+(s.ledge?.6:1.3),z:s.z+z*1.2}))),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:UNIVERSITY_AT.x+x*1.3,y:UNIVERSITY_AT.y+1.7,z:UNIVERSITY_AT.z+z*1.2}))];
  function stairBox(){const box=new THREE.Box3();for(const id of [SUMMIT]){const p=positions.get(id);box.expandByPoint(p.clone().add(new THREE.Vector3(-1.3,0,-1.2)));box.expandByPoint(p.clone().add(new THREE.Vector3(1.3,id===SUMMIT?1.9:1.1,1.2)));}for(const p of routePoints)box.expandByPoint(new THREE.Vector3(p.x,p.y,p.z));return box;}
  // Choosing the trophy: the camera rides along the bridge with the light as it climbs, then closes in on the trophy.
@@ -120,7 +127,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   if(instant||reduced.matches){zoomAt=null;const position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,inset),true);return;}
   const view=bridgeView(inset),position=view.target.clone().addScaledVector(RIDE_DIR,view.distance);flyTo(...shifted(position,view.target.clone(),view.distance,inset));
   route.light(false);route.light(true,FLY_MS);summitOn=true;zoomAt=performance.now()+FLY_MS+SWEEP_MS+300;}
- function trophyZoom(){zoomAt=null;const end=trophyView(lastInset),position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,lastInset));framing={kind:'climb-done'};walkers.launchDemo();}
+ function trophyZoom(){zoomAt=null;const end=trophyView(lastInset),position=end.target.clone().addScaledVector(RIDE_DIR,end.distance);flyTo(...shifted(position,end.target.clone(),end.distance,lastInset));framing={kind:'climb-done'};}
  // Key-point pins: numbered tags on stems standing over the selected island.
  const pinGroup=new THREE.Group();scene.add(pinGroup);const pinMaterial=new THREE.LineBasicMaterial({color:'#5b6f60',transparent:true,opacity:.75});let pinViews=[],pinIsland=null;
  function showPins(id,items=[],{onPick=()=>{},onHover=()=>{}}={}){for(const v of pinViews){pinGroup.remove(v.line,v.label);v.line.geometry.dispose();v.el.remove();}pinViews=[];pinIsland=id;if(!id||!positions.has(id))return;
@@ -150,7 +157,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  const flows=[],seen=new Set();
  for(const t of topics)for(const id of t.links){const key=relationKey(t.id,id);if(seen.has(key))continue;seen.add(key);const a=positions.get(t.id).clone(),b=positions.get(id).clone();a.y+=.3;b.y+=.3;const mid=a.clone().lerp(b,.5);mid.y=Math.max(a.y,b.y)+.17;const curve=new THREE.QuadraticBezierCurve3(a,mid,b);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineDashedMaterial({color:'#fff0ba',dashSize:.12,gapSize:.12,transparent:true,opacity:.9}));line.computeLineDistances();scene.add(line);const dot=mesh(scene,new THREE.SphereGeometry(.035,6,4),'#fff4c5',0,.3,0);dot.castShadow=false;line.userData.relation=key;flows.push({key,line,dot,curve,a:t.id,b:id});}
  // People walking on the map (see walkers.js); the visitor's own character is one of them.
- const walkers=createWalkers({hazards,rain:()=>weather.rain(),scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide,onLaunch:()=>{launchFlash=1;}});walkers.onClick(w=>onWalker(w));
+ const walkers=createWalkers({hazards,rain:()=>weather.rain(),scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide});walkers.onClick(w=>onWalker(w));
  let follow=null,followLast=null,followFalling=false,placing=false,peopleOn=true;
  let selected=null,selectedRelation=null,hoveredRelation=null,connections=true,paused=false,frame=0,elapsed=0,lastTime=0,fly=null,framing=null,lastLayout=-Infinity;
  function redrawSelection(){const pair=(hoveredRelation||selectedRelation)?.split(':')||[];
@@ -202,11 +209,15 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   if(followFalling){focusWalker(follow,lastInset);return;}
   const now=walkers.where(follow),d=now.clone().sub(followLast);followLast=now;if(d.lengthSq()===0)return;if(fly){fly.to.add(d);fly.target.add(d);}else{camera.position.add(d);controls.target.add(d);}}
  // Fly to one station of the journey; the trailhead shows all three paths at once, the bridge its whole length.
+ // ② The trailhead: seen from the start side, standing where the two ways part — the bridge on the left, the rough road on the
+ // right — with the first stretch of each in view. What happens further along the rough road is a tour detour away.
+ const FORK_DIR=(()=>{const a=STOPS.start,b=STOPS.fork,dx=a.x-b.x,dz=a.z-b.z,n=Math.hypot(dx,dz);return new THREE.Vector3(dx/n*.95,.95,dz/n*.95).normalize();})();
+ function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2);return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*.1)),...trail.slice(0,Math.round(trail.length*.28))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
  function focusStation(id,{instant=false,...inset}={}){lastInset=inset;framing={kind:'station',id};let target,radius=1.7;
-  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?['fork','pass1','pass2','wallfoot'].map(k=>centers.get(k).clone()):null;
+  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?forkPoints():null;
   if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;}
   else{const c=centers.get(id==='university'?UNIVERSITY:id);target=new THREE.Vector3(c.x,c.y+.7,c.z);}
-  const [wf,hf]=fractions(inset);const distance=Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add(new THREE.Vector3(1.2,4.4,8.3).normalize().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}
+  const [wf,hf]=fractions(inset);const distance=Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add((id==='fork'?FORK_DIR:new THREE.Vector3(1.2,4.4,8.3).normalize()).clone().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}
  function refit(inset=lastInset){if(framing?.kind==='relation')focusRelation(framing.key,{...inset,instant:true});else if(framing?.kind==='focus')focus(framing.id,{...inset,instant:true});else if(framing?.kind==='step')focusStep(framing.id,framing.k,framing.count,{...inset,instant:true});else if(framing?.kind==='climb')focusClimb(inset,true);else if(framing?.kind==='climb-done'){const e=trophyView(inset),q=e.target.clone().addScaledVector(RIDE_DIR,e.distance);flyTo(...shifted(q,e.target.clone(),e.distance,inset),true);framing={kind:'climb-done'};}else if(framing?.kind==='station')focusStation(framing.id,{...inset,instant:true});else if(framing?.kind==='walker')focusWalker(framing.w,{...inset,instant:true});else if(framing?.kind==='home')home({...inset,bird:framing.bird,instant:true});}
  function layoutLabels(){
   const bounds=host.getBoundingClientRect(),items=[],obstacles=[];

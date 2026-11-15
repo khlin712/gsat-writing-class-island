@@ -48,6 +48,20 @@ export function createArchitecture({box,mesh,tree}){
    const c=golden(mesh(g,cup,'#e0b13f',0,1.17,-.05));c.material=gold;gold.side=THREE.DoubleSide;
    for(const side of [-1,1]){const h=golden(mesh(g,handle,'#e0b13f',side*.32,1.52,-.05));h.rotation.z=-side*Math.PI/2;}
    golden(mesh(g,geo.dome,'#e0b13f',0,1.77,-.05,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
+  }else if(t.kind==='university'){
+   // A symbol of going on to university: a symmetrical brick-and-stone library with a tall arched portico, colonnaded wings and hipped tile roofs.
+   // It only echoes a well-known university library's look; there is no name, crest or mark on it.
+   const brick='#b8664d',stone='#eadcc0',tile='#6a5149',dark='#4b3a33';
+   box(g,0,.245,.02,1.5,.08,1.02,'#b9a78c');box(g,0,.325,.02,1.4,.06,.94,stone);
+   for(const side of [-1,1]){const x=side*.46;box(g,x,.385,-.05,.5,.46,.62,brick);box(g,x,.84,-.05,.54,.05,.66,stone);mesh(g,roof,tile,x,.89,-.05,.58,.2,.7);
+    for(const dx of [-.15,0,.15]){box(g,x+dx,.48,.27,.075,.2,.02,dark);mesh(g,geo.cylinder,dark,x+dx,.68,.27,.0375,.02,.0375).rotation.x=Math.PI/2;box(g,x+dx,.41,.29,.1,.02,.02,stone);}
+    for(const dx of [-.22,-.08,.08,.22])mesh(g,geo.cylinder,stone,x+dx,.6,.33,.022,.46,.022);box(g,x,.835,.33,.5,.03,.05,stone);}
+   box(g,0,.385,0,.46,.72,.7,stone);box(g,0,1.1,0,.5,.05,.74,'#d8c7a4');mesh(g,roof,tile,0,1.15,0,.56,.28,.78);
+   mesh(g,geo.cylinder,stone,0,1.43,0,.09,.12,.09);mesh(g,geo.dome,'#8f9c88',0,1.49,0,.09,.08,.09);
+   for(const dx of [-.13,0,.13]){box(g,dx,.39,.352,.09,.42,.02,dark);mesh(g,geo.cylinder,dark,dx,.81,.352,.045,.02,.045).rotation.x=Math.PI/2;}
+   for(const dx of [-.2,-.065,.065,.2])box(g,dx,.39,.37,.04,.52,.04,stone);box(g,0,.9,.37,.48,.07,.05,stone);
+   for(let i=0;i<3;i++)box(g,0,.245+i*.03,.47+i*.04,.5-i*.04,.03,.12,'#dfd6c1');
+   lamp(g,-.62,.42);lamp(g,.62,.42);planter(g,-.32,.5);planter(g,.32,.5);
   }else if(t.kind==='clock'){
    base(g,.72,.68);hall(g,0,-.05,.57,.94,.55,'#e6dbc0','#81795c');
    box(g,0,1.34,-.05,.69,.11,.67,'#c0a77c');box(g,0,1.45,-.05,.5,.45,.5,'#e8dec8');mesh(g,geo.dome,'#657d70',0,1.92,-.05,.34,.22,.34);

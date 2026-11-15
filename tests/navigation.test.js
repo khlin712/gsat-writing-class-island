@@ -35,3 +35,11 @@ test('真實建築下，全部169組跨島路線可走，非法起點不穿牆�
  const c=centers.get('teacher');assert.equal(acrossIsland(c,{x:0,z:0},{x:0,z:.95}).length,0,'拒絕建築內的起點');
 });
 test('獎盃有一對對稱展翼，留在島面邊界內',async()=>{const {arch}=await import('./fixtures/island-models.js');const g=arch.build(new THREE.Group(),{kind:'trophy'}),left=g.getObjectByName('trophy-wing-left'),right=g.getObjectByName('trophy-wing-right');assert.ok(left&&right);g.updateMatrixWorld(true);const a=new THREE.Box3().setFromObject(left),b=new THREE.Box3().setFromObject(right);assert.ok(Math.abs(a.min.x+b.max.x)<1e-6);assert.ok(Math.max(Math.abs(a.min.x),b.max.x)<1.2);});
+
+test('斷裂橋板持續下墜並離場，修復時不會從下方浮回',()=>{
+ const centers=nodes(topics),h=createTrailHazards(3,{rnd:()=>0}),r=createRoute({scene:new THREE.Scene(),centers,walkways:[],bridge:bridgePath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:centers.get(SUMMIT),hazards:h,reduced:{matches:false}});
+ const deck=r.group.getObjectByName('wrong-route-deck'),index=Math.round((deck.count-1)*.35),m=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(),rotation=new THREE.Quaternion();
+ const read=()=>{deck.getMatrixAt(index,m);m.decompose(position,rotation,scale);return {y:position.y,scale:scale.length()};};r.update(.1,0);const top=read().y;
+ h.update(22);h.update(2);h.update(.3);r.update(.1,1);const early=read();h.update(.5);r.update(.1,2);const later=read();assert.ok(later.y<early.y&&early.y<top);assert.ok(later.scale>1e-6,'未離場前不縮成薄片');
+ h.update(.8);r.update(.1,3);assert.equal(read().scale,0,'離場後隱藏');h.update(4);r.update(.1,4);assert.equal(h.span(0).phase,'repair');assert.equal(read().scale,0,'修復中不回浮');h.update(1.5);r.update(.1,5);assert.ok(Math.abs(read().y-top)<1e-6,'原位重建橋面');
+});

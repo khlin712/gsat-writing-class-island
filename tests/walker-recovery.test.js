@@ -74,3 +74,48 @@ test('導覽員重生後若無法規劃恢復路線，回報安全起點供介�
   for(let i=0;i<10;i++)w.update(.05,false);assert.equal(guide.island,'start');assert.ok(guide.fig.visible);assert.deepEqual(arrivals,[{id:'start',extra:{recoveryFailed:true}}]);
  }finally{globalThis.document=old;}
 });
+
+test('每次刷新建立的16位錯誤橋學生皆沿指引牌→懸崖→攀岩入口向前走',async()=>{
+ const {along}=await import('../dist/people.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{for(let refresh=0;refresh<3;refresh++){const positions=nodes(topics),graph=buildGraph(positions),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph,links:[],CSS2DObject:Label,reduced:{matches:false}}),initial=[];
+   for(let k=0;k<20;k++){if(k%5===0)continue;const student=w.find('student',k),[from,to]=TRAIL[k%TRAIL.length],forward=graph.edges.find(e=>e.kind==='trail'&&e.from===from&&e.to===to);
+    assert.equal(student.island,from);assert.equal(student.target,to,`${from}開場學生不應往${student.target}倒走`);assert.deepEqual(student.route.pts,forward.pts);assert.equal(student.dir,1);
+    const at=along(student.route,student.s);assert.ok(Math.cos(student.heading-at.heading)>.99,'開場朝向與前進方向相同');initial.push({student,route:student.route,u:at.trailU});}
+   for(let i=0;i<40;i++){w.update(.025,false);for(const p of initial){if(p.student.route!==p.route)continue;const u=along(p.route,p.student.s).trailU;assert.ok(u>=p.u-1e-9,'實際橋上位移不得倒退');p.u=u;}}
+  }}finally{globalThis.document=old;}
+});
+
+test('完整錯誤橋被雨沖落時先移到橋側，再下降，不能在橋中央縮小消失',async()=>{
+ const {along}=await import('../dist/people.js'),{TRAIL_WIDTH}=await import('../dist/hazards.js');const old=globalThis.document,random=Math.random;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>1}),student=w.find('student',1),center=along(student.route,student.s),normal={x:Math.cos(center.heading),z:-Math.sin(center.heading)};
+  Math.random=()=>0;w.update(.05,false);const top=student.fig.position.y;assert.equal(student.fallKind,'rain');w.update(.1,false);w.update(.1,false);
+  assert.equal(student.fig.position.y,top,'仍在橋面高度橫移');assert.equal(student.fig.scale.x,student.size,'橋面內不能縮小消失');
+  for(let i=0;i<3;i++)w.update(.1,false);const offset=Math.abs((student.fig.position.x-center.x)*normal.x+(student.fig.position.z-center.z)*normal.z);assert.ok(offset>TRAIL_WIDTH/2+.06,'墜落前身體已移出完整橋面');assert.ok(student.fig.position.y<top);
+ }finally{Math.random=random;globalThis.document=old;}
+});
+
+test('跳過走路可立即抵達，清除舊路線、跌落、排程與出生縮放',()=>{
+ const old=globalThis.document;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false}}),guide=w.guide();
+  w.guideTo('pass1');guide.fall=1;guide.vy=-8;guide.resume='pass1';guide.next='fork';guide.fig.userData.hidden=true;guide.fig.visible=false;guide.fig.scale.setScalar(.1);guide.born=.1;
+  assert.ok(w.guideAppear('wallfoot',{instant:true}));assert.equal(guide.island,'wallfoot');assert.equal(guide.fall,undefined);assert.equal(guide.born,undefined);assert.equal(guide.route,null);assert.equal(guide.resume,null);assert.equal(guide.next,null);assert.equal(guide.fig.scale.x,guide.size);assert.ok(guide.fig.visible);
+ }finally{globalThis.document=old;}
+});
+
+test('連續行走的橋頭、橋尾和轉角不突然橫跳，單幀位移有界',()=>{
+ const old=globalThis.document;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false}}),dt=.02;
+  for(let i=0;i<1200;i++){const before=Array.from({length:47},(_,k)=>{const p=w.find('student',k);return {p,route:p.route,at:p.fig.position.clone()};});w.update(dt,false);
+   for(const {p,route,at}of before){if(!route||p.route!==route||p.fall!==undefined)continue;const d=Math.hypot(p.fig.position.x-at.x,p.fig.position.z-at.z);assert.ok(d<=(p.speed+.7)*dt+1e-5,`人物單幀橫移${d.toFixed(3)}，上限${((p.speed+.7)*dt).toFixed(3)}`);}
+  }
+ }finally{globalThis.document=old;}
+});
+
+test('角色從起點出生並預設自動探索，自動抵達標明自動、島內漫步不重複抵達',()=>{
+ const old=globalThis.document;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),arrivals=[],w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},onArrive:(id,meta)=>arrivals.push({id,meta})}),me=w.me();assert.equal(me.island,'start');assert.equal(me.mode,'auto');
+  me.wait=0;w.update(.05,false);assert.ok(me.route&&me.target!=='start');me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,1);assert.equal(arrivals[0].meta.automatic,true);
+  arrivals.length=0;w.avatar.mode('stroll');me.wait=0;w.update(.05,false);assert.equal(me.target,me.island);me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,0,'同島散步不發抵達');
+  w.avatar.go('start');me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,1);assert.equal(arrivals[0].meta.automatic,false,'手動前往仍發抵達事件');
+ }finally{globalThis.document=old;}
+});

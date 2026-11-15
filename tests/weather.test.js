@@ -17,9 +17,9 @@ test('隨機下雨，雨停後白天出現彩虹；減少動態時不下雨',()=
 test('每座島都有綠色植被，但不擋在步道、橋、滑梯與山壁的接口',()=>{const centers=nodes(topics),graph=buildGraph(centers),scene=new THREE.Scene();const d=createDecor({scene,centers,graph,skip:id=>id==='lava'||!!STOPS[id]?.ledge});
  assert.ok(d.counts.bushes>40&&d.counts.tufts>100&&d.counts.flowers>40&&d.counts.vines>20,JSON.stringify(d.counts));let draws=0;d.group.traverse(m=>{if(m.isInstancedMesh)draws++;});assert.ok(draws<=4);});
 
-test('晴夜的星星與月亮可見，俯視地圖時月亮仍在視野內，白天隱藏',async()=>{
+test('晴夜星月啟用、白天隱藏，月亮固定世界座標不跟隨鏡頭',async()=>{
  const {createSky}=await import('../dist/sky.js');const scene=new THREE.Scene();scene.fog=new THREE.Fog('#fff',30,95);const sky=createSky(scene,{reduced:{matches:false}}),camera=new THREE.PerspectiveCamera(38,1.3,.1,120);camera.position.set(10,14,30);camera.lookAt(0,0,0);camera.updateMatrixWorld();
- sky.blend('night','night',0,0,1);sky.update(0,camera);scene.updateMatrixWorld(true);const moon=scene.getObjectByName('moon'),point=moon.getWorldPosition(new THREE.Vector3()).project(camera);assert.ok(moon.visible);assert.equal(moon.children[1].material.opacity,1);assert.ok(Math.abs(point.x)<1&&Math.abs(point.y)<1&&point.z<1);
+ sky.blend('night','night',0,0,1);sky.update(0,camera);scene.updateMatrixWorld(true);const moon=scene.getObjectByName('moon'),fixed=moon.getWorldPosition(new THREE.Vector3());assert.ok(moon.visible);assert.equal(moon.children[1].material.opacity,1);camera.position.set(24,7,-12);camera.lookAt(5,2,4);camera.updateMatrixWorld();sky.update(2,camera);scene.updateMatrixWorld(true);assert.deepEqual(moon.getWorldPosition(new THREE.Vector3()).toArray(),fixed.toArray());
  let stars;scene.traverse(o=>{if(o.isPoints)stars=o;});assert.ok(stars.visible);assert.equal(stars.material.opacity,1);assert.equal(stars.geometry.attributes.position.count,500);
  sky.blend('day','day',0,0,0);assert.ok(!moon.visible&&!stars.visible);
 });

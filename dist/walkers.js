@@ -1,5 +1,5 @@
 import {walkSpot,walkable,safeSpot} from './navigation.js';
-import {TRAIL_LANE} from './hazards.js';
+import {TRAIL_LANE,TRAIL_WIDTH} from './hazards.js';
 import * as THREE from './vendor/three.module.min.js';
 import {makeFigure,pose,applyPose,makeRoute,along,islandTop,FIGURE_SCALE} from './people.js';
 import {STATIONS} from './journey.js';
@@ -44,7 +44,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const ring=new THREE.Mesh(new THREE.RingGeometry(.15,.2,28).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:'#e2793f',transparent:true,opacity:.9,depthWrite:false}));ring.position.y=.008;ring.raycast=()=>{};ring.visible=false;
  function tag(w,text,className){const el=document.createElement('button');el.type='button';el.className='walker-tag '+className;el.innerHTML=text;el.tabIndex=-1;el.onclick=e=>{e.stopPropagation();onClickAll(w);};const o=new CSS2DObject(el);o.position.set(0,.82,0);w.fig.add(o);w.tag={el,o};}
  function spawn(kind,look,props){const fig=makeFigure(look);const size=FIGURE_SCALE*(props?.grown||1);fig.scale.setScalar(size);group.add(fig);
-  const w={kind,fig,size,route:null,s:0,dir:1,speed:.3,wait:0,phase:Math.random()*6,heading:0,walking:0,sliding:0,lane:(Math.random()*2-1)*TRAIL_LANE,...props};fig.userData.walker=w;walkers.push(w);return w;}
+  const w={kind,fig,size,route:null,s:0,dir:1,speed:.3,wait:0,phase:Math.random()*6,heading:0,walking:0,sliding:0,sideX:0,sideZ:0,lane:(Math.random()*2-1)*TRAIL_LANE,...props};fig.userData.walker=w;walkers.push(w);return w;}
  const place=(w,p,heading=0)=>{w.fig.position.set(p.x,p.y,p.z);w.heading=heading;w.fig.rotation.y=heading;};
 
  // Parents: one per island, a little taller, on the paved path along the front edge.
@@ -62,9 +62,9 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const spotOn=id=>{let p;for(let i=0;i<24;i++){p=walkSpot(positions.get(id));const c=positions.get(id);if(walkers.every(w=>w.island!==id||Math.hypot(w.fig.position.x-c.x-p.x,w.fig.position.z-c.z-p.z)>.22))break;}return p;};
  const students=Array.from({length:Math.max(0,STUDENTS-messengerCount)},(_,k)=>{const w=spawn('student',studentLook(k),{island:ground[k%ground.length],speed:.22+(k%7)*.055,wait:Math.random()*6});teleport(w,w.island,spotOn(w.island));w.heading=Math.random()*6;return w;});
  // Start with people already on both routes (one right-way walker for four wrong-way walkers), not an empty bridge.
- students.slice(0,20).forEach((w,k)=>{const good=k%5===0,edge=good?graph.edges.find(e=>e.kind==='span'&&e.from==='fork'):graph.edges.find(e=>e.kind==='trail'&&e.from===TRAIL[k%TRAIL.length][0]);if(!edge)return;
+ students.slice(0,20).forEach((w,k)=>{const good=k%5===0,edge=good?graph.edges.find(e=>e.kind==='span'&&e.from==='fork'):graph.edges.find(e=>e.kind==='trail'&&e.from===TRAIL[k%TRAIL.length][0]&&e.to===TRAIL[k%TRAIL.length][1]);if(!edge)return;
   w.island=edge.from;w.target=edge.to;w.route=makeRoute(edge.pts);w.s=w.route.total*(.12+(k*.173)% .76);w.dir=1;w.up=true;w.wait=0;w.fallAt=good?null:edge.to==='wallfoot'?null:edge.to;
-  const at=along(w.route,w.s);place(w,at,at.heading||0);if(at.trail){w.fig.position.x+=Math.cos(w.heading)*w.lane;w.fig.position.z-=Math.sin(w.heading)*w.lane;}});
+  const at=along(w.route,w.s);place(w,at,at.heading||0);if(at.trail){w.sideX=Math.cos(w.heading)*w.lane;w.sideZ=-Math.sin(w.heading)*w.lane;w.fig.position.x+=w.sideX;w.fig.position.z+=w.sideZ;}});
  // Eight of the existing 47 students sit in the open-air lecture hall; the teacher is a separate fictional NPC.
  const sit=w=>{const rig=w.fig.userData.rig;for(const leg of rig.legs)leg.rotation.x=-Math.PI/2;for(const arm of rig.arms)arm.rotation.x=-.55;};
  const lectureAt=positions.get('signup');
@@ -75,7 +75,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  // My character.
  let look=readAvatar(JSON.stringify(initial||{})),onClickAll=()=>{},frozen=false;
  let me=null;
- function makeMe(){const old=me;me=spawn('avatar',avatarLook(look),{island:old?.island||order[0],speed:.62,mode:old?.mode||'stroll',wait:old?.wait??1.2,target:old?.target||null,route:old?.route||null,s:old?.s||0,fall:old?.fall,fallKind:old?.fallKind,vy:old?.vy,resume:old?.resume});
+ function makeMe(){const old=me;me=spawn('avatar',avatarLook(look),{island:old?.island||GUIDE_ROUTE[0],speed:.62,mode:old?.mode||'auto',wait:old?.wait??1.2,target:old?.target||null,route:old?.route||null,s:old?.s||0,fall:old?.fall,fallKind:old?.fallKind,vy:old?.vy,resume:old?.resume,fallMove:old?.fallMove,sideX:old?.sideX||0,sideZ:old?.sideZ||0});
   if(old){place(me,old.fig.position,old.heading);me.sliding=old.sliding;remove(old);if(ring.parent===old.fig)me.fig.add(ring);}else{const p=positions.get(me.island);const spot=safeSpot(p,AVATAR_SPOT);place(me,{x:p.x+spot.x,y:islandTop(p),z:p.z+spot.z});}
   tag(me,`<i>我</i><span>${look.name?escapeHtml(look.name):'我的角色'}</span>`,'me-tag');me.tag.el.setAttribute('aria-label','我的角色');}
  function remove(w){group.remove(w.fig);w.tag?.o.removeFromParent();w.tag?.el.remove();walkers.splice(walkers.indexOf(w),1);}
@@ -88,15 +88,17 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   if((w.kind==='student'||w.kind==='messenger')&&!(w.rest>0)&&Math.random()<1-Math.exp(-.045*dt))w.rest=.8+Math.random()*2.5;
   const resting=w.rest>0;if(resting)w.rest=Math.max(0,w.rest-dt);
   w.s+=(resting?0:1)*w.speed*(w.climbing>.5?.3:w.riding?1.8:w.onTrail?.6:1)*dt*w.dir;const end=w.dir>0?w.s>=w.route.total:w.s<=0;w.s=Math.max(0,Math.min(w.route.total,w.s));const at=along(w.route,w.s);
-  w.fig.position.set(at.x,at.y,at.z);if(at.trail&&at.heading!==null){w.fig.position.x+=Math.cos(at.heading)*w.lane;w.fig.position.z-=Math.sin(at.heading)*w.lane;}
-  if(at.island&&at.heading!==null){const c=positions.get(at.island),x=at.x-c.x+Math.cos(at.heading)*w.lane*.45,z=at.z-c.z-Math.sin(at.heading)*w.lane*.45;if(walkable(c,{x,z})){w.fig.position.x=c.x+x;w.fig.position.z=c.z+z;}}
-  if(at.trail&&(hazards?.gap(at.trailId,at.trailU)||rain()>.65&&Math.random()<1-Math.exp(-.12*dt))){startFall(w,hazards?.gap(at.trailId,at.trailU)?'bridge':'rain');return false;}
-  if(at.heading!==null)w.heading=turn(w.heading,w.dir>0?at.heading:at.heading+Math.PI,dt*10);w.climbing=at.climb?1:0;w.onTrail=at.trail;if(at.climb&&w.rope){w.fig.position.x+=ROPE_T.x*w.rope;w.fig.position.z+=ROPE_T.z*w.rope;}w.riding=!!at.slide;w.walking+=((w.riding||resting?0:1)-w.walking)*Math.min(1,dt*8);return end;}
+  const taper=at.trail?Math.max(0,Math.min(1,at.trailU/.08,(1-at.trailU)/.08)):0;
+  const wantedX=at.climb?ROPE_T.x*(w.rope||0):at.heading===null?0:Math.cos(at.heading)*w.lane*taper,wantedZ=at.climb?ROPE_T.z*(w.rope||0):at.heading===null?0:-Math.sin(at.heading)*w.lane*taper;
+  const dx=wantedX-w.sideX,dz=wantedZ-w.sideZ,amount=resting?0:Math.min(1,.7*dt/(Math.hypot(dx,dz)||1));w.sideX+=dx*amount;w.sideZ+=dz*amount;
+  w.fig.position.set(at.x+w.sideX,at.y,at.z+w.sideZ);
+  if(at.trail&&(hazards?.gap(at.trailId,at.trailU)||rain()>.65&&Math.random()<1-Math.exp(-.12*dt))){startFall(w,hazards?.gap(at.trailId,at.trailU)?'bridge':'rain',at.heading??w.heading);return false;}
+  if(at.heading!==null)w.heading=turn(w.heading,w.dir>0?at.heading:at.heading+Math.PI,dt*10);w.climbing=at.climb?1:0;w.onTrail=at.trail;w.riding=!!at.slide;w.walking+=((w.riding||resting?0:1)-w.walking)*Math.min(1,dt*8);return end;}
  // Find the way by walkways and stairs; returns false if there is none.
- function goTo(w,id,spot){spot=safeSpot(positions.get(id),spot);const r=findRoute(graph,w.fig.position,w.island,id,spot);if(!r)return false;w.route=makeRoute(r.pts);w.s=0;w.dir=1;w.target=id;return true;}
+ function goTo(w,id,spot){spot=safeSpot(positions.get(id),spot);const r=findRoute(graph,w.fig.position,w.island,id,spot);if(!r)return false;w.route=makeRoute(r.pts);w.sideX=0;w.sideZ=0;w.s=0;w.dir=1;w.target=id;return true;}
  const reducedNow=()=>reduced?.matches;
  function arrive(w){const t=byId(w.target);w.island=w.target;w.route=null;w.target=null;w.sliding=0;return t;}
- function teleport(w,id,spot){const p=positions.get(id);spot=safeSpot(p,spot);w.fall=undefined;w.resume=null;w.next=null;w.fig.userData.hidden=false;w.fig.rotation.x=0;w.fig.scale.setScalar(w.size);place(w,{x:p.x+spot.x,y:islandTop(p),z:p.z+spot.z});w.island=id;w.route=null;w.target=null;w.sliding=0;}
+ function teleport(w,id,spot){const p=positions.get(id);spot=safeSpot(p,spot);w.sideX=0;w.sideZ=0;w.fall=undefined;w.fallMove=null;w.resume=null;w.next=null;w.fig.userData.hidden=false;w.fig.rotation.x=0;w.fig.scale.setScalar(w.size);place(w,{x:p.x+spot.x,y:islandTop(p),z:p.z+spot.z});w.island=id;w.route=null;w.target=null;w.sliding=0;}
 
  // Parents: a few strolls on one island, then off along the walkways to another, so nobody looks like a guard on duty.
  const PARENT_STOPS=()=>[...order,'start','calendar','signup','contact'];
@@ -118,7 +120,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   if(w.route){if(walkRoute(w,dt)){const id=w.target,t=arrive(w);if(w.next){const next=w.next;w.next=null;if(!goTo(w,next,guideSpot(next)))stopGuideAtStart(w);return;}if(t)onLog(`導覽員帶路抵達 ${t.n} ${t.title}`,{kind:'guide',id});onGuide(id);}return;}
   stand(w,dt,0);}
  // Pop the guide up at any island, so a visitor who wandered off can pick the tour up again right where they are.
- function guideAppear(id){if(!positions.has(id))return false;teleport(guide,id,guideSpot(id));guide.heading=0;if(!reducedNow()){guide.born=0;guide.fig.scale.setScalar(0);}sync();return true;}
+ function guideAppear(id,{instant=false}={}){if(!positions.has(id))return false;teleport(guide,id,guideSpot(id));guide.heading=0;guide.born=undefined;if(!reducedNow()&&!instant){guide.born=0;guide.fig.scale.setScalar(0);}sync();return true;}
  function guideTo(id){if(!positions.has(id))return false;if(guide.fall!==undefined&&!reducedNow()&&!frozen){guide.resume=id;return true;}if(reducedNow()||frozen){teleport(guide,id,guideSpot(id));sync();onGuide(id);return true;}guide.speed=id===GUIDE_ROUTE[0]?1.2:1.6;guide.next=null;
   if(goTo(guide,id,guideSpot(id)))return true;
   // On a bridge the departure island is stale: finish this leg before replanning the latest request.
@@ -128,8 +130,14 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const ROPE_T=(()=>{const S=positions.get(SUMMIT),F=STOPS.wallfoot,d=Math.hypot(F.x-S.x,F.z-S.z);return {x:-(F.z-S.z)/d,z:(F.x-S.x)/d};})();
  // The outer edge of each cliff top on the rough road (facing away from the islands): where those who fall step off.
  const cliffEdge=id=>{const s=STOPS[id],dx=s.x+1.17,dz=s.z,d=Math.hypot(dx,dz)||1;return {x:dx/d*.55,z:dz/d*.55};};
- function startFall(w,kind){w.resume=w.kind==='guide'||w.kind==='avatar'?(w.next||w.target):null;w.next=null;w.route=null;w.target=null;w.slipAt=null;w.climbing=0;w.riding=false;w.fall=0;w.fallKind=kind;w.vy=.6;onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
- function updateFall(w,dt){w.fall+=dt;w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-w.fall/1.8));
+ function startFall(w,kind,heading=w.heading){w.resume=w.kind==='guide'||w.kind==='avatar'?(w.next||w.target):null;w.next=null;w.route=null;w.target=null;w.slipAt=null;w.climbing=0;w.riding=false;w.fall=0;w.fallKind=kind;w.vy=.6;
+  const offset=w.sideX*Math.cos(heading)-w.sideZ*Math.sin(heading),side=offset>=0?1:-1,d=TRAIL_WIDTH/2+.08-Math.abs(offset),p=w.fig.position;
+  w.fallMove=kind==='rain'?{start:p.clone(),edge:new THREE.Vector3(p.x+Math.cos(heading)*side*d,p.y,p.z-Math.sin(heading)*side*d)}:null;onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
+ function updateFall(w,dt){w.fall+=dt;
+  // Intact deck: sweep sideways first. Only a broken gap drops people straight through the middle.
+  if(w.fallMove){const move=w.fallMove,t=Math.min(1,w.fall/.35);w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;
+   if(t<1){w.fig.position.y=move.start.y;return;}}
+  w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-w.fall/1.8));
   if(w.fall>1.8)w.fig.userData.hidden=true;
   if(w.fall>3.5){const resume=w.resume;w.fall=undefined;w.resume=null;w.fig.rotation.x=0;w.born=0;w.up=false;w.fallAt=null;w.goal=undefined;w.fig.scale.setScalar(w.size);w.fig.userData.hidden=false;teleport(w,RESTART,spotOn(RESTART));w.wait=1.5;
    if(resume&&!goTo(w,resume,w.kind==='guide'?guideSpot(resume):AVATAR_SPOT)&&w.kind==='guide')stopGuideAtStart(w);}}
@@ -153,9 +161,9 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  // where some fall off one of the cliff tops and the rest reach the steep wall, climb slowly and may still fall.
  function pickPath(w){const r=Math.random();const cliff=CLIFFS[Math.floor(Math.random()*CLIFFS.length)];const ok=r<.2?goTo(w,UNIVERSITY,DOOR):r<.55?(w.fallAt=cliff,goTo(w,cliff,cliffEdge(cliff))):goTo(w,'wallfoot',{x:0,z:0});if(!ok){w.up=false;w.wait=2;}}
  function updateMe(w,dt){
-  if(w.route){if(walkRoute(w,dt)){const quiet=w.quiet,id=w.target,t=arrive(w);w.quiet=false;w.wait=w.mode==='auto'?3:1.5;if(quiet)return;onArrive(id,{kind:'avatar'});onLog(`${look.name||'我的角色'}抵達 ${t.n} ${t.title}`,{kind:'avatar',id});}return;}
+  if(w.route){if(walkRoute(w,dt)){const quiet=w.quiet,from=w.island,id=w.target,t=arrive(w);w.quiet=false;w.wait=w.mode==='auto'?3:1.5;if(quiet||w.mode==='stroll'&&id===from)return;onArrive(id,{kind:'avatar',automatic:w.mode!=='goto'});onLog(`${look.name||'我的角色'}抵達 ${t.n} ${t.title}`,{kind:'avatar',id});}return;}
   if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
-  if(w.mode==='auto'){const others=order.filter(id=>id!==w.island);if(!goTo(w,others[Math.floor(Math.random()*others.length)],AVATAR_SPOT))w.wait=1;return;}
+  if(w.mode==='auto'){const others=[...ground,SUMMIT,UNIVERSITY,'fork'].filter(id=>id!==w.island);if(!goTo(w,others[Math.floor(Math.random()*others.length)],AVATAR_SPOT))w.wait=1;return;}
   if(w.mode==='stroll'){updateResident(w,dt);return;}
   stand(w,dt,0);}
 

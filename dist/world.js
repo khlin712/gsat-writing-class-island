@@ -223,7 +223,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();host.querySelector('.webgl-message')?.remove();const message=document.createElement('p');message.className='webgl-message';message.textContent='3D 畫面暫時中斷。你仍可用主題清單探索；請重新整理恢復地圖。';host.append(message);});
  return {
   people(on){peopleOn=on;redrawSelection();},
-  setHour(h){hour=h;},hour:()=>hour,phase:()=>phase,weather:()=>weather.state(),hazards:()=>hazards.state(),rain(on){weather.setRain(on);},guideTo(id){return walkers.guideTo(id);},guideAppear(id){return walkers.guideAppear(id);},
+  setHour(h){hour=h;},hour:()=>hour,phase:()=>phase,weather:()=>weather.state(),hazards:()=>hazards.state(),rain(on){weather.setRain(on);},guideTo(id){return walkers.guideTo(id);},guideAppear(id,options){return walkers.guideAppear(id,options);},
   focusStation(id,inset){focusStation(id,inset);},stationSelect(id){for(const [k,v]of stationLabels)v.el.classList.toggle('selected',k===id||(id==='fork'&&k.startsWith('path-')));},
   stationPoint(id){const l=stationLabels.get(id);if(!l)return null;const v=l.o.position.clone().project(camera),r=renderer.domElement.getBoundingClientRect();return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height};},stopFollow(){follow=null;if(framing?.kind==='walker')framing=null;},
   walkerSelect(w){walkers.select(w);},walkerFocus(w,inset){focusWalker(w,inset);},following:()=>!!follow,guide:()=>walkers.guide(),me:()=>walkers.me(),

@@ -47,7 +47,7 @@ export function createSky(scene,{reduced}){
  const starField=new THREE.Points(starGeometry,starMat);starField.visible=false;dome.add(starField);
  // The moon: a pale disc with a soft halo, up behind the islands, out at night only.
  const moonMat=new THREE.MeshBasicMaterial({color:'#f6f2df',fog:false,transparent:true,opacity:0,depthWrite:false}),haloMat=new THREE.MeshBasicMaterial({color:'#cfdcff',fog:false,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
- const moon=new THREE.Group();moon.name='moon';moon.position.set(-30,46,-62);const disc=new THREE.Mesh(new THREE.SphereGeometry(1.9,24,16),moonMat),halo=new THREE.Mesh(new THREE.SphereGeometry(4,24,16),haloMat);moon.add(halo,disc);moon.visible=false;dome.add(moon);
+ const moon=new THREE.Group();moon.name='moon';moon.position.set(-30,12,-62);const disc=new THREE.Mesh(new THREE.SphereGeometry(1.9,24,16),moonMat),halo=new THREE.Mesh(new THREE.SphereGeometry(4,24,16),haloMat);moon.add(halo,disc);moon.visible=false;scene.add(moon);
 
  function theme(name){const t=TIMES[name]||DAY,night=name==='night';paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
  theme('day');
@@ -60,7 +60,6 @@ export function createSky(scene,{reduced}){
  return {
   time:theme,blend,
   update(elapsed,camera){dome.position.copy(camera.position);
-   // Keep the illustrated moon in the visible sky even when the map camera points down at the islands.
-   moon.position.set(-.22,.18,-1).normalize().multiplyScalar(75).applyQuaternion(camera.quaternion);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
+if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
  };
 }

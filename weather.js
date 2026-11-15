@@ -12,9 +12,19 @@ export function createWeather(scene,{reduced,rnd=Math.random}={}){
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
  const rainMat=new THREE.LineBasicMaterial({color:'#d8e7f3',transparent:true,opacity:0,depthWrite:false});
  const rain=new THREE.LineSegments(geo,rainMat);rain.frustumCulled=false;rain.visible=false;rain.raycast=()=>{};group.add(rain);
- // Rainbow: seven soft bands in a wide arc behind the islands.
- const bow=new THREE.Group();bow.position.set(1,-7,-26);group.add(bow);
- const bands=['#ff5a4f','#ff9a3c','#ffd84a','#6cd26a','#4fa8ff','#5a63e0','#9b5ce0'].map((c,i)=>{const m=new THREE.Mesh(new THREE.TorusGeometry(17-i*.42,.22,6,96,Math.PI),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0,depthWrite:false,fog:false}));m.raycast=()=>{};bow.add(m);return m;});
+ // Rainbow: one wide, faint arc whose colours run smoothly into each other, fading out at both feet and at its edges — closer to
+ // a real rainbow than solid stripes. Additive, so it only ever brightens the sky behind it.
+ const bow=new THREE.Group();bow.position.set(1,-10,-26);group.add(bow);
+ const R0=14.2,R1=17,SEG=160,RINGS=24,bp=[],ba=[],bi=[];
+ for(let j=0;j<=RINGS;j++)for(let i=0;i<=SEG;i++){const a=Math.PI*i/SEG,r=R0+(R1-R0)*j/RINGS;bp.push(Math.cos(a)*r,Math.sin(a)*r,0);ba.push(j/RINGS,i/SEG);}
+ for(let j=0;j<RINGS;j++)for(let i=0;i<SEG;i++){const a=j*(SEG+1)+i,b=a+SEG+1;bi.push(a,b,a+1,a+1,b,b+1);}
+ const bowGeo=new THREE.BufferGeometry();bowGeo.setAttribute('position',new THREE.Float32BufferAttribute(bp,3));bowGeo.setAttribute('band',new THREE.Float32BufferAttribute(ba,2));bowGeo.setIndex(bi);
+ const bowMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,uniforms:{uAlpha:{value:0}},
+  vertexShader:'attribute vec2 band;varying vec2 vBand;void main(){vBand=band;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:`varying vec2 vBand;uniform float uAlpha;
+   vec3 spectrum(float t){vec3 c=mix(vec3(.55,.35,.9),vec3(.3,.45,1.),smoothstep(.0,.2,t));c=mix(c,vec3(.3,.85,.55),smoothstep(.2,.45,t));c=mix(c,vec3(1.,.9,.35),smoothstep(.45,.65,t));c=mix(c,vec3(1.,.6,.25),smoothstep(.65,.8,t));c=mix(c,vec3(1.,.32,.3),smoothstep(.8,1.,t));return c;}
+   void main(){float edge=smoothstep(0.,.25,vBand.x)*smoothstep(1.,.75,vBand.x);float feet=smoothstep(0.,.18,vBand.y)*smoothstep(1.,.82,vBand.y);gl_FragColor=vec4(spectrum(vBand.x)*uAlpha*edge*feet,1.);}`});
+ const arc=new THREE.Mesh(bowGeo,bowMat);arc.raycast=()=>{};arc.frustumCulled=false;bow.add(arc);
  bow.visible=false;
  let light=1,rainAmt=0,raining=false,next=RAIN_GAP[0]+rnd()*(RAIN_GAP[1]-RAIN_GAP[0]),until=0,bowAmt=0,bowUntil=0,t=0;
  const pick=([a,b])=>a+rnd()*(b-a);
@@ -25,7 +35,7 @@ export function createWeather(scene,{reduced,rnd=Math.random}={}){
    if(raining&&t>=until){raining=false;next=t+pick(RAIN_GAP);if(daylight>.45)bowUntil=t+RAINBOW_SECONDS;}
    rainAmt+=((raining?1:0)-rainAmt)*Math.min(1,dt*.8);rain.visible=rainAmt>.02;rainMat.opacity=rainAmt*.55;
    if(rain.visible){for(let i=0;i<N;i++){const k=i*6,d=speed[i]*dt;pos[k+1]-=d;pos[k+4]-=d;if(pos[k+1]<box.y[0]){const y=box.y[1]+pos[k+1]-box.y[0];pos[k+1]=y;pos[k+4]=y-.38;}}geo.attributes.position.needsUpdate=true;}
-   const wantBow=t<bowUntil&&!raining?1:0;bowAmt+=(wantBow-bowAmt)*Math.min(1,dt*.5);bow.visible=bowAmt>.01;bands.forEach(b=>b.material.opacity=bowAmt*.42*daylight);},
+   const wantBow=t<bowUntil&&!raining?1:0;bowAmt+=(wantBow-bowAmt)*Math.min(1,dt*.5);bow.visible=bowAmt>.01;bowMat.uniforms.uAlpha.value=bowAmt*.62*daylight;},
   // How grey the sky is (0 clear … 1 full shower), for dimming the light.
   rain:()=>rainAmt,
   // For testing and a manual "下雨" toggle: start a shower now, or clear it.

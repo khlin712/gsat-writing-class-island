@@ -10,14 +10,15 @@ export const STATIONS=[
    {q:'為什麼高中一定要學國寫？',label:'主題一 · 作文',body:''},
    {q:'為什麼要選擇我？為什麼要選擇這堂課？',label:'主題二 · 選擇',body:''}],
   next:'fork',nextLabel:'走到入口指引牌'},
- {id:'fork',n:'②',title:'入口指引牌：三條路',short:'指引牌',
-  lead:'像登山步道入口的指引牌：照著指引走上橋，路最順。走錯了，就會難以接近目標。',
+ {id:'fork',n:'②',title:'入口指引牌：選哪一條路？',short:'指引牌',
+  lead:'像登山步道入口的指引牌：照著指引走上橋，路最順。另一條是險峻的路，要翻山越嶺；走錯了，就會難以接近目標。',
   // The right way, then short metaphor captions for the three wrong ways (editable). They describe ways of practising, not any teacher or school.
   right:{name:'走上橋',caption:'照著指引，一路順順地走到獎盃。',ends:'對的路'},
   paths:[
    {id:'lava',name:'岩漿洞',caption:'埋頭寫了很多，卻沒有人告訴你哪裡要改。',ends:'走進去就出不來'},
    {id:'cliff',name:'懸崖',caption:'只靠背範文、套模板，遇到新題目就踩空。',ends:'走到盡頭會掉下去'},
-   {id:'wall',name:'陡峭山壁',caption:'方法不對，但真的很努力，還是有機會爬到獎盃；只是爬得很慢，爬一爬還可能掉下來。',ends:'爬得到，但很辛苦'}],
+   {id:'wall',name:'陡峭山壁',caption:'方法不對，但真的很努力：攀著繩子一點一點往上爬，還是有機會爬到獎盃；只是很慢，爬一爬還可能掉下來。',ends:'爬得到，但很辛苦'}],
+  rough:'險峻的路：翻過兩座山頭，沿途會遇到岩漿洞與懸崖，盡頭是要攀繩而上的陡峭山壁。',
   next:'bridge',nextLabel:'照著指引，走上橋'},
  {id:'bridge',n:'③',title:'走上橋，通往獎盃',short:'橋',
   lead:'我能引導你走向正確的路。',

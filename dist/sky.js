@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three.module.min.js';
 
 // The islands float in open sky: a gradient dome that follows the camera, a sea of clouds far below,
 // a ring of slow clouds at island height, and stars that only show at night.
@@ -16,6 +16,11 @@ export function skyColor(stops,h){
 }
 
 export const TIMES={dawn:DAWN,day:DAY,dusk:DUSK,night:NIGHT};
+// The island's clock: which two times of day an hour (0–24) sits between, how far along, how starry and how sunny it is.
+const KEYS=[[0,'night'],[4.5,'night'],[6,'dawn'],[8,'day'],[16.5,'day'],[18,'dusk'],[19.5,'night'],[24,'night']];
+const SUN={night:0,dawn:.5,day:1,dusk:.5};
+export function dayPhase(hour){const h=((hour%24)+24)%24;let i=0;while(i<KEYS.length-2&&h>=KEYS[i+1][0])i++;const [h0,a]=KEYS[i],[h1,b]=KEYS[i+1],u=(h-h0)/(h1-h0),t=u*u*(3-2*u);
+ return {a,b,t,stars:(a==='night'?1-t:0)+(b==='night'?t:0),daylight:SUN[a]+(SUN[b]-SUN[a])*t,name:t<.5?a:b};}
 
 export function createSky(scene,{reduced}){
  const dome=new THREE.Mesh(new THREE.SphereGeometry(90,40,20),new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));
@@ -38,12 +43,19 @@ export function createSky(scene,{reduced}){
  const wisps=layer(wispClumps.length*4,(o,i)=>{const [x,y,z,s]=wispClumps[Math.floor(i/4)],k=i%4;o.position.set(x+(k-1.5)*s*.75,y+(k%2)*s*.2,z+(r4()-.5)*s*.5);const size=s*(.6+r4()*.4);o.scale.set(size*1.4,size*.45,size);});
  const r3=random(3),stars=new Float32Array(500*3);for(let i=0;i<500;i++){const u=r3()*.95+.05,a=r3()*Math.PI*2,rad=Math.sqrt(1-u*u)*85;stars.set([Math.cos(a)*rad,u*85,Math.sin(a)*rad],i*3);}
  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(stars,3));
- const starField=new THREE.Points(starGeometry,new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false}));starField.visible=false;dome.add(starField);
+ const starMat=new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false,transparent:true,opacity:1});
+ const starField=new THREE.Points(starGeometry,starMat);starField.visible=false;dome.add(starField);
 
  function theme(name){const t=TIMES[name]||DAY,night=name==='night';paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
  theme('day');
+ // Between two times of day: t=0 is a, t=1 is b. `grey` (0–1) washes the sky out for rain.
+ const A=new THREE.Color(),B=new THREE.Color(),G=new THREE.Color('#9aa6b2');
+ function blend(a,b,t,grey=0,stars=0){const ta=TIMES[a]||DAY,tb=TIMES[b]||DAY,colors=dome.geometry.attributes.color;
+  for(let i=0;i<position.count;i++){const h=position.getY(i)/90;A.set(skyColor(ta.stops,h)).lerp(B.set(skyColor(tb.stops,h)),t).lerp(G,grey*.55);colors.setXYZ(i,A.r,A.g,A.b);}colors.needsUpdate=true;
+  scene.fog.color.set(ta.fog).lerp(B.set(tb.fog),t).lerp(G,grey*.5);cloudMaterial.color.set(ta.cloud).lerp(B.set(tb.cloud),t).lerp(G,grey*.35);cloudMaterial.emissive.copy(cloudMaterial.color);cloudMaterial.emissiveIntensity=ta.glow+(tb.glow-ta.glow)*t;
+  starField.visible=stars>.02;starMat.opacity=stars*(1-grey);}
  return {
-  time:theme,
+  time:theme,blend,
   update(elapsed,camera){dome.position.copy(camera.position);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
  };
 }

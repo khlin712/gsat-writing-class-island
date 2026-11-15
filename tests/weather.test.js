@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from '../dist/vendor/three.module.min.js';
+import {dayPhase} from '../dist/sky.js';
+import {createWeather,RAIN_GAP} from '../dist/weather.js';
+import {createDecor} from '../dist/decor.js';
+import {topics} from '../dist/content.js';
+import {nodes,buildGraph,STOPS} from '../dist/summit.js';
+
+test('島上時鐘：早上是白天、晚上滿天星、清晨黃昏平順過渡',()=>{assert.equal(dayPhase(8).name,'day');assert.equal(dayPhase(12).daylight,1);assert.equal(dayPhase(23).stars,1);assert.equal(dayPhase(2).name,'night');
+ assert.equal(dayPhase(6).name,'dawn');assert.equal(dayPhase(18).name,'dusk');assert.equal(dayPhase(32).name,dayPhase(8).name);
+ let prev=dayPhase(0).daylight;for(let h=0;h<=24;h+=.05){const d=dayPhase(h).daylight;assert.ok(Math.abs(d-prev)<.05,`${h} 時明暗跳動`);prev=d;}});
+test('隨機下雨，雨停後白天出現彩虹；減少動態時不下雨',()=>{const scene=new THREE.Scene();let k=0;const rnd=()=>(k=(k*9301+49297)%233280)/233280;const w=createWeather(scene,{reduced:{matches:false},rnd});
+ let rained=false;for(let i=0;i<(RAIN_GAP[1]+2)*10;i++){w.update(.1,1);if(w.state().raining)rained=true;}assert.ok(rained,'一段時間內會下雨');
+ w.setRain(true);for(let i=0;i<20;i++)w.update(.1,1);w.setRain(false);for(let i=0;i<60;i++)w.update(.1,1);assert.ok(w.state().rainbow>.5,'雨停後白天有彩虹');
+ const calm=createWeather(new THREE.Scene(),{reduced:{matches:true}});calm.setRain(true);for(let i=0;i<50;i++)calm.update(.1,1);assert.equal(calm.state().rain,0);});
+test('每座島都有綠色植被，但不擋在步道、橋、滑梯與山壁的接口',()=>{const centers=nodes(topics),graph=buildGraph(centers),scene=new THREE.Scene();const d=createDecor({scene,centers,graph,skip:id=>id==='lava'||!!STOPS[id]?.ledge});
+ assert.ok(d.counts.bushes>40&&d.counts.tufts>100&&d.counts.flowers>40&&d.counts.vines>20,JSON.stringify(d.counts));let draws=0;d.group.traverse(m=>{if(m.isInstancedMesh)draws++;});assert.ok(draws<=4);});

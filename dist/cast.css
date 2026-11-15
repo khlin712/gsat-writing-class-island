@@ -67,3 +67,14 @@
 .tour-actions{display:grid;gap:6px}.tour-actions .ask-topic{width:100%;background:#f2c14e;color:#2f3b33;border-color:#f2c14e}
 .tour-actions .text-button{color:#fffaf0;justify-self:start}
 .tour-resume{margin:0 0 10px}.tour-resume .text-button{font-weight:700;color:#2f6f73}
+.tour-actions #tour-next{display:flex;flex-direction:column;align-items:center;gap:2px}.tour-actions #tour-next small{font-size:12px;font-weight:500;opacity:.8}
+.start-theme .eyebrow{margin:0 0 2px;color:#c4612f}.start-theme h3{font-size:16px;margin:0 0 8px}
+/* Map labels: lightly see-through glass with a soft blur behind, so the island under a label still shows a little. */
+.island-3d-label{background:#fffdf8d9!important;border:1px solid #ffffffcc!important;box-shadow:0 3px 10px #23392e1f!important;-webkit-backdrop-filter:blur(6px) saturate(1.15);backdrop-filter:blur(6px) saturate(1.15)}
+.island-3d-label.selected{background:#24302bf0!important}
+.walker-tag,.step-pin,.station-label.path{-webkit-backdrop-filter:blur(6px) saturate(1.15);backdrop-filter:blur(6px) saturate(1.15)}
+.walker-tag,.station-label.path{background:#fffdf8d9}
+.step-pin{background:#fffdf8e0}
+.station-label{background:#2f3b33d6;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.walker-tag:hover,.walker-tag.selected,.walker-tag.active,.step-pin:hover,.step-pin.hot,.step-pin.sel{background:var(--ink)}
+.station-label:hover,.station-label:focus-visible,.station-label.selected{background:#c4612fe6}

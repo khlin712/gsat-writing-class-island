@@ -40,7 +40,7 @@ export function concernsFor(entry){return entry?concerns.filter(c=>c.audience===
 // First-visit walkthrough (3 short cards). Wording describes how the map works only; it promises no service or result.
 export const introSteps=[
  {title:'每座島，是一件你想了解的事',body:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從問題清單開始。',touchBody:'九座島連起老師介紹、教學理念、上課方式、學生案例、家長與學生的顧慮，以及收費安排。點一座島，或從下方問題清單開始。'},
- {title:'用你的角度看地圖',body:'左鍵拖曳上下左右平移，右鍵拖曳旋轉，滾輪縮放；選一座島時，鏡頭會飛過去。按右上「全景」回到起點。',touchBody:'單指拖曳平移，雙指捏合縮放、轉動旋轉；選一座島時，鏡頭會飛過去。按右上「全景」回到起點。'},
+ {title:'用你的角度看地圖',body:'像看地圖一樣：左鍵拖曳平移，快速一甩會再滑一段；右鍵拖曳旋轉，滾輪往游標所在處縮放；選一座島時，鏡頭會飛過去。按右上「全景」回到起點。',touchBody:'像看地圖一樣：單指拖曳平移，快速一甩會再滑一段；雙指捏合縮放、轉動旋轉，兩指一起上下滑動可傾斜；選一座島時，鏡頭會飛過去。按右上「全景」回到起點。'},
  {title:'把問題整理好，再來聊',body:'收藏主題、寫下自己的情況，最後可產生諮詢提綱，複製或下載後透過你平常聯絡老師的管道分享。內容只存在這個瀏覽器，網站不會代你寄送訊息。'}
 ];
 export const INTRO_KEY='writing-island-onboarded';

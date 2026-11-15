@@ -2,10 +2,10 @@ import {createWorld} from './world.js';
 import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY,stepParts,CIRCLED} from './content.js';
 import {buildRelations,findRelations} from './relations.js';
 import {SUMMIT,SPAWN_FROM} from './summit.js';
-import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,isLink} from './journey.js';
+import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,PRICING,isLink} from './journey.js';
 import {mapInsets} from './motion.js';
 import {bindSheet} from './sheets.js';
-import {AVATAR_KEY,AVATAR_ROLES,SHIRTS,STUDENTS,readAvatar} from './walkers.js';
+import {AVATAR_KEY,AVATAR_ROLES,SHIRTS,STUDENTS,GUIDE_ROUTE,readAvatar} from './walkers.js';
 import {HAIR_STYLES} from './people.js';
 const $=s=>document.querySelector(s), list=$('#topic-list'), modal=$('#modal');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -105,6 +105,7 @@ ${id===SUMMIT?routeSection():''}
  selectedStep=null;hotStep=-1;bindStepRows($('#detail-content'),id);world?.pins(id,stepItems(t),{onPick:k=>selectStep(id,k),onHover:hoverStep});world?.pinState({});setBird(false);world?.climb(id===SUMMIT);$('#to-journey')?.addEventListener('click',()=>openStation('start'));
  updateMap();renderList();renderConcerns();
  if(moveCamera)world?.focus(id,insets());
+ cardTourUI(id);
  if(!isPhone())document.querySelector('.topic-item.active')?.scrollIntoView({block:'nearest'});
  if(focus){$('#detail').scrollTop=0;$('#close-detail').focus();}
 }
@@ -126,12 +127,12 @@ function selectStep(id,k){const t=topicOf(id);if(!t)return;const items=stepItems
  hotStep=-1;world?.pinState({sel:k});renderList();$('#map-message').textContent=`正在看 ${t.title} · 重點 ${k+1}`;
  world?.focusStep(id,k,items.length,insets());$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
 // ---- The way to the results summit: silver then gold stairs from 03, the trophy, then on to the university. ----
-function routeSection(){return `<section class="card-section stairs-section"><h3>從起點走到大學</h3><p class="stairs-note">旅程從「① 為什麼高中一定要學國寫？」出發。在「② 入口指引牌」有三條路：岩漿洞和懸崖走進去會掉下去，只有陡峭山壁慢慢爬得上去；爬上去後「③ 走上橋」就到獎盃。點獎盃或橋，橋會由下而上一階一階亮起。走過獎盃到「④ 大學」後，有的學生走進門裡消失，再從「${escape(placeOf(SPAWN_FROM)?.title||'')}」重新出發；有的不進門，繼續往行事曆、報名、聯繫走。獎盃是「成果」的象徵；大學建築只象徵升學目標，不代表任何得獎或錄取紀錄，也沒有與任何學校合作。</p><button class="text-button" id="to-journey">從起點走一次旅程 ↗</button></section>`;}
+function routeSection(){return `<section class="card-section stairs-section"><h3>從起點走到大學</h3><p class="stairs-note">旅程從「① 為什麼高中一定要學國寫？」出發。在「② 入口指引牌」照著指引「③ 走上橋」，就能順順走到獎盃；走錯路的話，岩漿洞和懸崖會掉下去，陡峭山壁雖然爬得到獎盃，但很慢、還可能掉下來。點獎盃或橋，橋會由下而上一階一階亮起。走過獎盃到「④ 學生回饋」的大學建築後，有的學生走進門裡消失，再從「${escape(placeOf(SPAWN_FROM)?.title||'')}」重新出發；有的不進門，繼續往行事曆、報名、聯繫走。獎盃是「成果」的象徵；大學建築只象徵升學目標，不代表任何得獎或錄取紀錄，也沒有與任何學校合作。</p><button class="text-button" id="to-journey">從起點走一次旅程 ↗</button></section>`;}
 function closeDetail({restoreFocus=true}={}){const id=selected,relationId=activeRelation;activeRelation=null;castCard=null;world?.walkerSelect(null);world?.stopFollow();world?.stationSelect(null);if(placingAvatar)setPlacing(false);$('#avatar-button').setAttribute('aria-expanded','false');$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);world?.climb(false);
  if(isPhone()&&indexBeforeDetail)indexSheet.set(indexBeforeDetail);indexBeforeDetail=null;
  updateMap();renderList();renderConcerns();renderRelations();refitView();$('#map-message').textContent='點一座島，開始你的寫作旅程';
  if(!restoreFocus)return;const row=document.querySelector(`.topic-row[data-id="${id}"]`);const relationRow=relationId?[...$('#relation-list').querySelectorAll('[data-relation]')].find(el=>el.dataset.relation===relationId):null;const target=[relationRow,detailOpener,row,$('#concerns-list button'),$('#tab-concerns')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
-$('#close-detail').onclick=()=>closeDetail();
+$('#close-detail').onclick=()=>{if(guideTour.active&&!guideTour.walking)endTour(false);closeDetail();};
 $('#detail').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeDetail();}});
 function updateCount(){$('#saved-count').textContent=saved.size;renderList();}
 
@@ -152,8 +153,9 @@ function outline(){const text=makeOutline(role,[...saved],note,answers,consultQu
 $('#discuss').onclick=discussion;
 $('#about').onclick=()=>{showModal(`<p class="kicker">ABOUT · 關於作文學習島</p><h2>先認識教學，再開始對話。</h2><p>「萬能考場作文：理論與實作」希望讓對教學有興趣的學生與家長，透過探索與提問，更清楚了解課程，並與老師討論自己的學習需求。</p><p>地圖連起老師的經驗與理念、上課方式、學習收穫、學生案例、收費，以及家長與學生的顧慮。你可以從最關心的事開始。</p><p class="helper">這是可操作的教學展示提案。教師介紹、正式課綱、授課對象、費用與聯絡方式尚待提供；目前呈現介紹架構與提問範例，不代表已確認的教學經歷、價格、服務或成效。</p><div class="modal-actions"><button class="primary" id="about-start">從認識老師開始 ↗</button></div>`);$('#about-start').onclick=()=>{modal.close();selectTopic('teacher');};};
 let tourIndex=0;const tour=topics.map(t=>t.id);
-function guide(){selectTopic(tour[tourIndex],{focus:false});const t=topicOf(tour[tourIndex]);showModal(`<p class="kicker">ISLAND TOUR · ${String(tourIndex+1).padStart(2,'0')} / 09</p><h2>${t.title}</h2><p>${t.intro}</p><p>${t.body}</p><div class="progress"><span style="width:${(tourIndex+1)/9*100}%"></span></div><div class="modal-actions">${tourIndex?'<button id="tour-prev">← 上一步</button>':''}<button class="primary" id="tour-next">${tourIndex===8?'開始自由探索':'下一座島 →'}</button><button id="tour-exit">離開導覽</button></div>`);$('#tour-prev')?.addEventListener('click',()=>{tourIndex--;guide();});$('#tour-next').onclick=()=>{if(tourIndex===8){modal.close();$('#close-detail').focus();}else{tourIndex++;guide();}};$('#tour-exit').onclick=()=>{modal.close();$('#close-detail').focus();};}
-$('#guide').onclick=()=>{tourIndex=0;guide();};
+function guide(){selectTopic(tour[tourIndex],{focus:false});const t=topicOf(tour[tourIndex]);showModal(`<p class="kicker">ISLAND TOUR · ${String(tourIndex+1).padStart(2,'0')} / ${String(tour.length).padStart(2,'0')}</p><h2>${t.title}</h2><p>${t.intro}</p><p>${t.body}</p><div class="progress"><span style="width:${(tourIndex+1)/tour.length*100}%"></span></div><div class="modal-actions">${tourIndex?'<button id="tour-prev">← 上一步</button>':''}<button class="primary" id="tour-next">${tourIndex===tour.length-1?'開始自由探索':'下一座島 →'}</button><button id="tour-exit">離開導覽</button></div>`);$('#tour-prev')?.addEventListener('click',()=>{tourIndex--;guide();});$('#tour-next').onclick=()=>{if(tourIndex===tour.length-1){modal.close();$('#close-detail').focus();}else{tourIndex++;guide();}};$('#tour-exit').onclick=()=>{modal.close();$('#close-detail').focus();};}
+// 「第一次來？」: the guide leads the way from ① start.
+$('#guide').onclick=()=>{openGuide();$('#guide-tour')?.click();};
 let quizIndex=0,quizAnswers=[];const questions=[{q:'你現在以什麼身分了解課程？',options:['我是學生，想判斷是否適合自己','我是家長，想了解孩子的學習安排']},{q:'目前最想先了解哪一部分？',options:['老師的經驗與教學理念','上課方式、收穫與學生成果','收費、安排與報名前的顧慮']},{q:'你希望接下來怎麼了解？',options:['先認識老師與課程','先看真實案例與成果的資訊','帶著自己的問題與老師討論']}];
 function quiz(){const q=questions[quizIndex];showModal(`<p class="kicker">FIND YOUR ROUTE · ${quizIndex+1} / 3</p><h2>${q.q}</h2><div class="progress"><span style="width:${(quizIndex+1)/3*100}%"></span></div><div class="quiz-options">${q.options.map((s,i)=>`<button data-answer="${i}" aria-pressed="${quizAnswers[quizIndex]===i}"><b>${String.fromCharCode(65+i)}</b><span>${s}</span><i aria-hidden="true">↗</i></button>`).join('')}</div>${quizIndex?'<div class="modal-actions"><button id="quiz-prev">← 上一題</button></div>':''}`);$('#quiz-prev')?.addEventListener('click',()=>{quizIndex--;quiz();});for(const b of document.querySelectorAll('[data-answer]'))b.onclick=()=>{quizAnswers[quizIndex]=Number(b.dataset.answer);if(quizIndex<2){quizIndex++;quiz();}else quizResult();};}
 function quizResult(){role=quizAnswers[0]===1?'家長':'學生';persist();const ids=explorationRoute(quizAnswers);world?.emphasize(ids);showModal(`<p class="kicker">YOUR ROUTE · 你的探索路線</p><h2>從這三座島開始。</h2><p>這是依照你的選擇安排的探索順序，地圖上已標出這三座島。它不會評定能力，也不會判定你是否適合報名。</p><div class="quiz-options route">${ids.map((id,i)=>`<button data-route="${id}"><b>${i+1}</b><span>${topicOf(id).n} ${topicOf(id).title}<small>${topicOf(id).intro}</small></span><i aria-hidden="true">↗</i></button>`).join('')}</div><div class="modal-actions"><button id="quiz-restart">重新選擇</button></div>`);for(const b of document.querySelectorAll('[data-route]'))b.onclick=()=>{modal.close();selectTopic(b.dataset.route);};$('#quiz-restart').onclick=()=>{quizIndex=0;quizAnswers=[];quiz();};}
@@ -169,7 +171,11 @@ function logEvent(text,{id=null}={}){const d=new Date(),pad=n=>String(n).padStar
 function renderLog(){$('#log-list').innerHTML=islandLog.length?islandLog.map((e,i)=>`<li><time>${e.time}</time><span>${escape(e.text)}</span>${e.id?`<button data-log="${i}">看這座島 ↗</button>`:''}</li>`).join(''):'<li class="empty">島上還很安靜。導覽員或你的角色抵達一座島時，會記在這裡。</li>';for(const b of $('#log-list').querySelectorAll('[data-log]'))b.onclick=()=>{modal.close();selectTopic(islandLog[+b.dataset.log].id);};}
 $('#log').onclick=()=>{showModal(`<p class="kicker">ISLAND LOG · 島上日誌</p><h2>島上剛剛發生的事</h2><p class="helper">記錄導覽員與你的角色抵達哪座島。只存在這次瀏覽，重新整理就會清空。</p><ol class="log-list" id="log-list"></ol>`);renderLog();};
 $('#people').onclick=()=>{const on=$('#people').getAttribute('aria-pressed')!=='true';$('#people').setAttribute('aria-pressed',on);$('#people').setAttribute('aria-label',on?'隱藏人物':'顯示人物');$('#people').title=$('#people').getAttribute('aria-label');world?.people(on);$('#map-message').textContent=on?'島上的人物出來走動了':'已隱藏人物（你的角色仍會留在島上）';};
-function openCastCard(kind,crumb,html){const opener=document.activeElement;if(!$('#detail').hidden)closeDetail({restoreFocus:false});
+function openCastCard(kind,crumb,html){const opener=document.activeElement;
+ // Station to station (上一站／下一站): swap the card's contents in place. Closing and reopening the card would relayout the page,
+ // rebuild the index and interrupt the camera, which made stepping through the journey stutter.
+ if(!$('#detail').hidden&&castCard==='station'&&kind==='station'){$('#detail-crumb').textContent=crumb;$('#detail-content').innerHTML=html;$('#detail').scrollTop=0;return;}
+ if(!$('#detail').hidden)closeDetail({restoreFocus:false});
  activeRelation=null;selected=null;selectedStep=null;selectedConcern=null;castCard=kind;world?.pins(null);world?.climb(false);setBird(false);
  $('#detail-crumb').textContent=crumb;$('#detail-content').innerHTML=html;$('#detail').hidden=false;document.body.classList.add('detail-open');
  if(isPhone()){indexBeforeDetail=indexSheet.state();indexSheet.set('peek');}
@@ -182,12 +188,39 @@ function openResident(w){const t=topicOf(w.island);if(!t)return;const parent=w.k
  const note=parent?'家長是地圖角色，不代表任何真實家長。':`地圖上共有 ${STUDENTS} 位學生，對應老師目前的教學人數。每一位都是地圖角色，不代表特定學生或案例。`;
  openCastCard(w.kind,`${parent?'島上的家長':'學生'} · ${t.n} ${t.title}`,`<div class="detail-head"><span class="detail-badge cast-badge" aria-hidden="true">${parent?'☻':'✎'}</span><div><p class="eyebrow">${parent?'島上的家長':'學生'} · 地圖角色</p><h2 id="detail-title">${escape(doing)}</h2></div></div><p class="relation-notice">${note}</p><div class="detail-actions"><button class="ask-topic" id="cast-island">看「${t.title}」這座島 ↗</button><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
  world?.walkerSelect(w);world?.walkerFocus(w,insets());bindFollow(w);$('#cast-island').onclick=()=>selectTopic(t.id);$('#map-message').textContent=parent?`正在看 ${t.title}的家長`:'正在看一位學生';$('#close-detail').focus();}
-function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t=topicOf(g.target||g.island);return g.target?`正走向 ${t.n} ${t.title}`:`停在 ${t.n} ${t.title}`;}
-function openGuide(){const g=world?.guide();if(!g)return;
- openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">導覽員</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">導覽員依 01 到 09 的順序走過每座島，每到一座就停一下，再走向下一座。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions"><button class="ask-topic" id="guide-tour">從導覽員所在的島開始導覽 ↗</button><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
+function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t=placeOf(g.target||g.island);if(!t)return '';return g.target?`正走向 ${t.n} ${t.title}`:`停在 ${t.n} ${t.title}`;}
+// ---- The guide waits at ① start; when asked, it leads the visitor round GUIDE_ROUTE one stop at a time, the camera following. ----
+const guideTour={active:false,index:0,walking:false};
+const stopName=id=>placeOf(id)?.title||'';
+function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
+ return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">跟著導覽員走到下一站：${escape(stopName(next))} →</button>`}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
+function bindTourBar(){$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
+// Open the card for the stop the guide has reached, with the tour bar on top.
+function showTourStop(id){if(topicOf(id))selectTopic(id);else openStation(id);}
+// Every island and station card offers the tour: the tour bar when the guide has brought you here, otherwise a button that makes
+// the guide pop up on this island and lead on from here (a visitor who left the tour halfway need not go back to find the guide).
+function cardTourUI(id){$('.tour-bar,.tour-resume')?.remove();if(!world)return;
+ if(guideTour.active&&!guideTour.walking&&GUIDE_ROUTE[guideTour.index]===id){$('#detail-content').insertAdjacentHTML('afterbegin',tourBar());bindTourBar();return;}
+ $('#detail-content').insertAdjacentHTML('afterbegin',`<div class="tour-resume"><button class="text-button" id="tour-resume">⚑ 請導覽員從這裡帶我走 →</button></div>`);
+ $('#tour-resume').onclick=()=>resumeHere(id);}
+function resumeHere(id){const k=GUIDE_ROUTE.indexOf(id);world?.guideAppear(id);guideTour.active=true;guideTour.walking=false;guideTour.index=k>=0?k:0;
+ // Off the route (the islands in the middle): the guide leads on as if from the start, so the next stop is ② the trailhead.
+ if(k<0){$('.tour-resume')?.remove();$('#detail-content').insertAdjacentHTML('afterbegin',tourBar().replace(`第 1 / ${GUIDE_ROUTE.length} 站`,'從這裡出發'));bindTourBar();}else cardTourUI(id);
+ toast('導覽員來了，接著帶你走');}
+function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true;guideTour.index=k;guideTour.walking=true;
+ const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你走向「${escape(stopName(id))}」</b> · 跟著它走…</p>`;
+ if(!world?.guideTo(id)){guideTour.walking=false;showTourStop(id);return;}
+ world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());$('#map-message').textContent=`導覽員帶你走向「${stopName(id)}」`;}
+function onGuide(id){if(!guideTour.active||!guideTour.walking||id!==GUIDE_ROUTE[guideTour.index])return;guideTour.walking=false;world?.walkerSelect(null);showTourStop(id);}
+function endTour(home){guideTour.active=false;guideTour.walking=false;$('.tour-bar')?.remove();if(home){world?.guideTo(GUIDE_ROUTE[0]);toast('導覽員回到起點等你');}}
+function openGuide(){const g=world?.guide();if(!g)return;const st=world.walkerState().guide,atStart=st.island===GUIDE_ROUTE[0]&&!st.target;
+ const route=GUIDE_ROUTE.map(stopName).join(' → ');
+ openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">${atStart?'我在起點等你，一起走一圈吧':'導覽員'}</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">我會帶你依序走過：${escape(route)}。每到一站我會停下來，等你看完再走下一站。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions">${guideTour.active&&!guideTour.walking?`<button class="ask-topic" id="guide-tour">繼續導覽：前往「${escape(stopName(GUIDE_ROUTE[guideTour.index+1]||GUIDE_ROUTE[0]))}」 →</button>`:`<button class="ask-topic" id="guide-tour">跟著導覽員出發 →</button>`}<button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
  world.walkerSelect(g);world.walkerFocus(g,insets());bindFollow(g);
- $('#guide-tour').onclick=()=>{const st=world.walkerState().guide;tourIndex=Math.max(0,tour.indexOf(st.target||st.island));closeDetail({restoreFocus:false});guide();};
- $('#map-message').textContent='跟著導覽員看九座島';$('#close-detail').focus();}
+ $('#guide-tour').onclick=()=>{if(guideTour.active&&!guideTour.walking){if(guideTour.index>=GUIDE_ROUTE.length-1){endTour(true);return;}tourStep(guideTour.index+1);return;}
+  // Start: the guide is at ① already (or walks back there first), then shows the first stop.
+  guideTour.active=true;guideTour.index=0;if(atStart){guideTour.walking=false;showTourStop(GUIDE_ROUTE[0]);}else tourStep(0);};
+ $('#map-message').textContent=atStart?'導覽員在起點等你':'跟著導覽員走一圈旅程';$('#close-detail').focus();}
 function avatarPanel(){const a=avatarLook,me=world?.walkerState().me;
  if(castTab==='look')return `<div class="cast-field"><label for="avatar-name">名字</label><input id="avatar-name" maxlength="8" autocomplete="off" value="${escape(a.name)}" placeholder="幫角色取個名字（選填）"></div>
  <div class="cast-field"><span class="cast-label" id="pick-role">身分</span><div class="cast-options" role="group" aria-labelledby="pick-role">${Object.keys(AVATAR_ROLES).map(r=>`<button data-pick="role" data-value="${r}" aria-pressed="${a.role===r}">${r}</button>`).join('')}</div><small class="helper">學生背書包、家長揹側背包，只改變外觀。</small></div>
@@ -218,11 +251,13 @@ function openAvatar(){castTab=castTab||'look';
 const pending=what=>`<p class="pending-note">${what}待老師提供。</p>`;
 const linkButton=(url,label,cls='ask-topic')=>isLink(url)?`<a class="${cls} station-link" href="${escape(url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`:`<button class="${cls} station-link" disabled aria-disabled="true">${label}（連結待老師提供）</button>`;
 function stationBody(st,extra={}){
- if(st.id==='start'||st.id==='bridge')return st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>${st.id==='start'?'老師的回答':'老師想對你說'}</h3>${pending('說明')}</section>`;
- if(st.id==='fork')return `<section class="card-section"><h3>三條路 · 點一條看看</h3><ol class="path-rows">${st.paths.map(p=>`<li><button class="path-row ${p.id}${extra.path===p.id?' current':''}" data-path="${p.id}" aria-current="${extra.path===p.id}"><b>${p.name}</b><span>${escape(p.caption)}</span><small>${p.ends}</small></button></li>`).join('')}</ol><p class="helper">三條路是比喻，說的是練習的方式，不是指任何老師或補習班。</p></section>`;
+ if(st.id==='bridge')return `${st.note?`<p class="stairs-note">${escape(st.note)}</p>`:''}`+(st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>老師想對你說</h3>${pending('說明')}</section>`);
+ if(st.id==='start')return st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>${st.id==='start'?'老師的回答':'老師想對你說'}</h3>${pending('說明')}</section>`;
+ if(st.id==='fork')return `<section class="card-section"><h3>照著指引的路</h3><button class="path-row right" data-goto-station="bridge"><b>${st.right.name}</b><span>${escape(st.right.caption)}</span><small>${st.right.ends} ↗</small></button></section><section class="card-section"><h3>走錯的三條路 · 點一條看看</h3><ol class="path-rows">${st.paths.map(p=>`<li><button class="path-row ${p.id}${extra.path===p.id?' current':''}" data-path="${p.id}" aria-current="${extra.path===p.id}"><b>${p.name}</b><span>${escape(p.caption)}</span><small>${p.ends}</small></button></li>`).join('')}</ol><p class="helper">三條路是比喻，說的是練習的方式，不是指任何老師或補習班。</p></section>`;
  if(st.id==='university')return `<section class="card-section"><h3>學生的回饋</h3>${FEEDBACK.length?`<ul class="feedback-list">${FEEDBACK.map(f=>`<li><p>${escape(f.text)}</p>${f.who?`<small>— ${escape(f.who)}</small>`:''}</li>`).join('')}</ul>`:pending('學生回饋（會先取得學生同意再放上）')}<p class="helper">大學建築只象徵升學目標，不代表錄取紀錄，也沒有與任何學校合作。</p></section>`;
  if(st.id==='calendar'){const open=CLASSES.filter(c=>c.status==='open'),pre=CLASSES.filter(c=>c.status==='preregister');
   return `<section class="card-section"><h3>有開班的年級</h3>${open.length?`<ul class="class-list">${open.map(c=>`<li><b>${escape(c.grade)}</b><span>${escape([c.schedule,c.start&&('開課 '+c.start),c.note].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul><button class="ask-topic" data-goto-station="signup">已開班，前往報名 ↗</button>`:pending('最新開班資訊')}</section>
+  <section class="card-section"><h3>收費與安排</h3>${PRICING.facts.length?`<dl class="topic-facts">${PRICING.facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`:pending('正式收費與規則')}<p class="helper">報名前可以先確認：</p><ul class="class-list">${PRICING.questions.map(q=>`<li><span>${escape(q)}</span></li>`).join('')}</ul></section>
   <section class="card-section"><h3>年紀還小：預先登記</h3>${pre.length?`<ul class="class-list">${pre.map(c=>`<li><b>${escape(c.grade)}</b><span>${escape(c.note||'目前只開放預先登記')}</span></li>`).join('')}</ul>`:'<p class="helper">還沒開班的年級，可以先填預先登記表單。</p>'}${linkButton(LINKS.preregister,'預先登記表單','save-topic')}</section>`;}
  if(st.id==='signup')return `<section class="card-section"><div class="station-actions">${linkButton(LINKS.videoDM,'私訊索取線上教學視聽')}${linkButton(LINKS.signup,'填寫報名表單','save-topic')}</div><p class="helper">按下後會開啟外部頁面（訊息 App 或表單）；這個網站不會代你傳送訊息，也不會收集你的資料。</p></section>`;
  if(st.id==='contact')return `<section class="card-section"><h3>聯繫方式</h3>${CONTACTS.length?`<ul class="contact-list">${CONTACTS.map(c=>`<li><b>${escape(c.label)}</b>${isLink(c.href)?`<a href="${escape(c.href)}" target="_blank" rel="noopener noreferrer">${escape(c.value||c.href)} ↗</a>`:`<span>${escape(c.value||'')}</span>`}</li>`).join('')}</ul>`:pending('聯繫方式')}</section>`;
@@ -233,7 +268,7 @@ function openStation(id,extra={}){const st=stationOf(id);if(!st)return;const k=S
  <nav class="step-nav" aria-label="切換旅程站">${prev?`<button data-goto-station="${prev.id}"><small>上一站</small><span>${prev.n} ${prev.short}</span></button>`:'<span></span>'}${next?`<button data-goto-station="${next.id}" class="next"><small>下一站</small><span>${next.n} ${escape(st.nextLabel||next.short)}</span></button>`:'<span></span>'}</nav>`);
  for(const b of document.querySelectorAll('#detail-content [data-goto-station]'))b.onclick=()=>openStation(b.dataset.gotoStation);
  for(const b of document.querySelectorAll('#detail-content [data-path]'))b.onclick=()=>openStation('fork',{path:b.dataset.path});
- world?.stationSelect(id);world?.climb(id==='bridge');world?.focusStation(id,insets());$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
+ world?.stationSelect(id);world?.climb(id==='bridge');world?.focusStation(id,insets());cardTourUI(id);$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
 $('#avatar-button').onclick=()=>{if(castCard==='avatar')closeDetail();else openAvatar();};
 // Keep live text on the open character card current while people walk.
 setInterval(()=>{if(!castCard||!world)return;const b=$('#cast-follow');if(b){b.textContent=followLabel();b.setAttribute('aria-pressed',world.following());}if(castCard==='guide'&&$('#guide-where'))$('#guide-where').textContent=guideWhere();if(castCard!=='avatar')$('#avatar-button').setAttribute('aria-expanded','false');},400);
@@ -249,14 +284,14 @@ const TIMES=['day','dusk','night','dawn'],TIME_NAMES={dawn:'清晨',day:'白天'
 function setTime(name){timeOfDay=name;const next=TIMES[(TIMES.indexOf(name)+1)%TIMES.length];document.body.classList.toggle('night',name==='night');document.body.dataset.time=name;$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${TIME_NAMES[name]}</span>`;$('#day').setAttribute('aria-label',`時段：${TIME_NAMES[name]}，按下切換到${TIME_NAMES[next]}`);$('#day').title=`切換到${TIME_NAMES[next]}`;world?.time(name);}
 $('#day').onclick=()=>setTime(TIMES[(TIMES.indexOf(timeOfDay)+1)%TIMES.length]);
 function setBird(on){$('#bird').setAttribute('aria-pressed',on);$('#bird').setAttribute('aria-label',on?'回到一般視角':'鳥瞰全島');}
-$('#bird').onclick=()=>{const on=$('#bird').getAttribute('aria-pressed')!=='true';if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home({...insets(),bird:on});setBird(on);$('#map-message').textContent=on?'鳥瞰 · 從正上方看九座島':'點一座島，開始你的寫作旅程';};
+$('#bird').onclick=()=>{const on=$('#bird').getAttribute('aria-pressed')!=='true';if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home({...insets(),bird:on});setBird(on);$('#map-message').textContent=on?'鳥瞰 · 從正上方看整座島':'點一座島，開始你的寫作旅程';};
 $('#tools-toggle').onclick=()=>{const open=document.body.classList.toggle('tools-open');$('#tools-toggle').setAttribute('aria-expanded',open);requestAnimationFrame(refitView);};
 $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')!=='true';$('#rotate').setAttribute('aria-pressed',rotate);world?.mode(rotate);$('#map-message').textContent=rotate?'旋轉模式 · 拖曳改變視角':'平移模式 · 拖曳上下左右移動';};
 // 清單: phones fold the index sheet down to a slim bar; desktop slides the index away to widen the map.
 function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.contains('sheet-peek'):!document.body.classList.contains('index-collapsed');$('#list-toggle').setAttribute('aria-expanded',open);$('#list-toggle').classList.toggle('active',open);}
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
-try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});
 const indexSheet=bindSheet($('#index-panel'),$('#index-handle'),$('#index-size'),{peekable:true,onChange:()=>{syncListToggle();requestAnimationFrame(refitView);}});

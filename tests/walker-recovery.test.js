@@ -39,7 +39,7 @@ test('跌落中以最後一次移動為準，暫停傳送會取消跌落；召�
 test('開場兩條橋已有人，露天講堂有老師與八位坐姿學生，總學生仍47',()=>{
  const old=globalThis.document;globalThis.document={createElement:element};
  try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:true}}),state=w.state();
-  assert.equal(state.studentCount,47);assert.equal(state.students.filter(p=>p.seated&&p.island==='signup').length,8);assert.ok(w.find('lecturer'));assert.equal(w.find('lecturer').island,'signup');
+  assert.equal(state.studentCount,47);assert.equal(state.students.filter(p=>p.seated&&p.island==='signup').length,8);assert.ok(w.find('lecturer'));assert.equal(w.find('lecturer').island,'signup');assert.equal(w.find('lecturer').tag,undefined,'授課老師不顯示特殊NPC標記');
   const paths=Array.from({length:47},(_,i)=>w.find('student',i)).filter(p=>p.route).map(p=>p.route.pts[1].path);assert.equal(paths.filter(p=>p==='bridge').length,4);assert.equal(paths.filter(p=>p==='trail').length,16);
   const seated=w.find('student',46);assert.equal(seated.fig.userData.rig.legs[0].rotation.x,-Math.PI/2);w.update(.05,true);assert.equal(seated.fig.userData.rig.legs[0].rotation.x,-Math.PI/2);
  }finally{globalThis.document=old;}
@@ -57,4 +57,20 @@ test('每位學生步速不同，途中能短暫停下，恢復後繼續走',()=
  try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false}}),student=w.find('student',0);assert.ok(new Set(w.state().students.filter(p=>!p.seated).map(p=>p.speed)).size>=7);
   const start=student.s;Math.random=()=>0;w.update(.05,false);assert.equal(student.s,start);assert.ok(student.rest>0);Math.random=()=>.99;for(let i=0;i<80;i++)w.update(.05,false);assert.ok(student.s>start);assert.equal(student.fall,undefined);
  }finally{Math.random=random;globalThis.document=old;}
+});
+
+test('導覽員在錯誤橋途中要求返回，保留有效行走並最後抵達指引牌',async()=>{
+ const {centers,graph:real}=await import('./fixtures/island-models.js');const {along}=await import('../dist/people.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{const arrivals=[],w=createWalkers({scene:new THREE.Scene(),topics,positions:centers,graph:{...real,edges:[...real.edges]},links:[],CSS2DObject:Label,reduced:{matches:false},onGuide:id=>arrivals.push(id)}),guide=w.guide();
+  w.guideAppear('fork');assert.ok(w.guideTo('pass1'));guide.s=guide.route.total*.6;const at=along(guide.route,guide.s);guide.fig.position.set(at.x,at.y,at.z);
+  assert.equal(w.guideTo('fork'),true,'橋上可接受返回命令');for(let i=0;i<1000&&arrivals.length===0;i++)w.update(.05,false);
+  assert.deepEqual(arrivals,['fork']);assert.equal(guide.island,'fork');assert.equal(guide.target,null);
+ }finally{globalThis.document=old;}
+});
+test('導覽員重生後若無法規劃恢復路線，回報安全起點供介面重新開始',async()=>{
+ const {centers,graph:real}=await import('./fixtures/island-models.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{const graph={...real,edges:[...real.edges]},arrivals=[],w=createWalkers({scene:new THREE.Scene(),topics,positions:centers,graph,links:[],CSS2DObject:Label,reduced:{matches:false},onGuide:(id,extra)=>arrivals.push({id,extra})}),guide=w.guide();
+  guide.fall=3.4;guide.vy=-20;guide.resume='pass1';guide.fig.userData.hidden=true;guide.fig.visible=false;graph.edges.length=0;
+  for(let i=0;i<10;i++)w.update(.05,false);assert.equal(guide.island,'start');assert.ok(guide.fig.visible);assert.deepEqual(arrivals,[{id:'start',extra:{recoveryFailed:true}}]);
+ }finally{globalThis.document=old;}
 });

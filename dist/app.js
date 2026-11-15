@@ -222,7 +222,9 @@ function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true
 // catches up with the guide again by itself.
 let lastMapInput=0;for(const type of ['pointerup','wheel','touchend'])$('#map').addEventListener(type,()=>{lastMapInput=performance.now();},{passive:true});
 setInterval(()=>{if(!guideTour.active||!guideTour.walking||!world||world.following())return;if(performance.now()-lastMapInput<1200)return;world.walkerFocus(world.guide(),insets());$('#map-message').textContent='鏡頭跟回導覽員';},300);
-function onGuide(id){if(!guideTour.active||!guideTour.walking)return;if(guideTour.detour){if(id!==guideTour.detour)return;guideTour.walking=false;world?.walkerSelect(null);openStation('fork',{path:DETOURS.find(d=>d[0]===id)[1],camera:false});return;}
+function onGuide(id,{recoveryFailed=false}={}){if(!guideTour.active)return;
+ if(recoveryFailed){guideTour.walking=false;guideTour.detour=null;guideTour.index=0;world?.walkerSelect(null);world?.stopFollow();openStation('start');toast('導覽員已回到起點，可以重新出發');return;}
+ if(!guideTour.walking)return;if(guideTour.detour){if(id!==guideTour.detour)return;guideTour.walking=false;world?.walkerSelect(null);openStation('fork',{path:DETOURS.find(d=>d[0]===id)[1],camera:false});return;}
  if(id!==GUIDE_ROUTE[guideTour.index])return;guideTour.walking=false;world?.walkerSelect(null);showTourStop(id);}
 function endTour(home){guideTour.active=false;guideTour.walking=false;guideTour.detour=null;$('.tour-bar')?.remove();if(home){world?.guideTo(GUIDE_ROUTE[0]);toast('導覽員回到起點等你');}}
 function openGuide(){const g=world?.guide();if(!g)return;const st=world.walkerState().guide,atStart=st.island===GUIDE_ROUTE[0]&&!st.target;

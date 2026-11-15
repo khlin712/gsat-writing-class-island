@@ -51,3 +51,9 @@ git subtree push --prefix dist origin gh-pages
 教師經歷、價格、理念原文、課程服務及真實案例按使用者指示留白，現階段為介紹架構草稿。訪客的筆記與問題僅存於瀏覽器，不會代發訊息。
 
 Three.js 0.180.0 與附屬模組隨站提供；第三方 MIT 授權位於 dist/vendor/LICENSE。此儲存庫不含研究用參考站原始碼、Sites 識別設定或訪客資料。
+
+## 建築與主題關聯
+
+`dist/architecture.js` 以原創幾何建立九種課程微縮建築與隨時段切換的窗光。這些是主題示意，並非真實授課場地。
+
+「主題關聯」清單可搜尋既有主題的20組連結；也可直接點地圖線段，查看兩端主題、繼續探索或把關聯問題加入討論提綱。卡片上的文案是探索問題，並非老師已確認的教學做法／成效。前端對標證據與驗證限制見 [research/ARCHITECTURE-RELATIONS.md](research/ARCHITECTURE-RELATIONS.md)。

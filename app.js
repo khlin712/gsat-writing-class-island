@@ -301,9 +301,9 @@ $('#connection').onclick=()=>{showConnections=!showConnections;$('#connection').
 $('#names').onclick=()=>{const on=$('#names').getAttribute('aria-pressed')!=='true';$('#names').setAttribute('aria-pressed',on);$('#names').setAttribute('aria-label',on?'隱藏島名':'顯示島名');world?.names(on);};
 function setPaused(paused){document.body.classList.toggle('paused',paused);$('#pause').setAttribute('aria-pressed',paused);$('#pause').innerHTML=paused?'<i>▷</i><span>播放</span>':'<i>Ⅱ</i><span>暫停</span>';$('#pause').setAttribute('aria-label',paused?'播放動畫':'暫停動畫');$('#pause').title=paused?'播放動畫':'暫停動畫';world?.pause(paused);}
 $('#pause').onclick=()=>setPaused(!document.body.classList.contains('paused'));
-// ---- The island clock: it starts at 08:00 when the page opens and runs at 3 island-minutes per real second
-// (a full day and night in 8 minutes), so the light goes from day to night and back while you look around. ----
-const ISLAND_START=8*60,MIN_PER_SEC=3,TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};
+// ---- The island clock: it starts at 08:00 when the page opens and runs at 10 island-minutes per real second
+// (a full day and night in 2 minutes 24 seconds), so the light goes from day to night and back while you look around. ----
+const ISLAND_START=8*60,MIN_PER_SEC=10,TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};
 const JUMPS=[[6*60,'清晨'],[12*60,'白天'],[18*60,'黃昏'],[21*60,'夜晚']];
 let islandSeconds=0,islandOffset=0,clockLast=performance.now(),shownClock='';
 const islandMinutes=()=>ISLAND_START+islandSeconds*MIN_PER_SEC+islandOffset;
@@ -311,7 +311,7 @@ const hhmm=m=>{const d=((Math.floor(m)%1440)+1440)%1440;return `${String(Math.fl
 function nextJump(m){const d=((m%1440)+1440)%1440;return JUMPS.find(([t])=>t>d+1)||[JUMPS[0][0]+1440,JUMPS[0][1]];}
 function tickClock(){const now=performance.now();if(!document.body.classList.contains('paused'))islandSeconds+=(now-clockLast)/1000;clockLast=now;const m=islandMinutes();world?.setHour(m/60);
  const ph=world?.phase();const name=ph?.name||'day';document.body.classList.toggle('night',(ph?.stars||0)>.5);document.body.dataset.time=name;
- const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；打開網頁 1 秒＝島上 3 分鐘），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
+ const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；打開網頁 1 秒＝島上 10 分鐘），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
 setInterval(tickClock,250);
 $('#day').onclick=()=>{const m=islandMinutes(),[t,nm]=nextJump(m),d=((m%1440)+1440)%1440;islandOffset+=t-d;tickClock();$('#map-message').textContent=`島上時間跳到${nm}`;};
 window.__islandClock=()=>({minutes:Math.round(islandMinutes()),time:hhmm(islandMinutes()),phase:world?.phase(),weather:world?.weather()});window.__islandRain=on=>world?.rain(on);window.__islandHazards=()=>world?.hazards();

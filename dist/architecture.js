@@ -13,10 +13,6 @@ export function createArchitecture({box,mesh,tree}){
  const signMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});
  if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=512;c.height=300;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,512,300);x.fillStyle='#c4612f';x.font='bold 40px "Noto Sans TC",sans-serif';x.textAlign='center';x.fillText('起點',256,64);
   x.fillStyle='#2f3b33';x.font='bold 46px "Noto Sans TC",sans-serif';x.fillText('為什麼要學國寫？',256,150);x.fillText('為什麼選這堂課？',256,230);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;signMat.map=tex;signMat.color.set('#ffffff');}
- // The trophy's plaque: a score sheet that only says 成績 — no number, no promise.
- const plaqueMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.8});
- if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=256;c.height=96;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,256,96);x.strokeStyle='#c99a3a';x.lineWidth=6;x.strokeRect(6,6,244,84);
-  x.fillStyle='#8a5a1f';x.font='bold 54px "Noto Sans TC",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('成績',128,50);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;plaqueMat.map=tex;plaqueMat.color.set('#ffffff');}
  const pond=new THREE.MeshStandardMaterial({color:'#8fc7de',roughness:.15,metalness:.1,emissive:'#5fa8c8',emissiveIntensity:.15});
  const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
@@ -67,7 +63,7 @@ export function createArchitecture({box,mesh,tree}){
    base(g,1.04,.7);hall(g,-.05,-.05,.94,.6,.66,'#eee2c9','#618575');
    box(g,0,.4,.31,.2,.38,.05,'#8d6f51');for(const x of [-.42,.42])box(g,x,.4,.48,.035,.43,.035,'#e8d9b8');box(g,0,.84,.42,1.08,.07,.32,'#9eb09a');steps(g,0,.65,.48);bench(g,.63,.38);planter(g,-.65,.48);
   }else if(t.kind==='trophy'){
-   base(g,.98,.86);box(g,0,.4,-.05,.7,.24,.62,'#e9dfc8');box(g,0,.64,-.05,.54,.14,.48,'#d1c5a8');box(g,0,.46,.262,.4,.15,.02,'#9c7f4f');{const pl=box(g,0,.46,.274,.34,.12,.008,'#fff4d6');pl.material=plaqueMat;pl.name='score-plaque';}
+   base(g,.98,.86);box(g,0,.4,-.05,.7,.24,.62,'#e9dfc8');box(g,0,.64,-.05,.54,.14,.48,'#d1c5a8');box(g,0,.46,.265,.36,.11,.02,'#9c7f4f');
    // The cup is drawn large so it reads as the landmark of the whole map.
    const cupG=new THREE.Group();cupG.name='trophy-cup';cupG.position.set(0,.78,-.05);cupG.scale.setScalar(1.55);g.add(cupG);
    golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.05,0,.16,.1,.16));golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.24,0,.06,.32,.06));golden(mesh(cupG,geo.dome,'#e0b13f',0,.35,0,.11,.08,.11));
@@ -105,7 +101,7 @@ export function createArchitecture({box,mesh,tree}){
   }else if(t.kind==='fork'){
    // ② The trailhead: room to gather in front of the notice board, with rocks, pines and a bench round the edge.
    for(const [x,z,r]of [[-.62,-.45,.13],[.66,-.35,.1],[-.7,.15,.08],[.55,.5,.09]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#9b8a6c',x,.3,z,r,r*.8,r);
-   tree(g,-.55,-.62,.62);tree(g,.62,-.6,.55);bench(g,-.5,.45);lamp(g,.62,.18);
+   tree(g,-.12,-.86,.62);tree(g,.62,-.6,.55);bench(g,-.5,.45);lamp(g,.62,.18);
   }else if(t.kind==='lava'){
    // A lava cave: a dark rock mound with a glowing pool at its mouth. Walk in and you do not come out.
    const rock='#5b4a42';for(const [x,z,r,h]of [[0,-.2,.55,.75],[-.42,-.05,.35,.5],[.42,-.1,.38,.55],[.15,-.45,.4,.6]])mesh(g,new THREE.DodecahedronGeometry(1,0),rock,x,.25+h*.45,z,r,h,r);

@@ -164,3 +164,14 @@ test('走到懸崖頂的人先走到崖邊外，再往下掉，不從石台中�
   assert.ok(sawBelow,'有往下掉');
  }finally{globalThis.document=old;}
 });
+
+test('有人走到第一座懸崖前停下，回頭到指引牌改走橋（不是掉下去）',async()=>{
+ const {TURN_BACK}=await import('../dist/walkers.js');assert.ok(TURN_BACK>0&&TURN_BACK<.5,'只有部分人回頭');
+ const old=globalThis.document,random=Math.random;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false}}),st=w.find('student',30);
+  Math.random=()=>.99;
+  st.route=null;st.fall=undefined;w.update(.001,false);const p=positions.get('fork');st.fig.position.set(p.x,(p.y||0)+TOP,p.z);st.island='fork';assert.ok(w.turnBackForTest(st));
+  const seen=[];let stopped=0;for(let i=0;i<4000&&!(st.island===UNIVERSITY);i++){w.update(.05,false);if(st.fall!==undefined)assert.fail('回頭的人不應掉落');if(seen.at(-1)!==st.island)seen.push(st.island);if(st.island==='pass1'&&!st.route)stopped++;}
+  assert.ok(stopped>20,'在第一座懸崖上停下想一想');assert.deepEqual(seen.filter(x=>['fork','pass1',UNIVERSITY].includes(x)),['fork','pass1','fork','stories',UNIVERSITY].filter(x=>x!=='stories'),`經過：${seen.join('→')}`);
+ }finally{Math.random=random;globalThis.document=old;}
+});

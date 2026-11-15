@@ -45,10 +45,10 @@ test('開場兩條橋已有人，露天講堂有老師與八位坐姿學生，�
  }finally{globalThis.document=old;}
 });
 
-test('大雨可將錯誤橋上的人物沖落，不會沖落正確橋人物',()=>{
+test('大雨中錯誤橋上的人物開始走偏（不是立刻掉落），正確橋上的人物不受影響',()=>{
  const old=globalThis.document,random=Math.random;globalThis.document={createElement:element};
- try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>1});Math.random=()=>0;
-  w.update(.05,false);assert.ok(w.find('student',1).fall!==undefined);assert.equal(w.find('student',1).fallKind,'rain');assert.equal(w.find('student',0).fall,undefined);
+ try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>1});Math.random=()=>.005;
+  w.update(.05,false);const s1=w.find('student',1);assert.equal(s1.fall,undefined,'不會一觸發就掉');assert.equal(s1.drift?.kind,'rain');assert.ok(!w.find('student',0).drift);assert.equal(w.find('student',0).fall,undefined);
  }finally{Math.random=random;globalThis.document=old;}
 });
 
@@ -85,13 +85,48 @@ test('每次刷新建立的16位錯誤橋學生皆沿指引牌→懸崖→攀岩
   }}finally{globalThis.document=old;}
 });
 
-test('完整錯誤橋被雨沖落時先移到橋側，再下降，不能在橋中央縮小消失',async()=>{
- const {along}=await import('../dist/people.js'),{TRAIL_WIDTH}=await import('../dist/hazards.js');const old=globalThis.document,random=Math.random;globalThis.document={createElement:element};
- try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>1}),student=w.find('student',1),center=along(student.route,student.s),normal={x:Math.cos(center.heading),z:-Math.sin(center.heading)};
-  Math.random=()=>0;w.update(.05,false);const top=student.fig.position.y;assert.equal(student.fallKind,'rain');w.update(.1,false);w.update(.1,false);
-  assert.equal(student.fig.position.y,top,'仍在橋面高度橫移');assert.equal(student.fig.scale.x,student.size,'橋面內不能縮小消失');
-  for(let i=0;i<3;i++)w.update(.1,false);const offset=Math.abs((student.fig.position.x-center.x)*normal.x+(student.fig.position.z-center.z)*normal.z);assert.ok(offset>TRAIL_WIDTH/2+.06,'墜落前身體已移出完整橋面');assert.ok(student.fig.position.y<top);
- }finally{Math.random=random;globalThis.document=old;}
+// Walk one student along the rough road with a forced drift; record how far off the centre line it is each frame.
+async function driftRun(kind,o){const {along}=await import('../dist/people.js');const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>kind==='rain'?1:0}),st=w.find('student',1);
+ st.rest=0;st.s=st.route.total*.2;w.update(.001,false);w.startDriftForTest(st,kind,o);const log=[];const random=Math.random;Math.random=()=>.99;
+ try{for(let i=0;i<200&&st.fall===undefined;i++){const s0=st.s;w.update(.05,false);if(st.fall!==undefined){log.push({fell:true,pos:st.fig.position.clone(),y:st.fig.position.y,scale:st.fig.scale.x/st.size});break;}
+  const c=along(st.route,st.s),n={x:Math.cos(c.heading),z:-Math.sin(c.heading)},off=(st.fig.position.x-c.x)*n.x+(st.fig.position.z-c.z)*n.z;
+  log.push({off,ds:st.s-s0,y:st.fig.position.y,deck:c.y,heading:st.heading,route:c.heading,drift:!!st.drift});}
+  const after=[];if(st.fall!==undefined)for(let i=0;i<6;i++){const p=st.fig.position.clone();w.update(.05,false);after.push({dx:st.fig.position.x-p.x,dz:st.fig.position.z-p.z,dy:st.fig.position.y-p.y,scale:st.fig.scale.x/st.size});}
+  return {st,log,after};}finally{Math.random=random;}}
+
+test('一般失足：邊走邊慢慢偏向橋緣，身體朝斜向前進，踏出橋面後才帶著往前的慣性下墜',async()=>{
+ const {TRAIL_WIDTH}=await import('../dist/hazards.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{const {st,log,after}=await driftRun('slip',{recover:false,side:1,rate:.15});const walk=log.filter(x=>!x.fell),fell=log.at(-1);
+  assert.ok(fell.fell,'沒有修正的人最後會踏空');assert.equal(st.fallKind,'slip');
+  for(const x of walk){assert.ok(Math.abs(x.y-x.deck)<1e-9,'踏空前一直在橋面高度');assert.ok(x.ds>0,'一路都在往前走');assert.ok(Math.abs(x.off)<=TRAIL_WIDTH/2+.04,'踏空前腳仍在橋面內');}
+  for(let i=1;i<walk.length;i++)assert.ok(Math.abs(walk[i].off-walk[i-1].off)<.02,`每幀橫向位移很小，不是被推走：${walk[i].off-walk[i-1].off}`);
+  assert.ok(walk.length>12,'走偏是一段過程');assert.ok(walk.slice(-5).every(x=>Math.sin(x.heading-x.route)>.02),'身體朝向沿著斜向路線');
+  assert.ok(after.length&&after.every(a=>a.scale===1),'下墜初期保持可見');assert.ok(after.slice(0,3).every(a=>Math.hypot(a.dx,a.dz)>.003),'踏空後保留往前的慣性');assert.ok(after.at(-1).dy<0,'接著往下掉');
+ }finally{globalThis.document=old;}
+});
+
+test('走偏的人多半會修正回來，不會一靠近橋緣就掉',async()=>{
+ const {TRAIL_WIDTH}=await import('../dist/hazards.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{const {st,log}=await driftRun('slip',{recover:true,side:-1,rate:.15,turnAt:.2});assert.equal(st.fall,undefined,'修正的人不會掉');assert.ok(log.some(x=>!x.drift),'走偏結束、回到原本路線');
+  assert.ok(Math.max(...log.map(x=>Math.abs(x.off)))<TRAIL_WIDTH/2,'修正前沒有越過橋緣');
+ }finally{globalThis.document=old;}
+});
+
+test('大雨沖落：先踉蹌、再斜向滑步越過橋緣；完整橋面中央不會直接下墜',async()=>{
+ const {TRAIL_WIDTH}=await import('../dist/hazards.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{const {st,log}=await driftRun('rain',{recover:false,side:1,rate:.55,stumble:.5});const walk=log.filter(x=>!x.fell);
+  assert.equal(st.fallKind,'rain');const stagger=walk.slice(0,9),slide=walk.slice(10);
+  assert.ok(Math.abs(stagger.at(-1).off-stagger[0].off)<.05,'踉蹌時幾乎在原地');assert.ok(slide.length>=2&&slide.at(-1).off-slide[0].off>.05,'接著斜向滑出');
+  assert.ok(stagger.every(x=>x.ds<slide[0].ds+1e-9),'踉蹌時腳步放慢');for(const x of walk)assert.ok(Math.abs(x.off)<=TRAIL_WIDTH/2+.04&&Math.abs(x.y-x.deck)<1e-9,'越過橋緣前不會下降');
+ }finally{globalThis.document=old;}
+});
+
+test('橋板斷裂：只有腳下的缺口能讓人直接往下掉',async()=>{
+ const old=globalThis.document;globalThis.document={createElement:element};
+ try{const positions=nodes(topics);let gapOn=false;const hazards={gap:()=>gapOn,span:()=>null};const w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},hazards}),st=w.find('student',1);
+  st.rest=0;st.s=st.route.total*.4;const random=Math.random;Math.random=()=>.99;try{w.update(.05,false);assert.equal(st.fall,undefined);gapOn=true;w.update(.05,false);}finally{Math.random=random;}
+  assert.equal(st.fallKind,'bridge');assert.equal(st.fallMove,null,'缺口不需要先走到橋緣');assert.equal(st.drift,null);
+ }finally{globalThis.document=old;}
 });
 
 test('跳過走路可立即抵達，清除舊路線、跌落、排程與出生縮放',()=>{

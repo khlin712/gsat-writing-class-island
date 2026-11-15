@@ -5,3 +5,4 @@
 橋上人物初始路徑須同驗from/to與幾何前進方向，見CASE-20261115-trail-direction.md。
 完整橋面墜落須先越過側邊，缺口才可直接下落；檢查座標與可見比例，見CASE-20261115-intact-bridge-fall.md。
 懸崖／平台上的跌落須先移出支撐面外再下墜，下墜初期保持可見，見CASE-20261116-cliff-fall-through.md。
+橋面跌落須呈現原因：走偏斜走、可修正、踏空才下墜並保留慣性；不得觸發後直接橫移推出橋外，見CASE-20261116-pushed-off-bridge.md。

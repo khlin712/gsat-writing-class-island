@@ -4,6 +4,11 @@ import * as THREE from './vendor/three.module.min.js';
 export function createArchitecture({box,mesh,tree}){
  const geo={cylinder:new THREE.CylinderGeometry(1,1,1,16),dome:new THREE.SphereGeometry(1,20,10,0,Math.PI*2,0,Math.PI/2)};
  const roof=new THREE.BufferGeometry();roof.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,-.5,.5,0,-.5,0,1,-.5,-.5,0,.5,.5,0,.5,0,1,.5],3));roof.setIndex([0,2,1,3,4,5,0,3,5,0,5,2,1,2,5,1,5,4,0,1,4,0,4,3]);roof.computeVertexNormals();
+ // The summit trophy is a symbol of results, not a record of any award.
+ const gold=new THREE.MeshStandardMaterial({color:'#e0b13f',roughness:.32,metalness:.55,emissive:'#ffb52e',emissiveIntensity:0});
+ const cup=new THREE.LatheGeometry([[0,0],[.07,0],[.17,.06],[.27,.24],[.32,.46],[.33,.6],[.3,.6]].map(([x,y])=>new THREE.Vector2(x,y)),24);
+ const handle=new THREE.TorusGeometry(.13,.028,8,16,Math.PI);
+ function golden(m){m.material=gold;return m;}
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
  function glazed(g,x,y,z,w,h){const m=box(g,x,y,z,w,h,.025,'#638d97');m.material=glass;m.castShadow=false;return m;}
  function window(g,x,y,z,w=.18,h=.25){box(g,x,y-.025,z-.012,w+.06,h+.05,.045,'#ece4d1');glazed(g,x,y,z+.018,w,h);box(g,x,y,z+.038,.018,h,.018,'#d5c5a3');box(g,x,y+h*.48,z+.04,w,.018,.018,'#d5c5a3');}
@@ -37,6 +42,12 @@ export function createArchitecture({box,mesh,tree}){
   }else if(t.kind==='house'){
    base(g,1.04,.7);hall(g,-.05,-.05,.94,.6,.66,'#eee2c9','#618575');
    box(g,0,.4,.31,.2,.38,.05,'#8d6f51');for(const x of [-.42,.42])box(g,x,.4,.48,.035,.43,.035,'#e8d9b8');box(g,0,.84,.42,1.08,.07,.32,'#9eb09a');steps(g,0,.65,.48);bench(g,.63,.38);planter(g,-.65,.48);
+  }else if(t.kind==='trophy'){
+   base(g,.98,.86);box(g,0,.4,-.05,.7,.24,.62,'#e9dfc8');box(g,0,.64,-.05,.54,.14,.48,'#d1c5a8');box(g,0,.46,.265,.36,.11,.02,'#9c7f4f');
+   golden(mesh(g,geo.cylinder,'#e0b13f',0,.83,-.05,.16,.1,.16));golden(mesh(g,geo.cylinder,'#e0b13f',0,1.02,-.05,.06,.32,.06));golden(mesh(g,geo.dome,'#e0b13f',0,1.13,-.05,.11,.08,.11));
+   const c=golden(mesh(g,cup,'#e0b13f',0,1.17,-.05));c.material=gold;gold.side=THREE.DoubleSide;
+   for(const side of [-1,1]){const h=golden(mesh(g,handle,'#e0b13f',side*.32,1.52,-.05));h.rotation.z=-side*Math.PI/2;}
+   golden(mesh(g,geo.dome,'#e0b13f',0,1.77,-.05,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
   }else if(t.kind==='clock'){
    base(g,.72,.68);hall(g,0,-.05,.57,.94,.55,'#e6dbc0','#81795c');
    box(g,0,1.34,-.05,.69,.11,.67,'#c0a77c');box(g,0,1.45,-.05,.5,.45,.5,'#e8dec8');mesh(g,geo.dome,'#657d70',0,1.92,-.05,.34,.22,.34);
@@ -55,5 +66,5 @@ export function createArchitecture({box,mesh,tree}){
   }
   return g;
  }
- return {build,time(name){glass.color.set(name==='night'?'#f6d39a':'#638d97');glass.emissiveIntensity=name==='night'?.65:name==='dusk'?.2:0;}};
+ return {build,shine(v){gold.emissiveIntensity=v*.6;},time(name){glass.color.set(name==='night'?'#f6d39a':'#638d97');glass.emissiveIntensity=name==='night'?.65:name==='dusk'?.2:0;}};
 }

@@ -78,12 +78,14 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // ② The trailhead sign says plainly that the bridge is one way among others, and the other side shows common pitfalls.
  function forkSignMaterial(){const m=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});if(typeof document==='undefined')return m;
   const c=document.createElement('canvas');c.width=768;c.height=396;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,768,396);x.textAlign='center';
-  x.fillStyle='#c4612f';x.font='bold 50px "Noto Sans TC",sans-serif';x.fillText('寫出高分作文的路不只一條。',384,92);
-  x.fillStyle='#2f3b33';x.font='bold 38px "Noto Sans TC",sans-serif';[['這座橋呈現的是我經過驗證',182],['「有效」且「高效」的學習路徑；',234],['另一側呈現大多學生',312],['學習作文遇到的誤區。',364]].forEach(([t,y])=>x.fillText(t,384,y));
-  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;m.map=tex;m.color.set('#ffffff');return m;}
+  x.fillStyle='#c4612f';x.font='bold 56px "Noto Sans TC",sans-serif';x.fillText('寫出高分作文的路不只一條。',384,80);
+  x.fillStyle='#2f3b33';x.font='bold 46px "Noto Sans TC",sans-serif';[['這座橋呈現的是我經過驗證',160],['「有效」且「高效」的學習路徑；',220],['另一側呈現大多學生',300],['學習作文遇到的誤區。',360]].forEach(([t,y])=>x.fillText(t,384,y));
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;m.map=tex;m.color.set('#ffffff');
+  // A faint glow of its own, so the words stay readable at dusk and at night.
+  m.emissive.set('#ffffff');m.emissiveMap=tex;m.emissiveIntensity=.32;return m;}
  {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',bx=-.42,bz=-.5,board=new THREE.Group();board.position.set(bx,0,bz);
   // The board faces the way people come from the start (and the stop's camera), so its words can be read there.
-  board.rotation.y=Math.atan2(STOPS.start.x-F.x,STOPS.start.z-F.z);board.scale.setScalar(1.3);f.add(board);
+  board.rotation.y=Math.atan2(STOPS.start.x-F.x,STOPS.start.z-F.z);board.scale.setScalar(1.6);f.add(board);
   for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06,wood);box(board,0,.62,0,.74,.42,.05,wood);{const face=box(board,0,.63,.03,.66,.34,.01,'#fff4d6');face.name='fork-sign-face';face.material=forkSignMaterial();}const roof=mesh(board,new THREE.BoxGeometry(1,1,1),'#5f5047',0,1.08,0,.84,.05,.2);roof.rotation.x=.18;
   const post=new THREE.Group();post.position.set(bx+.45,0,bz+.2);f.add(post);box(post,0,.27,0,.05,.72,.05,wood);
   [['bridge','#d9a521'],['pass1','#6b5a45']].forEach(([to,c],i)=>{const T=to==='bridge'?bridgePath()[6]:STOPS[to],a=Math.atan2(T.z-F.z-post.position.z,T.x-F.x-post.position.x),arm=new THREE.Group();arm.position.set(0,.84-i*.13,0);arm.rotation.y=-a;post.add(arm);box(arm,.17,0,0,.34,.1,.025,c).castShadow=true;});}
@@ -91,7 +93,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // Map labels for the stations (①–⑦) and the wrong ways on the rough road.
  function stationLabel(id,text,at,cls,station,extra){const el=document.createElement('button');el.type='button';el.className='station-label '+cls;el.innerHTML=text;el.setAttribute('aria-label',el.textContent);el.onclick=e=>{e.stopPropagation();onStation(station,extra);};const o=new CSS2DObject(el);o.position.copy(at);scene.add(o);stationLabels.set(id,{el,o});}
  const st=id=>STATIONS.find(s=>s.id===id);
- for(const [stop,station,dy]of [['start','start',1.5],['fork','fork',1.35],['calendar','calendar',1.25],['signup','signup',1.3],['contact','contact',1.3]]){const s=STOPS[stop];stationLabel(station,`<b>${st(station).n}</b><span>${st(station).short}</span>`,new THREE.Vector3(s.x,s.y+dy,s.z),'',station);}
+ for(const [stop,station,dy]of [['start','start',1.5],['fork','fork',2.25],['calendar','calendar',1.25],['signup','signup',1.3],['contact','contact',1.3]]){const s=STOPS[stop];stationLabel(station,`<b>${st(station).n}</b><span>${st(station).short}</span>`,new THREE.Vector3(s.x,s.y+dy,s.z),'',station);}
  stationLabel('university',`<b>${st('university').n}</b><span>${st('university').short}</span>`,new THREE.Vector3(UNIVERSITY_AT.x,UNIVERSITY_AT.y+1.85,UNIVERSITY_AT.z),'','university');
  for(const [label,stop,path]of [['path-cliff','pass1','cliff'],['path-cliff2','pass2','cliff'],['path-wall','wallfoot','wall']]){const s=STOPS[stop],p=st('fork').paths.find(x=>x.id===path);stationLabel(label,`<span>${p.name}</span>`,new THREE.Vector3(s.x,s.y+(path==='wall'?1.3:1.05),s.z),'path '+path,'fork',{path});}
  // Walkways, ② the climb, ③ the golden bridge to the trophy and the stairs down from the university (see summit.js / route3d.js).
@@ -211,8 +213,11 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // Fly to one station of the journey; the trailhead shows all three paths at once, the bridge its whole length.
  // ② The trailhead: seen from the start side, standing where the two ways part — the bridge on the left, the rough road on the
  // right — with the first stretch of each in view. What happens further along the rough road is a tour detour away.
- const FORK_DIR=(()=>{const a=STOPS.start,b=STOPS.fork,dx=a.x-b.x,dz=a.z-b.z,n=Math.hypot(dx,dz);return new THREE.Vector3(dx/n*.95,.95,dz/n*.95).normalize();})();
- function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2);return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*.1)),...trail.slice(0,Math.round(trail.length*.28))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
+ // Low enough that the sign's words face the camera and can be read; the two ways still part to left and right behind it.
+ const FORK_TILT=.48;
+ const FORK_DIR=(()=>{const a=STOPS.start,b=STOPS.fork,dx=a.x-b.x,dz=a.z-b.z,n=Math.hypot(dx,dz);return new THREE.Vector3(dx/n,FORK_TILT,dz/n).normalize();})();
+ // On a narrow (portrait) screen only the very start of each way fits, so the sign stays large enough to read.
+ function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2),narrow=camera.aspect<.8;return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*(narrow?.03:.07))),...trail.slice(0,Math.round(trail.length*(narrow?.08:.2)))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
  function focusStation(id,{instant=false,...inset}={}){lastInset=inset;framing={kind:'station',id};let target,radius=1.7;
   const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?forkPoints():null;
   if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;}

@@ -45,6 +45,9 @@ export function createSky(scene,{reduced}){
  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(stars,3));
  const starMat=new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false,transparent:true,opacity:1});
  const starField=new THREE.Points(starGeometry,starMat);starField.visible=false;dome.add(starField);
+ // The moon: a pale disc with a soft halo, up behind the islands, out at night only.
+ const moonMat=new THREE.MeshBasicMaterial({color:'#f6f2df',fog:false,transparent:true,opacity:0,depthWrite:false}),haloMat=new THREE.MeshBasicMaterial({color:'#cfdcff',fog:false,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+ const moon=new THREE.Group();moon.position.set(-30,46,-62);const disc=new THREE.Mesh(new THREE.SphereGeometry(3.2,24,16),moonMat),halo=new THREE.Mesh(new THREE.SphereGeometry(7,24,16),haloMat);moon.add(halo,disc);moon.visible=false;dome.add(moon);
 
  function theme(name){const t=TIMES[name]||DAY,night=name==='night';paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
  theme('day');
@@ -53,7 +56,7 @@ export function createSky(scene,{reduced}){
  function blend(a,b,t,grey=0,stars=0){const ta=TIMES[a]||DAY,tb=TIMES[b]||DAY,colors=dome.geometry.attributes.color;
   for(let i=0;i<position.count;i++){const h=position.getY(i)/90;A.set(skyColor(ta.stops,h)).lerp(B.set(skyColor(tb.stops,h)),t).lerp(G,grey*.55);colors.setXYZ(i,A.r,A.g,A.b);}colors.needsUpdate=true;
   scene.fog.color.set(ta.fog).lerp(B.set(tb.fog),t).lerp(G,grey*.5);cloudMaterial.color.set(ta.cloud).lerp(B.set(tb.cloud),t).lerp(G,grey*.35);cloudMaterial.emissive.copy(cloudMaterial.color);cloudMaterial.emissiveIntensity=ta.glow+(tb.glow-ta.glow)*t;
-  starField.visible=stars>.02;starMat.opacity=stars*(1-grey);}
+  starField.visible=stars>.02;starMat.opacity=stars*(1-grey);moon.visible=stars>.02;moonMat.opacity=stars*(1-grey*.7);haloMat.opacity=stars*.18*(1-grey);}
  return {
   time:theme,blend,
   update(elapsed,camera){dome.position.copy(camera.position);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}

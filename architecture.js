@@ -9,6 +9,11 @@ export function createArchitecture({box,mesh,tree}){
  const cup=new THREE.LatheGeometry([[0,0],[.07,0],[.17,.06],[.27,.24],[.32,.46],[.33,.6],[.3,.6]].map(([x,y])=>new THREE.Vector2(x,y)),24);
  const handle=new THREE.TorusGeometry(.13,.028,8,16,Math.PI);
  function golden(m){m.material=gold;return m;}
+ // A painted board with the start's two questions (canvas text; plain colour where there is no canvas, e.g. in tests).
+ const signMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});
+ if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=512;c.height=300;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,512,300);x.fillStyle='#c4612f';x.font='bold 40px "Noto Sans TC",sans-serif';x.textAlign='center';x.fillText('起點',256,64);
+  x.fillStyle='#2f3b33';x.font='bold 46px "Noto Sans TC",sans-serif';x.fillText('為什麼要學國寫？',256,150);x.fillText('為什麼選這堂課？',256,230);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;signMat.map=tex;signMat.color.set('#ffffff');}
+ const screenMat=new THREE.MeshStandardMaterial({color:'#f6f1e3',emissive:'#ffffff',emissiveIntensity:.25,roughness:.9});
  const pond=new THREE.MeshStandardMaterial({color:'#8fc7de',roughness:.15,metalness:.1,emissive:'#5fa8c8',emissiveIntensity:.15});
  const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
@@ -74,8 +79,8 @@ export function createArchitecture({box,mesh,tree}){
    for(const [x,z,c]of [[-.62,.2,'#e8798a'],[-.5,.32,'#f2c14e'],[-.7,.36,'#f4f0e6'],[.62,.2,'#f2c14e'],[.52,.33,'#e8798a'],[.72,.35,'#9a7bb8']])mesh(g,new THREE.IcosahedronGeometry(1,0),c,x,.3,z,.07,.06,.07);
    box(g,-.6,.25,.28,.36,.05,.24,'#7a5a3c');box(g,.6,.25,.28,.36,.05,.24,'#7a5a3c');
    bench(g,-.35,.55);bench(g,.38,.55);tree(g,-.62,-.5,.7);tree(g,.66,-.42,.62);tree(g,-.2,-.72,.5);lamp(g,.22,.58);
-   for(const x of [.3,.62])box(g,x,.25,-.68,.04,.62,.04,'#8a6a48');box(g,.46,.62,-.66,.42,.3,.04,'#fff4d6');box(g,.46,.62,-.685,.48,.36,.02,'#8a6a48');
-   mesh(g,new THREE.TorusGeometry(.07,.02,8,16,Math.PI*1.4),'#c4612f',.46,.67,-.635).rotation.z=-.5;box(g,.47,.55,-.635,.03,.04,.01,'#c4612f');
+   // The sign says what the start is about: the two questions.
+   for(const x of [.22,.7])box(g,x,.25,-.68,.04,.7,.04,'#8a6a48');box(g,.46,.7,-.69,.58,.36,.02,'#8a6a48');const sign=box(g,.46,.7,-.675,.52,.3,.01,'#fff4d6');sign.material=signMat;
   }else if(t.kind==='fork'){
    // ② The trailhead: room to gather in front of the notice board, with rocks, pines and a bench round the edge.
    for(const [x,z,r]of [[-.62,-.45,.13],[.66,-.35,.1],[-.7,.15,.08],[.55,.5,.09]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#9b8a6c',x,.3,z,r,r*.8,r);
@@ -96,13 +101,16 @@ export function createArchitecture({box,mesh,tree}){
    base(g,1,.62);hall(g,0,-.12,.86,.5,.5,'#eee5d2','#6d7f9a');box(g,0,.36,.3,.86,.6,.05,'#8a6a48');box(g,0,.42,.33,.78,.5,.02,'#fffaf0');box(g,0,.84,.335,.78,.1,.02,'#d0695a');
    for(let r=0;r<3;r++)for(let c=0;c<6;c++)box(g,-.3+c*.12,.5+r*.11,.345,.08,.07,.006,(r===1&&c===3)?'#f2c14e':'#e6dccb');
   }else if(t.kind==='signup'){
-   // ⑥ Sign-up: a booth with a striped awning and a counter.
-   base(g,.9,.6);box(g,0,.33,-.05,.7,.5,.45,'#f3ead8');box(g,0,.33,.19,.72,.24,.04,'#e2793f');for(let i=0;i<6;i++){const a=box(g,-.3+i*.12,.86,.22,.12,.03,.24,i%2?'#fff4d6':'#e2793f');a.rotation.x=-.35;}
-   box(g,0,.83,-.05,.74,.05,.5,'#c4612f');box(g,0,.92,-.05,.4,.16,.04,'#fff4d6');lamp(g,-.55,.4);planter(g,.55,.45);
+   // ⑥ Trial class & sign-up: an open-air cinema — a big screen on posts, a projector, and rows of seats on the lawn.
+   for(const x of [-.5,.5])box(g,x,.25,-.42,.06,1.05,.06,'#5b4a3c');box(g,0,.55,-.43,1.06,.66,.04,'#3f3a36');const scr=box(g,0,.6,-.405,.96,.56,.01,'#f6f1e3');scr.material=screenMat;scr.castShadow=false;
+   box(g,0,1.24,-.43,1.14,.06,.08,'#c4612f');for(let r=0;r<3;r++)for(let c=0;c<4;c++){const x=-.36+c*.24,z=.08+r*.24;box(g,x,.25,z,.18,.08,.14,['#e07a5f','#f2c14e','#5f8fb4'][r]);box(g,x,.33,z+.06,.18,.12,.03,['#e07a5f','#f2c14e','#5f8fb4'][r]);}
+   box(g,.62,.25,.62,.08,.3,.08,'#38424f');box(g,.62,.55,.62,.16,.12,.2,'#38424f');mesh(g,geo.cylinder,'#cfe8ff',.62,.55,.51,.035,.03,.035).rotation.x=Math.PI/2;lamp(g,-.66,.55);
   }else if(t.kind==='contact'){
-   // ⑦ Contact: a little post office with a mailbox and a letter sign.
-   base(g,.9,.62);hall(g,-.05,-.1,.72,.48,.48,'#f1e7d4','#4f7d74');box(g,.5,.25,.38,.16,.32,.14,'#3f7d4f');mesh(g,geo.dome,'#3f7d4f',.5,.57,.38,.08,.06,.07);box(g,.5,.47,.452,.1,.015,.01,'#1f2a24');
-   box(g,-.05,.98,.15,.3,.2,.03,'#fff4d6');box(g,-.05,.98,.168,.22,.12,.004,'#e2793f');bench(g,-.55,.45);
+   // ⑦ Service desk: a counter under a striped awning with an "i" sign, a bell and a stand of leaflets.
+   base(g,.96,.62);box(g,0,.33,-.12,.86,.38,.36,'#f1e7d4');box(g,0,.71,-.12,.9,.04,.4,'#c9b38a');box(g,0,.33,.07,.86,.38,.02,'#4f7d74');
+   for(const x of [-.45,.45])box(g,x,.33,-.32,.04,.92,.04,'#6b5a45');for(let i=0;i<6;i++){const a=box(g,-.4+i*.16,1.22,-.12,.16,.03,.5,i%2?'#fff4d6':'#4f7d74');a.rotation.x=-.3;}
+   mesh(g,geo.cylinder,'#2f6f73',0,1.42,-.3,.17,.02,.17).rotation.x=Math.PI/2;box(g,0,1.39,-.28,.03,.11,.01,'#fff4d6');box(g,0,1.48,-.28,.03,.03,.01,'#fff4d6');
+   mesh(g,geo.dome,'#d9a521',.25,.75,-.05,.05,.04,.05);box(g,-.3,.75,-.08,.12,.08,.06,'#e07a5f');bench(g,-.55,.45);bench(g,.55,.45);planter(g,.68,-.1);
   }else if(t.kind==='clock'){
    base(g,.72,.68);hall(g,0,-.05,.57,.94,.55,'#e6dbc0','#81795c');
    box(g,0,1.34,-.05,.69,.11,.67,'#c0a77c');box(g,0,1.45,-.05,.5,.45,.5,'#e8dec8');mesh(g,geo.dome,'#657d70',0,1.92,-.05,.34,.22,.34);

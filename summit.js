@@ -1,7 +1,8 @@
 // The seven-station journey that wraps round the nine topic islands, as seen from the usual camera:
 // ① the start island (front middle) → ② the trailhead sign. Following the sign means ③ the golden bridge, which climbs smoothly
-// from the trailhead to the trophy (results summit, top middle): the right way, the course. The wrong ways: a lava cave and a cliff
-// are dead ends (walk in and you fall); a long trail round the back leads to a steep wall straight up the trophy island's side —
+// from the trailhead to the trophy (results summit, top middle): the right way, the course. The wrong way is the rough road: two
+// cliff-top passes where people can fall off, and at its end a steep wall of ropes up to the trophy island.
+// (Old note kept for history:) // are dead ends (walk in and you fall); a long trail round the back leads to a steep wall straight up the trophy island's side —
 // working hard the wrong way can still get you there, but the climb is slow and you may fall off.
 // From the trophy: ④ the university → down the stairs to ⑤ the course calendar → ⑥ sign-up → ⑦ contact → back to ①.
 // Students who walk in through the university door are gone (off to university); new ones come out of the main building on
@@ -10,7 +11,7 @@ export const SUMMIT='stories',UNIVERSITY='university';
 // Where students who walked into the university step out again: the gate on this island (① 起點 for now; it was 01 認識老師 before).
 // Change this one id to move it.
 export const SPAWN_FROM='start';
-// Where students who took a wrong turn (lava cave, cliff) start again.
+// Where students who fell off a cliff or the ropes start again.
 export const RESTART='start';
 export const RISE=2,TOP=.25,RING=1.06,LEDGE=.42;
 const C={x:-1.17,z:0},R=6,BACK=Math.atan2(-13.6,-2.8);
@@ -20,23 +21,22 @@ export const SUMMIT_AT=onArc(BACK,RISE),UNIVERSITY_AT=onArc(BACK-.62,RISE);
 export const STOPS={
  start:{...onArc(1.37),kind:'start'},
  fork:{...onArc(.9,0,6.4),kind:'fork'},
- // The rough way: from the trailhead up and down over two rocky passes, to the foot of the steep wall. The lava cave hangs off the
- // first pass and the cliff off the second — wrong turns along the hard road, not at the trailhead.
- pass1:{...onArc(.25,.7,7.7),kind:'outcrop',ring:LEDGE,ledge:true},
- pass2:{...onArc(-.6,1,7.7),kind:'outcrop',ring:LEDGE,ledge:true},
- lava:{...onArc(.25,.7,10.2),kind:'lava'},
- cliff:{...onArc(-.6,1,10.2),kind:'cliff'},
+ // The rough way: from the trailhead up and down over two cliff tops, to the foot of the steep wall. The cliffs are the stops on
+ // the way — some who come this way fall off them.
+ pass1:{...onArc(.25,.7,7.7),kind:'crag',ring:LEDGE,ledge:true},
+ pass2:{...onArc(-.6,1,7.7),kind:'crag',ring:LEDGE,ledge:true},
  // The foot of the steep wall: a ledge right below the side of the trophy island that faces the camera, so the climb is in view.
  wallfoot:{...(()=>{const s=onArc(BACK,RISE);return {x:s.x+Math.cos(.45)*2,y:0,z:s.z+Math.sin(.45)*2};})(),kind:'wallfoot',ring:LEDGE,ledge:true},
  calendar:{...onArc(-3.4),kind:'calendar'},
  signup:{...onArc(2.35),kind:'signup'},
  contact:{...onArc(1.85),kind:'contact'}
 };
-export const DEAD_ENDS=['lava','cliff'];
+export const DEAD_ENDS=[];
+export const CLIFFS=['pass1','pass2'];
 export const islandOf=(x,z)=>({x:(x-470)*.0127,z:(z-340)*.018});
 // Plank walkways between neighbouring islands and along the journey.
 export const WALKWAYS=[['teacher','teaching'],['teacher','questions'],['teaching','questions'],
- ['teacher','start'],['start','fork'],['pass1','lava'],['pass2','cliff'],[SUMMIT,UNIVERSITY],['calendar','signup'],['signup','contact'],['contact','start']];
+ ['teacher','start'],['start','fork'],[SUMMIT,UNIVERSITY],['calendar','signup'],['signup','contact'],['contact','start']];
 const angle=(from,to)=>Math.atan2(to.z-from.z,to.x-from.x);
 const smooth=t=>t*t*(3-2*t);
 // Points spaced evenly along a curve given as u → {x,z} (with y as a function of the fraction along it).
@@ -73,8 +73,8 @@ export function buildGraph(centers){
  for(const [a,b,out]of TRAIL){const A=centers.get(a),B=centers.get(b);if(A&&B)add(a,b,'trail',trailPath(A,B,.2,out));}
  // The wall only goes up (nobody climbs down it), and it is slow.
  if(F&&S){const pts=[ringAt(F,angle(F,S)),...climbPath(F,S)];edges.push({from:'wallfoot',to:SUMMIT,kind:'climb',exit:angle(F,S),entry:angle(S,pts.at(-1)),pts});}
- // The slide after the university only goes down: the ways up are the bridge and the steep wall.
- if(U&&K){const pts=slidePath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'slide',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
+ // The stairs after the university only go down: the ways up are the bridge and the steep wall.
+ if(U&&K){const pts=descentPath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'descent',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
  return {centers,edges};}
 export function shortest(graph,from,to){if(from===to)return [];const dist=new Map([[from,0]]),prev=new Map(),todo=new Set([from]);
  while(todo.size){let u=null;for(const n of todo)if(u===null||dist.get(n)<dist.get(u))u=n;todo.delete(u);if(u===to)break;

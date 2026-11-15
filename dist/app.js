@@ -30,7 +30,7 @@ function insets(){
  if(top.length)rects.push({left:map.left,right:map.right,top:map.top,bottom:Math.max(...top)+8});
  const caption=$('.map-caption');if(visible(caption))rects.push({left:map.left,right:map.right,top:caption.getBoundingClientRect().top-8,bottom:map.bottom});
  if(!$('#detail').hidden)rects.push($('#detail').getBoundingClientRect());
- if(isPhone())rects.push($('#index-panel').getBoundingClientRect());
+ const index=$('#index-panel');if(visible(index))rects.push(index.getBoundingClientRect());
  return mapInsets(map,rects);
 }
 let refitTimer;
@@ -139,6 +139,7 @@ function setTime(name){timeOfDay=name;const next=TIMES[(TIMES.indexOf(name)+1)%T
 $('#day').onclick=()=>setTime(TIMES[(TIMES.indexOf(timeOfDay)+1)%TIMES.length]);
 function setBird(on){$('#bird').setAttribute('aria-pressed',on);$('#bird').setAttribute('aria-label',on?'回到一般視角':'鳥瞰全島');}
 $('#bird').onclick=()=>{const on=$('#bird').getAttribute('aria-pressed')!=='true';if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home({...insets(),bird:on});setBird(on);$('#map-message').textContent=on?'鳥瞰 · 從正上方看九座島':'點一座島，開始你的寫作旅程';};
+$('#tools-toggle').onclick=()=>{const open=document.body.classList.toggle('tools-open');$('#tools-toggle').setAttribute('aria-expanded',open);requestAnimationFrame(refitView);};
 $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')!=='true';$('#rotate').setAttribute('aria-pressed',rotate);world?.mode(rotate);$('#map-message').textContent=rotate?'旋轉模式 · 拖曳改變視角':'平移模式 · 拖曳上下左右移動';};
 // 清單: phones fold the index sheet down to a slim bar; desktop slides the index away to widen the map.
 function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.contains('sheet-peek'):!document.body.classList.contains('index-collapsed');$('#list-toggle').setAttribute('aria-expanded',open);$('#list-toggle').classList.toggle('active',open);}

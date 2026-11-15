@@ -9,7 +9,7 @@ import {walkRoute as findRoute,UNIVERSITY,SUMMIT,SPAWN_FROM,RESTART,STOPS} from 
 //   that has a real walkway, the rest wander from island to island; now and then one climbs the stairs past the trophy and
 //   reaches the university: half walk in and disappear (going on to university) and come out again on SPAWN_FROM (the start), so the
 //   count holds; the other half turn away and carry on to the calendar, sign-up and contact islands;
-// - the guide visits the islands in order 01 → 09 and stops at each one;
+// - the guide waits at the start; when a visitor asks, it leads them round the journey (GUIDE_ROUTE) one stop at a time;
 // - "my character" is the visitor's own figure, which walks wherever they send it.
 // Everyone walks on walkways and stairs, never through the air. All of them are decorative map characters, not real people.
 const RESIDENTS=[
@@ -22,6 +22,8 @@ const RESIDENTS=[
 ];
 // The teacher's current number of students (given by the teacher). Change it here when the class size changes.
 export const STUDENTS=47;
+// The guide's round: ① start → ② trailhead → results (the trophy, over the bridge) → ④ university → ⑤ calendar → ⑥ sign-up → ⑦ contact → ① again.
+export const GUIDE_ROUTE=['start','fork',SUMMIT,UNIVERSITY,'calendar','signup','contact'];
 const PARENTS=[{shirt:'#7d8a96',pants:'#3f4652',hair:'#2f2a28',hairStyle:'short',skin:'#e9c3a0',prop:'bag',accent:'#8a5a3b'},{shirt:'#b07d6a',pants:'#4a4040',hair:'#4a3a30',hairStyle:'long',skin:'#f1cfae',prop:'bag',accent:'#5b6f60'},{shirt:'#6e8a74',pants:'#3a4250',hair:'#3a3330',hairStyle:'bun',skin:'#d9a983'}];
 const STUDENT_SHIRTS=['#e07a5f','#5f8fb4','#7aa66b','#e2b84c','#9a7bb8','#4f7d74','#f0f0ea','#d98fa0'],STUDENT_HAIR=['short','long','bun','cap','short','long'];
 const studentLook=i=>({shirt:STUDENT_SHIRTS[i%STUDENT_SHIRTS.length],hairStyle:STUDENT_HAIR[(i*5)%STUDENT_HAIR.length],hair:['#2a2622','#3a2e28','#5a3d2b'][i%3],skin:['#efcaa6','#e4b994','#f5dcc4','#d9a983'][(i*3)%4],pants:['#3f4f63','#4e5d6c','#5d5248'][i%3],prop:i%3?'backpack':'book',accent:['#d0695a','#5f8fb4','#e2b84c','#7aa66b','#fff3cf'][i%5]});
@@ -33,7 +35,7 @@ export function readAvatar(raw){let v={};try{v=JSON.parse(raw)||{};}catch{}
 const avatarLook=a=>({shirt:a.shirt,hairStyle:a.hairStyle,hair:'#3a2e28',skin:'#efcaa6',pants:'#3f4f63',prop:AVATAR_ROLES[a.role],accent:a.role==='家長'?'#8a5a3b':'#f2c14e'});
 const GUIDE_SPOT={x:-.12,z:.74},AVATAR_SPOT={x:.16,z:.68},DOOR={x:0,z:.5},EXIT={x:0,z:.6};
 
-export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,reduced,avatar:initial,onArrive=()=>{},onLog=()=>{}}){
+export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,reduced,avatar:initial,onArrive=()=>{},onLog=()=>{},onGuide=()=>{}}){
  const group=new THREE.Group();group.name='walkers';scene.add(group);
  const walkers=[],byId=id=>topics.find(t=>t.id===id)||(s=>s&&{id,n:s.n,title:s.short})(STATIONS.find(s=>s.id===id)),order=topics.map(t=>t.id);
  const ring=new THREE.Mesh(new THREE.RingGeometry(.15,.2,28).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:'#e2793f',transparent:true,opacity:.9,depthWrite:false}));ring.position.y=.008;ring.raycast=()=>{};ring.visible=false;
@@ -47,9 +49,10 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  // Relation walkers: back and forth along the walkway of each relation that has one, notebook in hand.
  links.map(l=>({...l,edge:graph.edges.find(e=>e.kind==='bridge'&&e.from===l.a&&e.to===l.b)})).filter(l=>l.edge).forEach((l,i)=>{const route=makeRoute(l.edge.pts);const w=spawn('messenger',{...studentLook(i*7+2),prop:'book',accent:'#fff3cf'},{key:l.key,a:l.a,b:l.b,route,speed:.36,s:route.total*((i*.37)%1),dir:i%2?1:-1});
   const A=byId(l.a),B=byId(l.b);tag(w,`<b>${A.n}↔${B.n}</b><span>學生 · 帶著關聯問題</span>`,'bubble');w.tag.el.setAttribute('aria-label',`學生（關聯步道）：${A.title} 與 ${B.title}`);place(w,along(route,w.s));});
- // The guide: island 01 to 09 in order, a short stop at each.
- const guide=spawn('guide',{shirt:'#2f6f73',pants:'#38424f',hair:'#2a2622',hairStyle:'cap',accent:'#f2c14e',prop:'flag',skin:'#e7bf98'},{island:order[0],next:null,speed:.48,wait:2});
- {const p=positions.get(order[0]);place(guide,{x:p.x+GUIDE_SPOT.x,y:islandTop(p),z:p.z+GUIDE_SPOT.z});}
+ // The guide: round the journey stops in order, a short stop at each.
+ const guideSpot=id=>STOPS[id]?.ledge?{x:.12,z:.22}:GUIDE_SPOT;
+ const guide=spawn('guide',{shirt:'#2f6f73',pants:'#38424f',hair:'#2a2622',hairStyle:'cap',accent:'#f2c14e',prop:'flag',skin:'#e7bf98'},{island:GUIDE_ROUTE[0],next:null,speed:.48,wait:0});
+ {const p=positions.get(GUIDE_ROUTE[0]);place(guide,{x:p.x+GUIDE_SPOT.x,y:islandTop(p),z:p.z+GUIDE_SPOT.z});}
  tag(guide,'<i>⚑</i><span>導覽員</span>','guide-tag');guide.tag.el.setAttribute('aria-label','導覽員');
  // The other students wander from island to island; a few at a time head up the stairs to the university.
  const ground=[...order.filter(id=>id!==SUMMIT),'start','calendar','signup','contact'],messengerCount=walkers.filter(w=>w.kind==='messenger').length;
@@ -81,22 +84,28 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   const x=w.fig.position.x-p.x,d=w.goal-x,step=Math.sign(d)*Math.min(Math.abs(d),w.speed*dt);w.fig.position.x+=step;w.heading=turn(w.heading,d>0?Math.PI/2:-Math.PI/2,dt*10);w.walking+=(1-w.walking)*Math.min(1,dt*8);
   if(Math.abs(d)<.005){w.goal=undefined;w.wait=1+Math.random()*3;}}
  function updateMessenger(w,dt){if(w.wait>0){w.wait-=dt;stand(w,dt,w.heading);return;}if(walkRoute(w,dt)){w.dir=-w.dir;w.wait=1.2+Math.random()*1.5;}}
+ // The guide stands at the start facing visitors until asked to lead; then it walks briskly to each stop it is sent to.
  function updateGuide(w,dt){
-  if(w.route){if(walkRoute(w,dt)){const t=arrive(w);w.wait=4.5;onLog(`導覽員抵達 ${t.n} ${t.title}`,{kind:'guide',id:t.id});}return;}
-  if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
-  const next=order[(order.indexOf(w.island)+1)%order.length];goTo(w,next,GUIDE_SPOT);}
+  if(w.born!==undefined){w.born+=dt;w.fig.scale.setScalar(w.size*Math.min(1,w.born/.5));if(w.born>=.5)w.born=undefined;}
+  if(w.route){if(walkRoute(w,dt)){const t=arrive(w);onLog(`導覽員帶路抵達 ${t.n} ${t.title}`,{kind:'guide',id:t.id});onGuide(t.id);}return;}
+  stand(w,dt,0);}
+ // Pop the guide up at any island, so a visitor who wandered off can pick the tour up again right where they are.
+ function guideAppear(id){if(!positions.has(id))return false;teleport(guide,id,guideSpot(id));guide.heading=0;if(!reducedNow()){guide.born=0;guide.fig.scale.setScalar(0);}return true;}
+ function guideTo(id){if(!positions.has(id))return false;if(reducedNow()||frozen){teleport(guide,id,guideSpot(id));onGuide(id);return true;}guide.speed=id===GUIDE_ROUTE[0]?1.2:1.6;return goTo(guide,id,guideSpot(id));}
  const MAX_UP=6;
  // Where the wrong turns end: the lava cave's mouth, and the far edge of the cliff (seen from the trailhead).
- const caveMouth={x:0,z:.42},cliffEdge=(()=>{const C=STOPS.cliff,F=STOPS.fork,d=Math.hypot(C.x-F.x,C.z-F.z);return {x:(C.x-F.x)/d*1.18,z:(C.z-F.z)/d*1.18};})();
+ const caveMouth={x:0,z:.75},cliffEdge=(()=>{const C=STOPS.cliff,F=STOPS.fork,d=Math.hypot(C.x-F.x,C.z-F.z);return {x:(C.x-F.x)/d*1.18,z:(C.z-F.z)/d*1.18};})();
  function updateStudent(w,dt){
   // Gone through the university door: shrink away, wait, then step out of the main building on SPAWN_FROM.
   if(w.gone!==undefined){w.gone+=dt;if(w.gone<.6){w.fig.scale.setScalar(w.size*Math.max(0,1-w.gone/.6));return;}w.fig.userData.hidden=true;
    if(w.gone>5){w.gone=undefined;w.born=0;w.up=false;w.onward=null;w.fig.userData.hidden=false;teleport(w,SPAWN_FROM,EXIT);w.heading=0;w.wait=1;}return;}
   if(w.born!==undefined){w.born+=dt;w.fig.scale.setScalar(w.size*Math.min(1,w.born/.6));if(w.born>=.6)w.born=undefined;}
   // A wrong turn: sink into the lava or drop off the cliff, then start again on RESTART.
-  if(w.fall!==undefined){w.fall+=dt;const t=w.fall;if(w.fallKind==='cliff'){w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.position.x+=Math.sin(w.heading)*.6*dt;w.fig.position.z+=Math.cos(w.heading)*.6*dt;w.fig.rotation.x=Math.min(1.4,t*2);}else{w.fig.position.y-=dt*.35;}
-   w.fig.scale.setScalar(w.size*Math.max(0,1-t/1.1));if(t>1.1)w.fig.userData.hidden=true;if(t>3.5){w.fall=undefined;w.fig.rotation.x=0;w.born=0;w.up=false;w.fig.userData.hidden=false;teleport(w,RESTART,EXIT);w.heading=0;w.wait=1.5;}return;}
-  if(w.route){if(walkRoute(w,dt)){const up=w.up,to=w.target;arrive(w);if(to==='lava'||to==='cliff'){w.fall=0;w.fallKind=to;w.vy=to==='cliff'?1.2:0;}
+  if(w.fall!==undefined){w.fall+=dt;const t=w.fall;if(w.fallKind==='cliff'||w.fallKind==='wall'){const back=w.fallKind==='wall'?-1:1;w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.position.x+=Math.sin(w.heading)*.6*back*dt;w.fig.position.z+=Math.cos(w.heading)*.6*back*dt;w.fig.rotation.x=back*Math.min(1.4,t*2);}else{w.fig.position.y-=dt*.35;}
+   w.fig.scale.setScalar(w.size*Math.max(0,1-t/1.1));if(t>1.1)w.fig.userData.hidden=true;if(t>3.5){w.fall=undefined;w.fig.rotation.x=0;w.born=0;w.up=false;w.slipAt=null;w.fig.userData.hidden=false;teleport(w,RESTART,EXIT);w.heading=0;w.wait=1.5;}return;}
+  // Partway up the steep wall, some lose their grip.
+  if(w.route&&w.climbing&&w.slipAt!=null&&w.fig.position.y>w.slipAt){w.route=null;w.target=null;w.slipAt=null;w.fall=0;w.fallKind='wall';w.vy=.6;return;}
+  if(w.route){if(walkRoute(w,dt)){const up=w.up,to=w.target;arrive(w);if(up&&to==='wallfoot'){w.slipAt=Math.random()<.45?.6+Math.random()*1.4:null;if(!goTo(w,UNIVERSITY,DOOR)){w.up=false;w.wait=2;}}else if(to==='lava'||to==='cliff'){w.fall=0;w.fallKind=to;w.vy=to==='cliff'?1.2:0;}
    // At the university: half walk in through the door and are gone; the rest turn away and carry on to the calendar, sign-up and contact.
    else if(up&&to===UNIVERSITY){if(Math.random()<.5)w.gone=0;else{w.up=false;w.onward=['calendar','signup','contact'];w.wait=1.2;}}
    else if(up&&to==='fork')pickPath(w);else w.wait=(w.onward?.length?1.5:2+Math.random()*6);}return;}
@@ -105,8 +114,9 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   // Mostly a walk to another island; sometimes, while few are on the way, the journey: to the trailhead first, then one of three paths.
   if(students.filter(x=>x.up).length<MAX_UP&&Math.random()<.25){w.up=true;if(goTo(w,'fork',{x:0,z:0}))return;w.up=false;}
   const next=Math.random()<.3?w.island:ground[Math.floor(Math.random()*ground.length)];if(!goTo(w,next,spotOn()))w.wait=3;}
- // At the trailhead: a third take the lava cave, a third the cliff, a third the steep wall (and on up to university).
- function pickPath(w){const r=Math.random();const ok=r<1/3?goTo(w,'lava',caveMouth):r<2/3?goTo(w,'cliff',cliffEdge):goTo(w,UNIVERSITY,DOOR);if(!ok){w.up=false;w.wait=2;}}
+ // At the trailhead: most follow the sign onto the bridge (the smooth way up); the rest take a wrong turn — the lava cave,
+ // the cliff, or the long trail to the steep wall, where they climb slowly and may fall.
+ function pickPath(w){const r=Math.random();const ok=r<.4?goTo(w,UNIVERSITY,DOOR):r<.6?goTo(w,'lava',caveMouth):r<.8?goTo(w,'cliff',cliffEdge):goTo(w,'wallfoot',{x:0,z:0});if(!ok){w.up=false;w.wait=2;}}
  function updateMe(w,dt){
   if(w.route){if(walkRoute(w,dt)){const quiet=w.quiet,id=w.target,t=arrive(w);w.quiet=false;w.wait=w.mode==='auto'?3:1.5;if(quiet)return;onArrive(id,{kind:'avatar'});onLog(`${look.name||'我的角色'}抵達 ${t.n} ${t.title}`,{kind:'avatar',id});}return;}
   if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
@@ -120,7 +130,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
    else if(!shown)on=false;
    else if(w.kind==='messenger')on=connections&&filterIds.has(w.a)&&filterIds.has(w.b)&&(!selectedIsland||selectedIsland===w.a||selectedIsland===w.b||w.key===activeRelation);
    else if(w.kind==='student')on=!w.fig.userData.hidden&&(!order.includes(w.island)||filterIds.has(w.island)||!!w.route);
-   else on=filterIds.has(w.island)||w.kind==='guide';
+   else on=w.kind==='guide'||filterIds.has(w.island);
    w.fig.visible=on;
    if(w.kind==='messenger'){const loud=on&&(w.key===activeRelation||w===hoverWalker||w===selectedWalker);w.tag.o.visible=loud;w.tag.el.classList.toggle('active',w.key===activeRelation||w===selectedWalker);}
    else if(w.tag)w.tag.o.visible=on;}
@@ -144,7 +154,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   hover(w){if(w!==hoverWalker){hoverWalker=w;sync();}},
   sync(state){({shown=shown,filterIds=filterIds,connections=connections,selectedIsland=selectedIsland,activeRelation=activeRelation}=state);if(state.filterIds)filterIds=new Set(state.filterIds);sync();},
   onClick(fn){onClickAll=fn;},
-  guide:()=>guide,me:()=>me,
+  guide:()=>guide,me:()=>me,guideTo,guideAppear,
   // kind is parent / student / messenger / guide / avatar, or a relation key for that relation's walker.
   find:(kind,i=0)=>kind.includes(':')?walkers.find(w=>w.key===kind)||null:walkers.filter(w=>w.kind===kind)[i]||null,
   // Where a walker stands right now, in world space.

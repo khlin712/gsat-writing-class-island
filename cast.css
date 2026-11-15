@@ -61,3 +61,9 @@
 .station-link{display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center}
 .station-link[disabled]{opacity:.55;cursor:not-allowed}
 @media (max-width:720px){.station-label{font-size:11px}.station-label span{display:none}.station-label.path span{display:inline}}
+.path-row.right{border-color:#d9a521;background:#fff8e2}.path-row.right b{background:#f2c14e;color:#5b4310}
+.tour-bar{margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#2f6f73;color:#fffaf0;box-shadow:0 4px 14px #1f2a2433}
+.tour-bar p{margin:0 0 8px;font-size:13.5px}.tour-bar b{color:#f2c14e}
+.tour-actions{display:grid;gap:6px}.tour-actions .ask-topic{width:100%;background:#f2c14e;color:#2f3b33;border-color:#f2c14e}
+.tour-actions .text-button{color:#fffaf0;justify-self:start}
+.tour-resume{margin:0 0 10px}.tour-resume .text-button{font-weight:700;color:#2f6f73}

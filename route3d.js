@@ -7,7 +7,7 @@ const up=new THREE.Vector3(0,1,0);
 function frames(pts){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const t=new THREE.Vector3(b.x-a.x,0,b.z-a.z).normalize();const side=new THREE.Vector3().crossVectors(t,up).normalize();return {p:new THREE.Vector3(p.x,p.y,p.z),t,side,yaw:Math.atan2(t.x,t.z)};});}
 function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length)),o=new THREE.Object3D();list.forEach((x,i)=>{o.position.copy(x.p);o.rotation.set(x.rx||0,x.yaw||0,0);o.scale.copy(x.s||new THREE.Vector3(1,1,1));o.updateMatrix();m.setMatrixAt(i,o.matrix);});m.count=list.length;m.castShadow=m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;m.computeBoundingSphere();return m;}
 
-export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],climb=[],trophyAt,reduced}){
+export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],climb=[],trail=[],trophyAt,reduced}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
  // ---- Plank walkways between islands, with low rails. ----
@@ -41,6 +41,9 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],cli
  const stone=new THREE.MeshStandardMaterial({color:'#cfc3ab',roughness:.95});const df=frames(descent),dg=df.length>1?df[0].p.distanceTo(df[1].p):.17;
  if(df.length){const dRails=[[],[]];group.add(instanced(unit,stone,df.map(x=>({p:x.p.clone().setY(x.p.y-.05),yaw:x.yaw,s:new THREE.Vector3(.44,.1,dg*1.05)}))),instanced(unit,riser,df.map(x=>({p:x.p.clone().setY(x.p.y-.17),yaw:x.yaw,s:new THREE.Vector3(.4,.16,dg*1.05)}))));
   df.forEach(x=>{for(const k of [-1,1]){const q=x.p.clone().addScaledVector(x.side,k*.24);dRails[k<0?0:1].push(q.setY(q.y+.3));}});for(const side of dRails){const t=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(side),side.length*2,.014,5,false),railMat);group.add(t);}}
+ // The long rough trail to the foot of the steep wall: weathered planks on rope posts.
+ if(trail.length){const tf=frames(trail),tg=tf.length>1?tf[0].p.distanceTo(tf[1].p):.2;group.add(instanced(unit,new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),tf.map((x,i)=>({p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,s:new THREE.Vector3(.36,.06,tg*.9)}))),
+  instanced(post,new THREE.MeshStandardMaterial({color:'#7d6a52',roughness:1}),tf.filter((_,i)=>i%6===0).flatMap(x=>[-1,1].map(k=>({p:x.p.clone().addScaledVector(x.side,k*.2).setY(x.p.y+.08),s:new THREE.Vector3(.014,.22,.014)})))));}
  if(climb.length){const holds=[],rope=[];climb.forEach((p,i)=>{rope.push(new THREE.Vector3(p.x,p.y+.3,p.z));if(i%2===0)for(const k of [-.13,.13])holds.push({p:new THREE.Vector3(p.x+k*(i%4?1:-1)*.6,p.y+.05,p.z+k*.6),s:new THREE.Vector3(.07,.05,.07)});});
   group.add(instanced(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({color:'#e2793f',roughness:.7}),holds));const r=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rope),24,.012,5,false),new THREE.MeshStandardMaterial({color:'#d8b679',roughness:.8}));group.add(r);}
  // Light motes drifting along the golden bridge once it is lit.
@@ -54,7 +57,7 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],cli
   update(dt,elapsed){const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
    steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.m.emissiveIntensity=s.lit*s.glow;sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=.2+lit*1.4;
    const show=lit>.3&&!reduced?.matches;moteMat.opacity=Math.min(.9,lit);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
-  points(){return [...stairs,...descent];},
+  points(){return [...stairs,...descent,...trail];},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}
  };
 }

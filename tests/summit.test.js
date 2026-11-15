@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../dist/vendor/three.module.min.js';
 import {topics} from '../dist/content.js';
 import {SUMMIT,UNIVERSITY,SPAWN_FROM,RESTART,SUMMIT_AT,UNIVERSITY_AT,STOPS,DEAD_ENDS,WALKWAYS,RING,TOP,nodes,bridgePath,buildGraph,walkRoute} from '../dist/summit.js';
-import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,isLink} from '../dist/journey.js';
+import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,isLink,DOCUMENTS,documentURLs} from '../dist/journey.js';
 import {createArchitecture} from '../dist/architecture.js';
 const centers=nodes(topics),graph=buildGraph(centers);
 const unit=new THREE.BoxGeometry(1,1,1),mesh=(g,geo,c,x,y,z,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial());m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m);return m;};
@@ -11,7 +11,7 @@ const kit=createArchitecture({mesh,box:(g,x,y,z,w,h,d,c)=>mesh(g,unit,c,x,y+h/2,
 
 test('七站依序：起點、指引牌、橋、大學、行事曆、報名、聯繫',()=>{assert.deepEqual(STATIONS.map(s=>s.id),['start','fork','bridge','university','calendar','signup','contact']);assert.deepEqual(STATIONS[0].themes.map(t=>t.q),['為什麼高中一定要學國寫？','為什麼要選擇我？為什麼要選擇這堂課？']);assert.ok(STATIONS[0].themes.every(t=>t.body===''));for(let i=0;i<STATIONS.length-1;i++)assert.equal(STATIONS[i].next,STATIONS[i+1].id);
  assert.deepEqual(STATIONS[1].paths.map(p=>p.id),['cliff','wall']);assert.ok(!('lava' in STOPS),'岩漿洞已移除');assert.equal(STATIONS[2].lead,'我能引導你走向正確的路。');});
-test('老師的資料未提供時一律留空，不預先編造',()=>{assert.equal(FEEDBACK.length,0);assert.equal(CLASSES.length,0);assert.equal(CONTACTS.length,0);assert.ok(Object.values(LINKS).every(v=>v===''));assert.ok(!isLink('javascript:alert(1)')&&!isLink('http://x')&&isLink('https://forms.gle/x'));});
+test('未提供的回饋、開班狀態及報名連結仍留白',()=>{assert.equal(FEEDBACK.length,0);assert.equal(CLASSES.length,0);assert.ok(Object.values(LINKS).every(v=>v===''));assert.ok(!isLink('javascript:alert(1)')&&!isLink('http://x')&&isLink('https://forms.gle/x'));});
 test('起點在島群正前方，獎盃在正後方高處，其他島不互相重疊',()=>{const ground=topics.filter(t=>t.id!==SUMMIT).map(t=>centers.get(t.id)),zs=ground.map(c=>c.z);
  assert.ok(STOPS.start.z>Math.max(...zs)+2,'起點在前');assert.ok(SUMMIT_AT.z<Math.min(...zs)-2,'獎盃在後');assert.ok(SUMMIT_AT.y>=1.8&&SUMMIT_AT.y<=2.4);assert.ok(!('wall' in STOPS),'陡峭山壁直接爬上獎盃島，沒有另一座山壁島');
  const ids=[...centers.keys()],rad=id=>centers.get(id).ledge?.7:1.34;for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const a=centers.get(ids[i]),b=centers.get(ids[j]);if(Math.abs((a.y||0)-(b.y||0))>1)continue;assert.ok(Math.hypot(a.x-b.x,a.z-b.z)>rad(ids[i])+rad(ids[j])-.01,`${ids[i]} 和 ${ids[j]} 重疊`);}});
@@ -27,3 +27,9 @@ test('照著指引走上橋最順；陡峭山壁只能往上爬、直接爬到�
 test('旅程建築與大學都留在島面內，環島步道在建築外圍',()=>{for(const kind of ['start','lava','cliff','wall','calendar','signup','contact','university']){const model=kit.build(new THREE.Group(),{kind});model.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(model);
  assert.ok(b.max.y<2.2,`${kind} 太高`);assert.ok(Math.max(...[[b.min.x,b.min.z],[b.max.x,b.max.z],[b.min.x,b.max.z],[b.max.x,b.min.z]].map(v=>Math.hypot(...v)))<RING+.15,`${kind} 擋到步道`);}});
 test('學生人數就是老師目前的教學人數 47',async()=>{const {STUDENTS}=await import('../dist/walkers.js');assert.equal(STUDENTS,47);});
+
+test('老師提供的兩份PDF對應起點與行事曆，預覽與原檔使用相同Drive ID',()=>{
+ assert.equal(STATIONS[0].themes[0].document,'writing');assert.equal(STATIONS.find(s=>s.id==='calendar').document,'calendar');
+ for(const key of ['writing','calendar']){const urls=documentURLs(key);assert.equal(urls.preview,`https://drive.google.com/file/d/${DOCUMENTS[key].driveId}/preview`);assert.equal(urls.view,`https://drive.google.com/file/d/${DOCUMENTS[key].driveId}/view`);}assert.equal(documentURLs('unknown'),null);assert.equal(documentURLs('constructor'),null);
+ assert.deepEqual(CONTACTS.map(c=>c.label),['LINE','Facebook','Threads','Instagram','Google Classroom']);assert.ok(CONTACTS.every(c=>isLink(c.href)));assert.match(CONTACTS.at(-1).note,/首頁/);
+});

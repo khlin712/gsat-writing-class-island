@@ -18,14 +18,14 @@ export function mapGestures({host,canvas,camera,controls,onStart,ground=.3}){
  function tilt(dy){const offset=camera.position.clone().sub(controls.target),s=new THREE.Spherical().setFromVector3(offset);s.phi=THREE.MathUtils.clamp(s.phi-dy*Math.PI/(canvas.clientHeight||1),controls.minPolarAngle,controls.maxPolarAngle);camera.position.copy(controls.target).add(offset.setFromSpherical(s));sync();}
  function startPan(p){anchor=groundAt(p.x,p.y);samples=[];travel={x:0,z:0};}
  function begin(){fling=null;wheel=null;onStart();}
- const panning=e=>e.pointerType==='touch'||(e.button===0&&!rotateMode);
- host.addEventListener('pointerdown',e=>{if(!panning(e)||(e.pointerType!=='touch'&&rotateMode))return;begin();if(!pointers.size)moved=false;else moved=true;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
-  if(pointers.size===1){if(!rotateMode||e.pointerType!=='touch')startPan(pointers.get(e.pointerId));}else{anchor=null;pair={mode:null,dy:[0,0],dx:[0,0],scale:1,angle:0};}},true);
+ const panning=e=>e.pointerType==='touch'||e.button===0;
+ host.addEventListener('pointerdown',e=>{if(!panning(e))return;begin();if(!pointers.size)moved=false;else moved=true;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
+  if(pointers.size===1){if(!rotateMode)startPan(pointers.get(e.pointerId));}else{anchor=null;pair={mode:null,dy:[0,0],dx:[0,0],scale:1,angle:0};}},true);
  host.addEventListener('pointermove',e=>{const p=pointers.get(e.pointerId);if(!p)return;const px=p.x,py=p.y;p.x=e.clientX;p.y=e.clientY;
   if(!moved&&Math.hypot(p.x-p.sx,p.y-p.sy)>5){moved=true;try{host.setPointerCapture(e.pointerId);}catch{}}
   const ids=[...pointers.keys()];
   if(ids.length===1){
-   if(rotateMode&&p.type==='touch'){const h=canvas.clientHeight||1;controls._rotateLeft(2*Math.PI*(p.x-px)/h);controls._rotateUp(2*Math.PI*(p.y-py)/h);return;}
+   if(rotateMode){const h=canvas.clientHeight||1;controls._rotateLeft(2*Math.PI*(p.x-px)/h);controls._rotateUp(2*Math.PI*(p.y-py)/h);return;}
    if(!anchor)startPan(p);const [dx,dz]=hold(anchor,p.x,p.y);travel.x+=dx;travel.z+=dz;samples.push({t:e.timeStamp,...travel});if(samples.length>20)samples.shift();return;}
   const i=ids.indexOf(e.pointerId);if(i>1)return;const other=pointers.get(ids[1-i]);
   const a0=i===0?{x:px,y:py}:other,b0=i===0?other:{x:px,y:py},a1=i===0?p:other,b1=i===0?other:p,step=pinchStep(a0,b0,a1,b1);

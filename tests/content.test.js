@@ -35,3 +35,8 @@ const v=releaseVelocity(samples,210);assert.ok(Math.abs(v.x-.2)<1e-9&&Math.abs(v
 assert.deepEqual(releaseVelocity(samples,300),{x:0,z:0},'停住超過 60ms 再放手不滑行');
 assert.deepEqual(releaseVelocity([{t:0,x:0,z:0}],5),{x:0,z:0});assert.deepEqual(releaseVelocity([],5),{x:0,z:0});
 assert.ok(Math.abs(decay(1,FLING_TAU)-Math.exp(-1))<1e-12);assert.ok(decay(1,16)<1&&decay(1,16)>.9);});
+test('了解重點拆成標籤與問題，圖釘站在島的後半邊、不擋前緣島名',async()=>{const {stepParts,CIRCLED}=await import('../dist/content.js');const {pinSpots}=await import('../dist/layout.js');
+for(const t of topics){assert.ok(t.steps.length<=CIRCLED.length);for(const s of t.steps){const p=stepParts(s);assert.ok(p.label.length>0&&p.label.length<=8,s);assert.ok(p.question.length>0,s);}}
+assert.deepEqual(stepParts('沒有冒號'),{label:'沒有冒號',question:''});
+for(const n of [1,2,3,5]){const spots=pinSpots(n);assert.equal(spots.length,n);for(const p of spots){assert.ok(Math.hypot(p.x,p.z)<1.2,'在島面內');assert.ok(p.z<.1,'不在前緣島名附近');assert.ok(p.lift>1);}
+ if(n<=4)for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)assert.ok(Math.hypot(spots[i].x-spots[j].x,spots[i].z-spots[j].z)>.4,'圖釘彼此分開');}});

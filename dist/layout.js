@@ -24,3 +24,10 @@ export function fitDistance(radius,fov,aspect,widthFraction=1,heightFraction=1){
  return Math.max(5,Math.min(32,Math.max(.1,radius)*1.2/Math.sin(Math.atan(Math.min(vertical,horizontal)))));
 }
 export function sheetGesture(full,delta){return delta < -36?'full':delta > 36?(full?'peek':'close'):null;}
+// Where an island's key-point pins stand: spread over the back half of the island top,
+// away from the island name that hangs on the front edge, alternating heights so stems do not line up.
+export function pinSpots(count){
+ const spots=[];
+ for(let k=0;k<count;k++){const a=Math.PI*(1.1+.8*(count>1?k/(count-1):.5));spots.push({x:Math.cos(a)*.62,z:Math.sin(a)*.55,lift:1.15+(k%2)*.32});}
+ return spots;
+}

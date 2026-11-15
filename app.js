@@ -1,18 +1,20 @@
 import {createWorld} from './world.js';
 import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY,stepParts,CIRCLED} from './content.js';
+import {buildRelations,findRelations} from './relations.js';
 import {mapInsets} from './motion.js';
 import {bindSheet} from './sheets.js';
 const $=s=>document.querySelector(s), list=$('#topic-list'), modal=$('#modal');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const phone=matchMedia('(max-width:720px)'), isPhone=()=>phone.matches;
-let selected=null,category='全部',world,showConnections=true,previousFocus=null,entry=null,selectedConcern=null,detailOpener=null,view='concerns',indexBeforeDetail=null,selectedStep=null,hotStep=-1;
+let selected=null,category='全部',world,showConnections=true,previousFocus=null,entry=null,selectedConcern=null,detailOpener=null,view='concerns',indexBeforeDetail=null,selectedStep=null,hotStep=-1,activeRelation=null;
 let stored={};try{stored=readStored(localStorage.getItem('writing-island-course'));}catch{}
-let consultQuestions=Array.isArray(stored.questions)?stored.questions.filter(q=>typeof q==='string'&&q.trim()).slice(0,30):[];
+let consultQuestions=Array.isArray(stored.questions)?stored.questions.filter(q=>typeof q==='string'&&q.trim()):[];
 let saved=new Set(Array.isArray(stored.saved)?stored.saved.filter(id=>topics.some(t=>t.id===id)):[]);
 let answers=stored.answers&&typeof stored.answers==='object'&&!Array.isArray(stored.answers)?stored.answers:{};
 let role=['學生','家長','其他'].includes(stored.role)?stored.role:'學生',note=typeof stored.note==='string'?stored.note:'';
 function persist(){try{localStorage.setItem('writing-island-course',JSON.stringify({saved:[...saved],answers,role,note,questions:consultQuestions}));}catch{toast('瀏覽器無法儲存；本次操作仍可繼續，請先複製提綱。');}}
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),3500);}
+const relations=buildRelations(topics);
 const topicOf=id=>topics.find(t=>t.id===id);
 const stepLabel=s=>stepParts(s).label;
 const stepItems=t=>t.steps.map((s,k)=>({mark:CIRCLED[k]||k+1,...stepParts(s)}));
@@ -37,23 +39,41 @@ let refitTimer;
 function refitView(){clearTimeout(refitTimer);if(world?.flying()){refitTimer=setTimeout(refitView,100);return;}world?.refit(insets());}
 
 // ---- Index: common questions and topic islands, like a book index beside the map. ----
-function showView(next,{focusTab=false}={}){view=next;for(const [name,tab]of [['concerns',$('#tab-concerns')],['topics',$('#tab-topics')]]){tab.classList.toggle('active',name===next);tab.setAttribute('aria-pressed',name===next);}$('#concerns-view').hidden=next!=='concerns';$('#topics-view').hidden=next!=='topics';if(focusTab)(next==='topics'?$('#tab-topics'):$('#tab-concerns')).focus();}
-$('#tab-concerns').onclick=()=>showView('concerns');$('#tab-topics').onclick=()=>showView('topics');
+function showView(next,{focusTab=false}={}){view=next;for(const [name,tab]of [['concerns',$('#tab-concerns')],['topics',$('#tab-topics')],['relations',$('#tab-relations')]]){tab.classList.toggle('active',name===next);tab.setAttribute('aria-pressed',name===next);}$('#concerns-view').hidden=next!=='concerns';$('#topics-view').hidden=next!=='topics';$('#relations-view').hidden=next!=='relations';if(next==='relations'){renderRelations();world?.filter(topics.map(t=>t.id));}else renderList();if(focusTab)$('#tab-'+next).focus();}
+$('#tab-concerns').onclick=()=>showView('concerns');$('#tab-topics').onclick=()=>showView('topics');$('#tab-relations').onclick=()=>showView('relations');
 function renderList(){const visibleTopics=findTopics($('#search').value,category);
  list.innerHTML=visibleTopics.length?visibleTopics.map(t=>{const active=t.id===selected;return `<div class="topic-item${active?' active':''}"><button class="topic-row${active?' active':''}" data-id="${t.id}" aria-pressed="${active}"><span class="num">${t.n}</span><span class="topic-name"><strong>${t.title}</strong><small>${t.tag}${saved.has(t.id)?' · 已收藏':''}</small></span><span class="count" aria-label="${t.steps.length} 個了解重點">${t.steps.length} ↗</span></button>${active?`<ol class="topic-steps" aria-label="${t.title}的了解重點">${stepItems(t).map((it,k)=>`<li><button class="step-link${k===selectedStep?' current':''}" data-topic="${t.id}" data-step="${k}" aria-current="${k===selectedStep}"><span class="pin-no">${it.mark}</span>${it.label}</button></li>`).join('')}</ol>`:''}</div>`;}).join(''):'<p class="empty">沒有找到符合的主題。試試「收費」、「成果」或清除搜尋。</p>';
  $('#result-count').textContent=`${visibleTopics.length} 座主題島`;$('#topic-count').textContent=visibleTopics.length;
- world?.filter(visibleTopics.map(t=>t.id));bindStepRows(list,selected);}
+ if(view!=='relations'&&!activeRelation)world?.filter(visibleTopics.map(t=>t.id));bindStepRows(list,selected);}
 list.addEventListener('click',e=>{const row=e.target.closest('.topic-row[data-id]');if(row)selectTopic(row.dataset.id);});
 function renderConcerns(){const items=concernsFor(entry);$('#concerns-list').innerHTML=items.map(c=>`<button data-concern="${c.id}" aria-pressed="${c.id===selectedConcern?.id&&!$('#detail').hidden}"><span class="q-mark" aria-hidden="true">Q</span><span>${c.question}</span><span class="arrow" aria-hidden="true">↗</span></button>`).join('');$('#concern-count').textContent=items.length;$('#entry-note').textContent=entry?entryRoutes[entry].intro:'選一個問題，看看相關做法與待確認資訊。';world?.emphasize(entry?entryRoutes[entry].topics:[]);}
 $('#concerns-list').onclick=e=>{const b=e.target.closest('[data-concern]');if(!b)return;const c=concerns.find(c=>c.id===b.dataset.concern);selectTopic(c.topic,{concern:c.id});};
 for(const button of document.querySelectorAll('[data-entry]'))button.onclick=()=>{entry=button.dataset.entry;if(entryRoutes[entry].role){role=entryRoutes[entry].role;persist();}for(const b of document.querySelectorAll('[data-entry]'))b.setAttribute('aria-pressed',b===button);showView('concerns');renderConcerns();if(entry==='teacher')selectTopic('teacher');else if(!$('#detail').hidden)closeDetail({restoreFocus:false});};
-$('#search').oninput=()=>{if($('#search').value.trim())showView('topics');renderList();};
+$('#search').oninput=()=>{if(view==='relations')renderRelations();else{if($('#search').value.trim())showView('topics');renderList();}};
 for(const b of document.querySelectorAll('[data-category]'))b.onclick=()=>{category=b.dataset.category;for(const el of document.querySelectorAll('[data-category]')){el.classList.toggle('active',el===b);el.setAttribute('aria-pressed',el===b);}renderList();};
+
+function renderRelations(){const items=findRelations(relations,topics,$('#search').value);$('#relation-count').textContent=items.length;$('#relation-list').innerHTML=items.length?items.map(r=>`<button class="relation-row" aria-pressed="${activeRelation===r.id}" data-relation="${r.id}"><span class="relation-route">${topicOf(r.a).n} ↔ ${topicOf(r.b).n}</span><strong>${topicOf(r.a).title} · ${topicOf(r.b).title}</strong><span>${r.question}</span></button>`).join(''):'<p class="empty">沒有找到關聯，試試主題名稱或清除搜尋。</p>';for(const button of $('#relation-list').querySelectorAll('[data-relation]')){button.onclick=()=>openRelation(button.dataset.relation);button.onpointerenter=()=>world?.hoverRelation(button.dataset.relation);button.onpointerleave=()=>world?.hoverRelation(null);button.onfocus=()=>world?.hoverRelation(button.dataset.relation);button.onblur=()=>world?.hoverRelation(null);}}
+function openRelation(id){const r=relations.find(r=>r.id===id);if(!r)return;
+ const opener=document.activeElement;if(!$('#detail').hidden)closeDetail({restoreFocus:false});
+ activeRelation=id;selected=null;selectedStep=null;world?.pins(null);setBird(false);
+ $('#detail-crumb').textContent=`主題關聯 · ${topicOf(r.a).n} ↔ ${topicOf(r.b).n}`;
+ $('#detail-content').innerHTML=`<div class="detail-head"><span class="detail-badge" aria-hidden="true">↔</span><div><p class="eyebrow">一起了解這兩個主題</p><h2 id="detail-title">${r.question}</h2></div></div><p class="relation-notice">這是依現有主題整理的探索問題，不是已確認的教學做法或成效。</p><div class="relation-stops">${[r.a,r.b].map(tid=>{const t=topicOf(tid);return `<button data-relation-topic="${tid}"><b>${t.n}</b><span><strong>${t.title}</strong><small>${t.intro}</small></span><i aria-hidden="true">↗</i></button>`;}).join('')}</div><section class="card-section"><h3>帶著問題繼續探索</h3><p class="pending-note">老師的具體說明與案例尚待補充。可以分別查看兩個主題，再把這個問題帶進討論。</p></section><div class="detail-actions"><button id="relation-question" class="ask-topic">${consultQuestions.includes(r.question)?'已加入提問 ✓':'把這個關聯問題加入提問'}</button><button id="relation-return" class="save-topic">返回關聯清單</button><small>只會整理提綱，不會寄送訊息。</small></div>`;
+ $('#detail').hidden=false;document.body.classList.add('detail-open');if(isPhone()){indexBeforeDetail=indexSheet.state();indexSheet.set('peek');}
+ showView('relations');detailOpener=opener?.isConnected?opener:$('#tab-relations');world?.filter(topics.map(t=>t.id));world?.relation(id);
+ if(!showConnections){showConnections=true;$('#connection').setAttribute('aria-pressed','true');world?.connections(true);}
+ world?.focusRelation(id,insets());$('#map-message').textContent=`正在探索 ${topicOf(r.a).title}與${topicOf(r.b).title}的關聯`;
+ for(const button of $('#detail').querySelectorAll('[data-relation-topic]'))button.onclick=()=>selectTopic(button.dataset.relationTopic);
+ $('#relation-question').onclick=()=>{if(!consultQuestions.includes(r.question))consultQuestions.push(r.question);saved.add(r.a);saved.add(r.b);persist();updateCount();toast('已加入討論清單，尚未寄送');$('#relation-question').textContent='已加入提問 ✓';};
+ $('#relation-return').onclick=()=>{closeDetail({restoreFocus:false});showView('relations');if(isPhone())indexSheet.set('half');const row=[...$('#relation-list').querySelectorAll('[data-relation]')].find(el=>el.dataset.relation===id);(row||$('#tab-relations')).focus();};
+ $('#detail').scrollTop=0;$('#close-detail').focus();
+}
 
 // ---- Detail card: floats on the left of the map on desktop, a bottom sheet on phones. ----
 const audienceLabel={parents:'對象：家長',students:'對象：學生',teacher:'認識老師'};
 function selectTopic(id,{focus=true,concern=null}={}){
- const t=topicOf(id);if(!t)return;const moveCamera=id!==selected||$('#detail').hidden;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
+ const t=topicOf(id);if(!t)return;activeRelation=null;
+ if(!findTopics($('#search').value,category).some(t=>t.id===id)){$('#search').value='';category='全部';for(const b of document.querySelectorAll('[data-category]')){const active=b.dataset.category===category;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}}
+ const moveCamera=id!==selected||$('#detail').hidden;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
  const related=[...new Set([...(selectedConcern?.related||[]),...t.links])];
  $('#detail-crumb').textContent=`主題 ${t.n} · ${t.title}${selectedConcern?' · 常見問題':''}`;
  $('#detail-content').innerHTML=`<div class="detail-head"><span class="detail-badge" style="--badge:${t.color}" aria-hidden="true">${t.n}</span><div><p class="eyebrow">${t.title} · ${t.tag}</p><h2 id="detail-title">${selectedConcern?selectedConcern.question:t.title}</h2></div></div>
@@ -62,7 +82,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
  <section class="card-section"><h3>重點 · 點一項看細節</h3><ol class="step-rows">${stepItems(t).map((it,k)=>`<li><button class="step-row" data-step="${k}"><b>${it.mark}</b><span><strong>${it.label}</strong><small>${it.question}</small></span><i aria-hidden="true">›</i></button></li>`).join('')}</ol></section>
  <details class="card-section evidence-section"><summary>目前資訊與證據 <span>待補充</span></summary><p>${t.body}</p><dl class="topic-facts">${t.facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></details>
  <details class="card-section question-notes" ${answers[id]?'open':''}><summary>補充你的情況 <span>選填</span></summary><div class="exercise"><label for="exercise-answer">${t.task}</label><textarea id="exercise-answer" maxlength="2000" placeholder="寫下你的顧慮、期待，或還想了解的事…">${escape(typeof answers[id]==='string'?answers[id]:'')}</textarea><small class="helper">只儲存在這個瀏覽器，不會傳送。</small><p class="question-example">${t.example}</p></div></details>
- <section class="card-section"><h3>和這些主題一起看</h3><div class="related">${related.map(rid=>{const r=topicOf(rid);return `<button data-related="${rid}"><b>${r.n}</b><span>→ ${r.title}</span><i aria-hidden="true">↗</i></button>`;}).join('')}</div></section>
+ <section class="card-section"><h3>和這些主題一起看</h3><button class="text-button" id="explore-relations">為什麼這些主題有關聯？ ↗</button><div class="related">${related.map(rid=>{const r=topicOf(rid);return `<button data-related="${rid}"><b>${r.n}</b><span>→ ${r.title}</span><i aria-hidden="true">↗</i></button>`;}).join('')}</div></section>
  <div class="detail-actions"><button class="ask-topic" id="ask-topic">就這件事問老師 ↗</button><button class="save-topic" id="save-topic" aria-pressed="${saved.has(id)}">${saved.has(id)?'✓ 已收藏這個主題':'＋ 先收藏，晚點再聊'}</button><small>先整理諮詢提綱，不會直接送出訊息。</small></div>`;
  const wasHidden=$('#detail').hidden;$('#detail').hidden=false;document.body.classList.add('detail-open');
  if(wasHidden&&isPhone()){indexBeforeDetail=indexSheet.state();indexSheet.set('peek');}
@@ -71,6 +91,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
  $('#exercise-answer').oninput=e=>{answers[id]=e.target.value;persist();};
  $('#save-topic').onclick=()=>{saved.has(id)?saved.delete(id):saved.add(id);persist();updateCount();selectTopic(id,{focus:false,concern:selectedConcern?.id});$('#save-topic').focus();toast(saved.has(id)?'已加入討論清單':'已從討論清單移除');};
  $('#ask-topic').onclick=()=>{saved.add(id);const question=selectedConcern?.question||t.question;if(!consultQuestions.includes(question))consultQuestions.push(question);persist();updateCount();$('#save-topic').setAttribute('aria-pressed','true');$('#save-topic').textContent='✓ 已收藏這個主題';discussion();};
+ $('#explore-relations').onclick=()=>{closeDetail({restoreFocus:false});showView('relations');if(isPhone())indexSheet.set('full');$('#tab-relations').focus();};
  for(const b of document.querySelectorAll('[data-related]'))b.onclick=()=>selectTopic(b.dataset.related);
  selectedStep=null;hotStep=-1;bindStepRows($('#detail-content'),id);world?.pins(id,stepItems(t),{onPick:k=>selectStep(id,k),onHover:hoverStep});world?.pinState({});setBird(false);
  updateMap();renderList();renderConcerns();
@@ -78,7 +99,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
  if(!isPhone())document.querySelector('.topic-item.active')?.scrollIntoView({block:'nearest'});
  if(focus){$('#detail').scrollTop=0;$('#close-detail').focus();}
 }
-function updateMap(){world?.select(selected);world?.connections(showConnections);}
+function updateMap(){if(activeRelation)world?.relation(activeRelation);else world?.select(selected);world?.connections(showConnections);}
 // One key point of an island: what to ask, its status, and a way to carry it into the consultation outline.
 function selectStep(id,k){const t=topicOf(id);if(!t)return;const items=stepItems(t),it=items[k];if(!it)return;
  if(selected!==id||$('#detail').hidden)selectTopic(id,{focus:false});
@@ -95,10 +116,10 @@ function selectStep(id,k){const t=topicOf(id);if(!t)return;const items=stepItems
  $('#back-topic').onclick=()=>{selectTopic(id);world?.focus(id,insets());};
  hotStep=-1;world?.pinState({sel:k});renderList();$('#map-message').textContent=`正在看 ${t.title} · 重點 ${k+1}`;
  world?.focusStep(id,k,items.length,insets());$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
-function closeDetail({restoreFocus=true}={}){const id=selected;$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);
+function closeDetail({restoreFocus=true}={}){const id=selected,relationId=activeRelation;activeRelation=null;$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);
  if(isPhone()&&indexBeforeDetail)indexSheet.set(indexBeforeDetail);indexBeforeDetail=null;
- updateMap();renderList();renderConcerns();refitView();$('#map-message').textContent='點一座島，開始你的寫作旅程';
- if(!restoreFocus)return;const row=document.querySelector(`.topic-row[data-id="${id}"]`);const target=[detailOpener,row,$('#concerns-list button'),$('#tab-concerns')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
+ updateMap();renderList();renderConcerns();renderRelations();refitView();$('#map-message').textContent='點一座島，開始你的寫作旅程';
+ if(!restoreFocus)return;const row=document.querySelector(`.topic-row[data-id="${id}"]`);const relationRow=relationId?[...$('#relation-list').querySelectorAll('[data-relation]')].find(el=>el.dataset.relation===relationId):null;const target=[relationRow,detailOpener,row,$('#concerns-list button'),$('#tab-concerns')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
 $('#close-detail').onclick=()=>closeDetail();
 $('#detail').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeDetail();}});
 function updateCount(){$('#saved-count').textContent=saved.size;renderList();}
@@ -145,7 +166,7 @@ $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')
 function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.contains('sheet-peek'):!document.body.classList.contains('index-collapsed');$('#list-toggle').setAttribute('aria-expanded',open);$('#list-toggle').classList.toggle('active',open);}
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
-try{world=createWorld($('#map'),topics,id=>selectTopic(id));setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});
 const indexSheet=bindSheet($('#index-panel'),$('#index-handle'),$('#index-size'),{peekable:true,onChange:()=>{syncListToggle();requestAnimationFrame(refitView);}});
@@ -161,7 +182,7 @@ function intro(){const s=introSteps[introStep],last=introStep===introSteps.lengt
 modal.addEventListener('close',()=>{if($('#intro-next'))finishIntro();});
 $('#help').onclick=()=>{introStep=0;intro();};
 
-updateCount();renderConcerns();syncListToggle();requestAnimationFrame(refitView);
+updateCount();renderConcerns();renderRelations();syncListToggle();requestAnimationFrame(refitView);
 let seenIntro=false;try{seenIntro=localStorage.getItem(INTRO_KEY)==='1';}catch{}if(!seenIntro&&world)intro();
 for(const button of document.querySelectorAll('.map-tools button,.top-actions button'))button.title=button.getAttribute('aria-label');
 // Read-only camera state for manual QA of pan / rotate / zoom / fly (no effect on the page).

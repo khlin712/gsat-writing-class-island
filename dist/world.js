@@ -102,7 +102,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{}}={}){
  function refit(inset=lastInset){if(framing?.kind==='relation')focusRelation(framing.key,{...inset,instant:true});else if(framing?.kind==='focus')focus(framing.id,{...inset,instant:true});else if(framing?.kind==='step')focusStep(framing.id,framing.k,framing.count,{...inset,instant:true});else if(framing?.kind==='home')home({...inset,bird:framing.bird,instant:true});}
  function layoutLabels(){
   const bounds=host.getBoundingClientRect(),items=[],obstacles=[];
-  for(const el of document.querySelectorAll('.brand-card,.map-tools,.top-actions,#detail,#index-panel,.step-pin')){if(el.hidden||getComputedStyle(el).visibility==='hidden')continue;const r=el.getBoundingClientRect();if(r.width&&r.height)obstacles.push(r);}
+  for(const el of document.querySelectorAll('.brand-card,.map-tools,.top-actions,.map-caption,.legend,#detail,#index-panel,.step-pin')){if(el.hidden||getComputedStyle(el).visibility==='hidden')continue;const r=el.getBoundingClientRect();if(r.width&&r.height)obstacles.push(r);}
   const visible=[...labelButtons].filter(([id])=>groups.get(id).visible);
   for(const [,el]of visible)el.classList.remove('compact');
   const sizes=new Map(visible.map(([id,el])=>[id,{width:el.offsetWidth,height:el.offsetHeight}]));

@@ -7,7 +7,7 @@ export const STATIONS=[
   lead:'起點有兩個主題：第一，為什麼高中一定要學國寫？第二，為什麼要選擇我、選擇這堂課？',
   // The two themes of the start, each with the teacher's own answer. Empty answer → 待老師提供.
   themes:[
-   {q:'為什麼高中一定要學國寫？',label:'主題一 · 作文',body:''},
+   {q:'為什麼高中一定要學國寫？',label:'主題一 · 作文',body:'',document:'writing'},
    {q:'為什麼要選擇我？為什麼要選擇這堂課？',label:'主題二 · 選擇',body:''}],
   next:'fork',nextLabel:'走到入口指引牌'},
  {id:'fork',n:'②',title:'入口指引牌：選哪一條路？',short:'指引牌',
@@ -28,7 +28,7 @@ export const STATIONS=[
   lead:'走過獎盃，學生走進大學。點開來看看學生寫下的回饋。',
   next:'calendar',nextLabel:'走樓梯下到課程行事曆'},
  {id:'calendar',n:'⑤',title:'課程教學行事曆',short:'行事曆',
-  lead:'不同年級各自安排。有開班的年級可以接著報名；年紀還小的，可以先預先登記。',
+  lead:'先看116學測班的教學行事曆，了解課程安排；開班、插班與報名狀態，請再向老師確認。',document:'calendar',
   next:'signup',nextLabel:'前往試聽＆報名'},
  {id:'signup',n:'⑥',title:'試聽＆報名',short:'試聽＆報名',
   lead:'在露天講堂認識課堂；準備好了，就從這裡了解試聽與報名。',
@@ -59,6 +59,19 @@ export const LINKS={
 };
 
 // ⑦ Contact methods to show. e.g. {label:'LINE 官方帳號',value:'@xxxx',href:'https://lin.ee/...'}
-export const CONTACTS=[];
+export const CONTACTS=[
+ {label:'LINE',value:'透過 LINE 聯繫我',href:'https://line.me/ti/p/2rcgyFdA-b'},
+ {label:'Facebook',value:'0kh127',href:'https://www.facebook.com/0kh127'},
+ {label:'Threads',value:'@0kh127',href:'https://www.threads.com/@0kh127'},
+ {label:'Instagram',value:'@0kh127',href:'https://www.instagram.com/0kh127'},
+ {label:'Google Classroom',value:'第一手課程資訊與寫作學習文章',href:'https://classroom.google.com/',note:'需登入 Google；目前連到 Classroom 首頁，加入班級請向老師索取邀請。'}
+];
+
+// Public source files stay on Drive; replacing the same file version keeps the embedded URL current.
+export const DOCUMENTS={
+ writing:{title:'為何高中一定要學國寫？',driveId:'1s5ue0r9_nz0S_q2fAsaL6fL42LLv-7GV'},
+ calendar:{title:'116學測班｜教學行事曆',driveId:'1Dm7ROkMDJCHvWmUANFYB5VdzL1mi8RCD'}
+};
+export function documentURLs(key){if(!Object.hasOwn(DOCUMENTS,key))return null;const d=DOCUMENTS[key];if(typeof d.driveId!=='string'||!/^[-\w]+$/.test(d.driveId))return null;const base='https://drive.google.com/file/d/'+d.driveId;return {view:base+'/view',preview:base+'/preview'};}
 
 export const isLink=s=>typeof s==='string'&&/^https:\/\//.test(s);

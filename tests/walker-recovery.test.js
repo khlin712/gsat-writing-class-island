@@ -158,8 +158,8 @@ test('走到懸崖頂的人先走到崖邊外，再往下掉，不從石台中�
  const old=globalThis.document;globalThis.document={createElement:element};
  try{const positions=nodes(topics),graph=buildGraph(positions),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph,links:[],CSS2DObject:Label,reduced:{matches:false},hazards:{gap:()=>false}});
   const c=positions.get('pass1'),top=(c.y||0)+TOP,p=w.find('student',3);p.route=null;p.island='pass1';p.target=null;p.up=true;p.fallAt='pass1';p.fig.position.set(c.x+.1,top,c.z+.1);
-  w.startFallForTest(p,'cliff');let sawBelow=false;
-  for(let i=0;i<40;i++){w.update(.05,false);const q=p.fig.position,r=Math.hypot(q.x-c.x,q.z-c.z);if(q.y<top-.05){sawBelow=true;assert.ok(r>.72,`還在石台範圍內就掉到台面下（r=${r.toFixed(2)}）`);}
+  w.startFallForTest(p,'cliff');let sawBelow=false,prev=p.fig.position.clone();
+  for(let i=0;i<120;i++){w.update(.05,false);const q=p.fig.position,r=Math.hypot(q.x-c.x,q.z-c.z);if(q.y>=top-1e-9){const v=Math.hypot(q.x-prev.x,q.z-prev.z)/.05;assert.ok(v<=.41,`走向崖邊不能比平常走路快（${v.toFixed(2)}）`);}prev=q.clone();if(q.y<top-.05){sawBelow=true;assert.ok(r>.72,`還在石台範圍內就掉到台面下（r=${r.toFixed(2)}）`);}
    if(i<16)assert.ok(p.fig.scale.x>p.size*.9,'掉落的第一秒內人還沒縮小');}
   assert.ok(sawBelow,'有往下掉');
  }finally{globalThis.document=old;}
@@ -174,4 +174,14 @@ test('有人走到第一座懸崖前停下，回頭到指引牌改走橋（不�
   const seen=[];let stopped=0;for(let i=0;i<4000&&!(st.island===UNIVERSITY);i++){w.update(.05,false);if(st.fall!==undefined)assert.fail('回頭的人不應掉落');if(seen.at(-1)!==st.island)seen.push(st.island);if(st.island==='pass1'&&!st.route)stopped++;}
   assert.ok(stopped>20,'在第一座懸崖上停下想一想');assert.deepEqual(seen.filter(x=>['fork','pass1',UNIVERSITY].includes(x)),['fork','pass1','fork','stories',UNIVERSITY].filter(x=>x!=='stories'),`經過：${seen.join('→')}`);
  }finally{Math.random=random;globalThis.document=old;}
+});
+
+test('走偏時橫向速度逐漸加快、逐漸放慢，不會突然被往外推',async()=>{
+ const {DRIFT_ACCEL}=await import('../dist/walkers.js');const old=globalThis.document;globalThis.document={createElement:element};
+ try{for(const [kind,o] of [['slip',{recover:true,side:1,turnAt:.2}],['rain',{recover:false,side:-1}],['slip',{recover:false,side:-1}]]){
+  const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:false},rain:()=>kind==='rain'?1:0}),st=w.find('student',1);
+  st.rest=0;st.s=st.route.total*.2;w.update(.001,false);w.startDriftForTest(st,kind,o);const random=Math.random;Math.random=()=>.99;let v=0,maxV=0;
+  try{for(let i=0;i<200&&st.drift;i++){w.update(.05,false);if(!st.drift)break;assert.ok(Math.abs(st.drift.v-v)<=DRIFT_ACCEL*.05+1e-9,`${kind} 橫向速度一幀內變化太大`);v=st.drift.v;maxV=Math.max(maxV,Math.abs(v));}}finally{Math.random=random;}
+  assert.ok(maxV<=.3,`${kind} 橫向速度不超過一般走路速度（${maxV.toFixed(2)}）`);}
+ }finally{globalThis.document=old;}
 });

@@ -3,20 +3,20 @@
 // Links open outside pages (forms, messaging apps); this site never sends a message or collects personal data itself.
 
 export const STATIONS=[
- {id:'start',n:'①',title:'從這裡出發：先想清楚兩件事',short:'起點',
-  lead:'起點有兩個主題：第一，為什麼高中一定要學國寫？第二，為什麼要選擇我、選擇這堂課？',
+ {id:'start',n:'①',title:'為何高中一定要學國寫？',short:'為何高中一定要學國寫？',
+  lead:'旅程從這裡出發，先想清楚兩件事：第一，為什麼高中一定要學國寫？第二，為什麼要選擇我、選擇這堂課？',
   // The two themes of the start, each with the teacher's own answer. Empty answer → 待老師提供.
   themes:[
    {q:'為什麼高中一定要學國寫？',label:'主題一 · 作文',body:'',document:'writing'},
    {q:'為什麼要選擇我？為什麼要選擇這堂課？',label:'主題二 · 選擇',body:''}],
   next:'fork',nextLabel:'走到入口指引牌'},
  {id:'fork',n:'②',title:'入口指引牌：選哪一條路？',short:'指引牌',
-  lead:'通往理想成果的路不只一條。這座橋呈現的是我提供的一種學習方法；另一側則呈現練習時可能遇到的誤區。',
+  lead:'寫出高分作文的路不只一條。這座橋呈現的是我經過驗證「有效」且「高效」的學習路徑；另一側呈現大多學生學習作文遇到的誤區。',
   // Shown right under the lead: how to read the two sides.
   view:'站在入口往前看：左邊的橋是有方向的練習，右邊是容易繞遠的練習。導覽員可以帶你去看看右邊的誤區。',
   // The bridge (one way the teacher offers — not the only one), then short metaphor captions for the pitfalls on the other side
   // (editable). They describe ways of practising, not any teacher or school.
-  right:{name:'走上橋',caption:'我提供的一種學習方法：照著指引一步一步走，方向清楚；每個人的速度仍不一樣。',ends:'其中一條路'},
+  right:{name:'走上橋',caption:'我經過驗證有效且高效的學習路徑：照著指引一步一步走，方向清楚；每個人的速度仍不一樣。',ends:'其中一條路'},
   paths:[
    {id:'cliff',name:'懸崖',caption:'只靠背範文、套模板，或埋頭寫卻沒人告訴你哪裡要改，遇到新題目就踩空。',ends:'一不小心就掉下去'},
    {id:'wall',name:'陡峭山壁',caption:'方法不對，但真的很努力：攀著繩子一點一點往上爬，還是有機會爬到獎盃；只是很慢，爬一爬還可能掉下來。',ends:'爬得到，但很辛苦'}],

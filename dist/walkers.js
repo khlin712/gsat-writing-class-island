@@ -169,7 +169,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   // A cliff top: walk out past the rim (away from the islands) and only then drop — never straight down through the rock.
   // Stepped off the edge while walking: no shove — the body carries on forward and down from where the foot missed.
   if(vel){w.fallMove=null;w.fallVel={x:vel.x,z:vel.z};w.vy=.1;}
-  if(kind==='cliff'){const c=positions.get(w.island),dx=c?c.x+1.17:1,dz=c?c.z:0,n=Math.hypot(dx,dz)||1,rim=.88;const edge=c?new THREE.Vector3(c.x+dx/n*rim,p.y,c.z+dz/n*rim):p.clone();w.heading=Math.atan2(dx,dz);w.fig.rotation.y=w.heading;w.fallMove={start:p.clone(),edge,time:.6+Math.hypot(edge.x-p.x,edge.z-p.z)*.5};}onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
+  if(kind==='cliff'){const c=positions.get(w.island),dx=c?c.x+1.17:1,dz=c?c.z:0,n=Math.hypot(dx,dz)||1,rim=.88;const edge=c?new THREE.Vector3(c.x+dx/n*rim,p.y,c.z+dz/n*rim):p.clone();w.heading=Math.atan2(dx,dz);w.fig.rotation.y=w.heading;w.fallMove={start:p.clone(),edge,time:.6+Math.hypot(edge.x-p.x,edge.z-p.z)*.5};}onLog('錯誤路線的角色跌落，將回第 1 站重新出發',{kind:'fall'});}
  function updateFall(w,dt){w.fall+=dt;
   // Intact deck: sweep sideways first. Only a broken gap drops people straight through the middle.
   if(w.fallMove&&!w.fallMove.done){const move=w.fallMove,t=Math.min(1,w.fall/(move.time||.35));w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;

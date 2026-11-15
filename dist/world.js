@@ -78,8 +78,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // ② The trailhead sign says plainly that the bridge is one way among others, and the other side shows common pitfalls.
  function forkSignMaterial(){const m=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});if(typeof document==='undefined')return m;
   const c=document.createElement('canvas');c.width=768;c.height=396;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,768,396);x.textAlign='center';
-  x.fillStyle='#c4612f';x.font='bold 50px "Noto Sans TC",sans-serif';x.fillText('通往理想成果的路不只一條。',384,92);
-  x.fillStyle='#2f3b33';x.font='bold 38px "Noto Sans TC",sans-serif';[['這座橋呈現的是',190],['我提供的一種學習方法；',245],['另一側則呈現練習時',315],['可能遇到的誤區。',368]].forEach(([t,y])=>x.fillText(t,384,y));
+  x.fillStyle='#c4612f';x.font='bold 50px "Noto Sans TC",sans-serif';x.fillText('寫出高分作文的路不只一條。',384,92);
+  x.fillStyle='#2f3b33';x.font='bold 38px "Noto Sans TC",sans-serif';[['這座橋呈現的是我經過驗證',182],['「有效」且「高效」的學習路徑；',234],['另一側呈現大多學生',312],['學習作文遇到的誤區。',364]].forEach(([t,y])=>x.fillText(t,384,y));
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;m.map=tex;m.color.set('#ffffff');return m;}
  {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',bx=-.42,bz=-.5,board=new THREE.Group();board.position.set(bx,0,bz);
   // The board faces the way people come from the start (and the stop's camera), so its words can be read there.

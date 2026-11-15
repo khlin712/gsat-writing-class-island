@@ -9,6 +9,7 @@ export function createArchitecture({box,mesh,tree}){
  const cup=new THREE.LatheGeometry([[0,0],[.07,0],[.17,.06],[.27,.24],[.32,.46],[.33,.6],[.3,.6]].map(([x,y])=>new THREE.Vector2(x,y)),24);
  const handle=new THREE.TorusGeometry(.13,.028,8,16,Math.PI);
  function golden(m){m.material=gold;return m;}
+ const pond=new THREE.MeshStandardMaterial({color:'#8fc7de',roughness:.15,metalness:.1,emissive:'#5fa8c8',emissiveIntensity:.15});
  const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
  function glazed(g,x,y,z,w,h){const m=box(g,x,y,z,w,h,.025,'#638d97');m.material=glass;m.castShadow=false;return m;}
@@ -66,10 +67,15 @@ export function createArchitecture({box,mesh,tree}){
    for(let i=0;i<3;i++)box(g,0,.245+i*.03,.47+i*.04,.5-i*.04,.03,.12,'#dfd6c1');
    lamp(g,-.62,.42);lamp(g,.62,.42);planter(g,-.32,.5);planter(g,.32,.5);
   }else if(t.kind==='start'){
-   // ① Start: a wooden trail gate with a big question board under it.
-   base(g,.9,.6);for(const x of [-.42,.42]){box(g,x,.33,.05,.08,.95,.08,'#8a6a48');}box(g,0,1.24,.05,1.06,.09,.12,'#7a5a3c');box(g,0,1.33,.05,.86,.06,.1,'#c4612f');
-   box(g,0,.62,.09,.66,.44,.04,'#fff4d6');box(g,0,.62,.07,.72,.5,.03,'#8a6a48');mesh(g,new THREE.TorusGeometry(.09,.025,8,16,Math.PI*1.4),'#c4612f',0,.7,.115).rotation.z=-.5;box(g,.02,.5,.115,.04,.06,.01,'#c4612f');
-   for(const x of [-.62,.62])mesh(g,geo.cylinder,'#e2793f',x,.6,-.25,.02,.7,.02);for(const x of [-.62,.62]){const f=box(g,x+.08,.84,-.25,.16,.1,.01,'#f2c14e');f.castShadow=false;}bench(g,-.5,.5);planter(g,.55,.5);
+   // ① Start: a small park — lawn, a fountain, flower beds, benches and trees — with the question board at the back.
+   const stone='#d8ccb2';mesh(g,geo.cylinder,stone,0,.28,-.12,.36,.08,.36);const water=mesh(g,geo.cylinder,'#8fc7de',0,.325,-.12,.3,.02,.3);water.material=pond;water.castShadow=false;
+   mesh(g,geo.cylinder,stone,0,.42,-.12,.06,.24,.06);mesh(g,geo.dome,'#8fc7de',0,.54,-.12,.09,.07,.09).material=pond;
+   for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(g,Math.cos(a)*.52,.25,-.12+Math.sin(a)*.52,.12,.02,.12,'#e9dfc8');}
+   for(const [x,z,c]of [[-.62,.2,'#e8798a'],[-.5,.32,'#f2c14e'],[-.7,.36,'#f4f0e6'],[.62,.2,'#f2c14e'],[.52,.33,'#e8798a'],[.72,.35,'#9a7bb8']])mesh(g,new THREE.IcosahedronGeometry(1,0),c,x,.3,z,.07,.06,.07);
+   box(g,-.6,.25,.28,.36,.05,.24,'#7a5a3c');box(g,.6,.25,.28,.36,.05,.24,'#7a5a3c');
+   bench(g,-.35,.55);bench(g,.38,.55);tree(g,-.62,-.5,.7);tree(g,.66,-.42,.62);tree(g,-.2,-.72,.5);lamp(g,.22,.58);
+   for(const x of [.3,.62])box(g,x,.25,-.68,.04,.62,.04,'#8a6a48');box(g,.46,.62,-.66,.42,.3,.04,'#fff4d6');box(g,.46,.62,-.685,.48,.36,.02,'#8a6a48');
+   mesh(g,new THREE.TorusGeometry(.07,.02,8,16,Math.PI*1.4),'#c4612f',.46,.67,-.635).rotation.z=-.5;box(g,.47,.55,-.635,.03,.04,.01,'#c4612f');
   }else if(t.kind==='lava'){
    // A lava cave: a dark rock mound with a glowing pool at its mouth. Walk in and you do not come out.
    const rock='#5b4a42';for(const [x,z,r,h]of [[0,-.2,.55,.75],[-.42,-.05,.35,.5],[.42,-.1,.38,.55],[.15,-.45,.4,.6]])mesh(g,new THREE.DodecahedronGeometry(1,0),rock,x,.25+h*.45,z,r,h,r);

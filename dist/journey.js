@@ -8,18 +8,20 @@ export const STATIONS=[
   body:'',                       // The teacher's own answer to the question. Empty → 待老師提供.
   next:'fork',nextLabel:'走到入口指引牌'},
  {id:'fork',n:'②',title:'入口指引牌：三條路',short:'指引牌',
-  lead:'像登山步道入口的指引牌：三條路看起來都通往山上，只有一條走得上去。走錯了，就會難以接近目標。',
-  // Short metaphor captions for the three paths (editable). They describe ways of practising, not any teacher or school.
+  lead:'像登山步道入口的指引牌：照著指引走上橋，路最順。走錯了，就會難以接近目標。',
+  // The right way, then short metaphor captions for the three wrong ways (editable). They describe ways of practising, not any teacher or school.
+  right:{name:'走上橋',caption:'照著指引，一路順順地走到獎盃。',ends:'對的路'},
   paths:[
    {id:'lava',name:'岩漿洞',caption:'埋頭寫了很多，卻沒有人告訴你哪裡要改。',ends:'走進去就出不來'},
    {id:'cliff',name:'懸崖',caption:'只靠背範文、套模板，遇到新題目就踩空。',ends:'走到盡頭會掉下去'},
-   {id:'wall',name:'陡峭山壁',caption:'有方法、有回饋，一步一步慢慢爬，可以爬上去。',ends:'唯一走得上去的路'}],
-  next:'bridge',nextLabel:'爬上山壁，走上橋'},
+   {id:'wall',name:'陡峭山壁',caption:'方法不對，但真的很努力，還是有機會爬到獎盃；只是爬得很慢，爬一爬還可能掉下來。',ends:'爬得到，但很辛苦'}],
+  next:'bridge',nextLabel:'照著指引，走上橋'},
  {id:'bridge',n:'③',title:'走上橋，通往獎盃',short:'橋',
   lead:'我能引導你走向正確的路。',
+  note:'照著指引走上橋，比自己爬陡峭山壁順得多，也不會半路掉下來。',
   body:'',
-  next:'university',nextLabel:'走到大學'},
- {id:'university',n:'④',title:'大學：學生的回饋',short:'大學',
+  next:'university',nextLabel:'看學生回饋'},
+ {id:'university',n:'④',title:'學生回饋',short:'學生回饋',
   lead:'走過獎盃，學生走進大學。點開來看看學生寫下的回饋。',
   next:'calendar',nextLabel:'看最新的課程行事曆'},
  {id:'calendar',n:'⑤',title:'課程教學行事曆',short:'行事曆',
@@ -39,6 +41,12 @@ export const FEEDBACK=[];
 // ⑤ Open classes by grade. status 'open' (有開班，可報名) or 'preregister' (年紀還小，只開放預先登記).
 // e.g. {grade:'高一',status:'open',schedule:'每週六 10:00–12:00',start:'2027/2/15',note:''}
 export const CLASSES=[];
+
+// ⑤ Fees and arrangements, asked on the calendar island. Fill in prices and rules when they are public; until then only the questions show.
+export const PRICING={
+ questions:['費用：每堂、每期或其他方式計費？包含哪些服務？','安排：上課多久、多久一次、線上或實體、個別或團體？','規則：試上、請假、補課、取消與退費如何處理？'],
+ facts:[]        // e.g. ['每期費用','NT$ ……（含批改）']
+};
 
 // ⑤⑥⑦ Links. Each is a full https:// address; empty → the button shows 「連結待老師提供」.
 export const LINKS={

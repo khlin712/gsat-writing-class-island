@@ -1,7 +1,9 @@
 // The seven-station journey that wraps round the nine topic islands, as seen from the usual camera:
-// ① the start island (front middle) → ② the trailhead sign, where three paths split: a lava cave and a cliff (dead ends: walk in
-// and you fall), and a steep wall (the only one you can climb, slowly) → ③ a golden bridge from the top of the wall to the trophy
-// (results summit, top middle) → ④ the university → down the stairs to ⑤ the course calendar → ⑥ sign-up → ⑦ contact → back to ①.
+// ① the start island (front middle) → ② the trailhead sign. Following the sign means ③ the golden bridge, which climbs smoothly
+// from the trailhead to the trophy (results summit, top middle): the right way, the course. The wrong ways: a lava cave and a cliff
+// are dead ends (walk in and you fall); a long trail round the back leads to a steep wall straight up the trophy island's side —
+// working hard the wrong way can still get you there, but the climb is slow and you may fall off.
+// From the trophy: ④ the university → down the stairs to ⑤ the course calendar → ⑥ sign-up → ⑦ contact → back to ①.
 // Students who walk in through the university door are gone (off to university); new ones come out of the main building on
 // SPAWN_FROM, so the map never empties. The university only echoes a well-known library's look; it carries no name or mark.
 export const SUMMIT='stories',UNIVERSITY='university';
@@ -18,10 +20,10 @@ export const SUMMIT_AT=onArc(BACK,RISE),UNIVERSITY_AT=onArc(BACK-.62,RISE);
 export const STOPS={
  start:{...onArc(1.37),kind:'start'},
  fork:{...onArc(.93,0,6.3),kind:'fork',ring:LEDGE,ledge:true},
- lava:{...onArc(1.0,0,8.9),kind:'lava'},
- cliff:{...onArc(.55,0,8.6),kind:'cliff'},
- wallfoot:{...onArc(.45,0,6.3),kind:'wallfoot',ring:LEDGE,ledge:true},
- wall:{...onArc(.12,RISE,6.3),kind:'wall'},
+ lava:{...onArc(1.12,0,8.9),kind:'lava'},
+ cliff:{...onArc(.72,0,9.3),kind:'cliff'},
+ // The foot of the steep wall: a ledge right below the side of the trophy island that faces the camera, so the climb is in view.
+ wallfoot:{...(()=>{const s=onArc(BACK,RISE);return {x:s.x+Math.cos(.45)*2,y:0,z:s.z+Math.sin(.45)*2};})(),kind:'wallfoot',ring:LEDGE,ledge:true},
  calendar:{...onArc(-3.4),kind:'calendar'},
  signup:{...onArc(2.35),kind:'signup'},
  contact:{...onArc(1.85),kind:'contact'}
@@ -29,8 +31,8 @@ export const STOPS={
 export const DEAD_ENDS=['lava','cliff'];
 export const islandOf=(x,z)=>({x:(x-470)*.0127,z:(z-340)*.018});
 // Plank walkways between neighbouring islands and along the journey.
-export const WALKWAYS=[['teacher','belief'],['teacher','method'],['teacher','students'],['teacher','solutions'],['teacher','parents'],['teacher','pricing'],['belief','method'],['belief','pricing'],['method','students'],['students','solutions'],['solutions','parents'],['parents','pricing'],['pricing','benefits'],['parents','benefits'],
- ['solutions','start'],['start','fork'],['fork','lava'],['fork','cliff'],['fork','wallfoot'],[SUMMIT,UNIVERSITY],['calendar','signup'],['signup','contact'],['contact','start']];
+export const WALKWAYS=[['teacher','teaching'],['teacher','questions'],['teaching','questions'],
+ ['teacher','start'],['start','fork'],['fork','lava'],['fork','cliff'],[SUMMIT,UNIVERSITY],['calendar','signup'],['signup','contact'],['contact','start']];
 const angle=(from,to)=>Math.atan2(to.z-from.z,to.x-from.x);
 const smooth=t=>t*t*(3-2*t);
 // Points spaced evenly along a curve given as u → {x,z} (with y as a function of the fraction along it).
@@ -38,15 +40,17 @@ function even(curve,spacing,y){const N=600,pts=[curve(0)],cum=[0];for(let i=1;i<
  const total=cum[N],n=Math.max(2,Math.round(total/spacing));return Array.from({length:n+1},(_,k)=>{const want=total*k/n;let i=1;while(i<N&&cum[i]<want)i++;const t=(want-cum[i-1])/((cum[i]-cum[i-1])||1);return {x:pts[i-1].x+(pts[i].x-pts[i-1].x)*t,z:pts[i-1].z+(pts[i].z-pts[i-1].z)*t,y:y(k/n)};});}
 const arcAngle=p=>Math.atan2(p.z-C.z,p.x-C.x),arcRadius=p=>Math.hypot(p.x-C.x,p.z-C.z);
 // Along the arc from rim to rim of two islands; y(f) gives the height.
-function alongArc(from,to,y,spacing,rimA=1.15,rimB=1.15){const ra=arcRadius(from),rb=arcRadius(to);let a0=arcAngle(from),a1=arcAngle(to);while(a1-a0>Math.PI)a1-=2*Math.PI;while(a0-a1>Math.PI)a1+=2*Math.PI;const s=Math.sign(a1-a0);a0+=s*rimA/ra;a1-=s*rimB/rb;
- return even(u=>{const a=a0+(a1-a0)*u,r=ra+(rb-ra)*smooth(u);return {x:C.x+Math.cos(a)*r,z:C.z+Math.sin(a)*r};},spacing,y);}
-// ③ The golden bridge: from the top of the wall to the trophy's rim, level with a gentle arch.
-export function bridgePath(wall=STOPS.wall,summit=SUMMIT_AT,spacing=.17){const y=summit.y+TOP;return alongArc(wall,summit,f=>y+.35*Math.sin(Math.PI*f),spacing).map(p=>({...p,path:'bridge'}));}
+function alongArc(from,to,y,spacing,rimA=1.15,rimB=1.15,out=0,side=0){const ra=arcRadius(from)+side,rb=arcRadius(to);let a0=arcAngle(from),a1=arcAngle(to);while(a1-a0>Math.PI)a1-=2*Math.PI;while(a0-a1>Math.PI)a1+=2*Math.PI;const s=Math.sign(a1-a0);a0+=s*rimA/ra;a1-=s*rimB/rb;
+ return even(u=>{const a=a0+(a1-a0)*u,r=ra+(rb-ra)*smooth(u)+out*Math.min(1,smooth(Math.min(1,u/.14)),smooth(Math.min(1,(1-u)/.14)));return {x:C.x+Math.cos(a)*r,z:C.z+Math.sin(a)*r};},spacing,y);}
+// ③ The golden bridge: from the trailhead round behind the islands and up to the trophy's rim, rising evenly — the smooth way.
+export function bridgePath(fork=STOPS.fork,summit=SUMMIT_AT,spacing=.17){const y0=(fork.y||0)+TOP,y1=summit.y+TOP;return alongArc(fork,summit,f=>y0+(y1-y0)*f,spacing,.45,1.15,-.2,-.42).map(p=>({...p,path:'bridge'}));}
+// The long rough trail from the trailhead, further out round the back, to the foot of the steep wall.
+export function trailPath(fork=STOPS.fork,foot=STOPS.wallfoot,spacing=.2){const y=TOP;return alongArc(fork,foot,()=>y,spacing,.45,.62,1.25,.42).map(p=>({...p,path:'trail'}));}
 // The way down after the university: plain stone stairs to the calendar island.
 export function descentPath(uni=UNIVERSITY_AT,cal=STOPS.calendar,spacing=.17){const y0=uni.y+TOP,y1=(cal.y||0)+TOP;return alongArc(uni,cal,f=>y0+(y1-y0)*f,spacing).map(p=>({...p,path:'descent'}));}
-// ② The steep wall: from the ledge at its foot straight up the rock face to the top.
-export function climbPath(foot=STOPS.wallfoot,wall=STOPS.wall){const a=angle(wall,foot),x=wall.x+Math.cos(a)*1.32,z=wall.z+Math.sin(a)*1.32,y0=(foot.y||0)+TOP,y1=wall.y+TOP;
- return Array.from({length:12},(_,i)=>({x,z,y:y0+(y1-y0)*i/11,path:'climb'}));}
+// ② The steep wall: from the ledge at its foot straight up the trophy island's rock face to its rim.
+export function climbPath(foot=STOPS.wallfoot,summit=SUMMIT_AT){const a=angle(summit,foot),x=summit.x+Math.cos(a)*1.36,z=summit.z+Math.sin(a)*1.36,y0=(foot.y||0)+TOP,y1=summit.y+TOP;
+ return Array.from({length:16},(_,i)=>({x,z,y:y0+(y1-y0)*i/15,path:'climb'}));}
 
 // ---- Walking graph: every way a person can get about without leaving the ground. ----
 const ringR=c=>c.ring||RING;
@@ -55,9 +59,11 @@ export function nodes(topics){const m=new Map(topics.map(t=>[t.id,t.id===SUMMIT?
 export function buildGraph(centers){
  const edges=[],add=(from,to,kind,pts)=>{const A=centers.get(from),B=centers.get(to);edges.push({from,to,kind,exit:angle(A,pts[0]),entry:angle(B,pts.at(-1)),pts},{from:to,to:from,kind,exit:angle(B,pts.at(-1)),entry:angle(A,pts[0]),pts:[...pts].reverse()});};
  for(const [a,b]of WALKWAYS){const A=centers.get(a),B=centers.get(b);if(!A||!B)continue;const ab=angle(A,B),ba=angle(B,A);add(a,b,'bridge',[ringAt(A,ab),ringAt(B,ba)]);}
- const W=centers.get('wall'),F=centers.get('wallfoot'),S=centers.get(SUMMIT),U=centers.get(UNIVERSITY),K=centers.get('calendar');
- if(W&&F)add('wallfoot','wall','climb',[ringAt(F,angle(F,W)),...climbPath(F,W)]);
- if(W&&S)add('wall',SUMMIT,'span',bridgePath(W,S));
+ const G=centers.get('fork'),F=centers.get('wallfoot'),S=centers.get(SUMMIT),U=centers.get(UNIVERSITY),K=centers.get('calendar');
+ if(G&&S)add('fork',SUMMIT,'span',bridgePath(G,S));
+ if(G&&F)add('fork','wallfoot','trail',trailPath(G,F));
+ // The wall only goes up (nobody climbs down it), and it is slow.
+ if(F&&S){const pts=[ringAt(F,angle(F,S)),...climbPath(F,S)];edges.push({from:'wallfoot',to:SUMMIT,kind:'climb',exit:angle(F,S),entry:angle(S,pts.at(-1)),pts});}
  // The stairs after the university only go down: the one way up is the steep wall.
  if(U&&K){const pts=descentPath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'descent',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
  return {centers,edges};}

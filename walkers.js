@@ -38,6 +38,10 @@ export function readAvatar(raw){let v={};try{v=JSON.parse(raw)||{};}catch{}
 const avatarLook=a=>({shirt:a.shirt,hairStyle:a.hairStyle,hair:'#3a2e28',skin:'#efcaa6',pants:'#3f4f63',prop:AVATAR_ROLES[a.role],accent:a.role==='家長'?'#8a5a3b':'#f2c14e'});
 // Of those heading for the steep wall, this share stop at the first cliff, think again and go back to take the bridge.
 export const TURN_BACK=.25;
+// How quickly a drifting walker's sideways speed can change (per second²).
+export const DRIFT_ACCEL=.35;
+// How fast a walker eases sideways back into its lane (or onto a rope) — slower than walking, so it never looks like a shove.
+export const SIDE_STEP=.18,SIDE_STEP_CLIMB=.25;
 const GUIDE_SPOT={x:-.12,z:.74},AVATAR_SPOT={x:.16,z:.68},DOOR={x:0,z:.5},EXIT={x:0,z:.6};
 
 
@@ -102,12 +106,14 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   if(w.drift){
    // Drifting off the line: the walker keeps walking, but the path bends towards one edge — feet and body follow that slant,
    // never a sideways shove. Most notice and come back; the rest walk on until a foot finds no plank.
-   const n={x:Math.cos(at.heading),z:-Math.sin(at.heading)},base=w.lane*taper,out=stumbling?.06:d.rate;let lateral;
+   const n={x:Math.cos(at.heading),z:-Math.sin(at.heading)},base=w.lane*taper,out=stumbling?.03:d.rate;let lateral;
    // Start from wherever the walker already is across the deck, so the drift never begins with a jump.
    if(d.home===undefined){d.off=d.home=w.sideX*n.x+w.sideZ*n.z-base;}d.t+=dt;
-   if(!d.back){d.off+=d.side*out*dt;lateral=d.side*out;if(d.recover&&!stumbling&&(Math.abs(d.off-d.home)>=d.turnAt||Math.abs(base+d.off)>TRAIL_WIDTH/2-.07))d.back=true;}
-   else{d.off-=d.side*d.rate*.8*dt;lateral=-d.side*d.rate*.8;if((d.off-d.home)*d.side<=0){d.off=d.home;w.drift=null;}}
-   const want=base+d.off,dx=n.x*want-w.sideX,dz=n.z*want-w.sideZ,gap=Math.hypot(dx,dz),step=Math.min(1,Math.max(.3,Math.abs(lateral)+.05)*dt/(gap||1));w.sideX+=dx*step;w.sideZ+=dz*step;
+   // The sideways speed builds up and eases off gradually (DRIFT_ACCEL): drifting never looks like a shove.
+   const wantV=d.back?-d.side*d.rate*.8:d.side*out;d.v+=Math.max(-DRIFT_ACCEL*dt,Math.min(DRIFT_ACCEL*dt,wantV-d.v));d.off+=d.v*dt;lateral=d.v;
+   if(!d.back){if(d.recover&&!stumbling&&(Math.abs(d.off-d.home)>=d.turnAt||Math.abs(base+d.off)>TRAIL_WIDTH/2-.07))d.back=true;}
+   else if((d.off-d.home)*d.side<=0){d.off=d.home;w.drift=null;}
+   const want=base+d.off,dx=n.x*want-w.sideX,dz=n.z*want-w.sideZ,gap=Math.hypot(dx,dz),step=Math.min(1,(Math.abs(lateral)+.12)*dt/(gap||1));w.sideX+=dx*step;w.sideZ+=dz*step;
    // Corners turn the deck under the walker; the body follows at walking pace rather than jumping with it.
    const total=w.sideX*n.x+w.sideZ*n.z;
    const f=w.dir>0?1:-1,vx=Math.sin(at.heading)*f*pace+n.x*lateral,vz=Math.cos(at.heading)*f*pace+n.z*lateral;aim=Math.atan2(vx,vz)+(stumbling?Math.sin(d.t*22)*.3:0);
@@ -115,7 +121,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
    if(Math.abs(total)>TRAIL_WIDTH/2+.03){w.heading=aim;startFall(w,d.kind,aim,{x:vx,z:vz});return false;}
   }else{
    const wantedX=at.climb?ROPE_T.x*(w.rope||0):at.heading===null?0:Math.cos(at.heading)*w.lane*taper,wantedZ=at.climb?ROPE_T.z*(w.rope||0):at.heading===null?0:-Math.sin(at.heading)*w.lane*taper;
-   const dx=wantedX-w.sideX,dz=wantedZ-w.sideZ,amount=resting?0:Math.min(1,.7*dt/(Math.hypot(dx,dz)||1));w.sideX+=dx*amount;w.sideZ+=dz*amount;
+   const dx=wantedX-w.sideX,dz=wantedZ-w.sideZ,amount=resting?0:Math.min(1,(at.climb?SIDE_STEP_CLIMB:SIDE_STEP)*dt/(Math.hypot(dx,dz)||1));w.sideX+=dx*amount;w.sideZ+=dz*amount;
    w.fig.position.set(at.x+w.sideX,at.y,at.z+w.sideZ);}
   // On the rough road: a broken plank drops you straight through; otherwise now and then someone starts to drift (often in heavy rain).
   if(at.trail&&at.trailU>.12&&at.trailU<.88){if(hazards?.gap(at.trailId,at.trailU)){startFall(w,'bridge',at.heading??w.heading);return false;}
@@ -125,7 +131,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   w.walking+=((w.riding||resting?0:sliding?.35:1)-w.walking)*Math.min(1,dt*8);return end;}
  // Start drifting towards one edge. slip: a slow drift, usually corrected; rain: a short stagger, then a quick slanting slide.
  function startDrift(w,kind,o={}){const rainy=kind==='rain';
-  w.drift={kind,t:0,off:0,home:undefined,back:false,side:o.side??(Math.random()<.5?-1:1),rate:o.rate??(rainy?.45+Math.random()*.2:.1+Math.random()*.1),
+  w.drift={kind,t:0,off:0,v:0,home:undefined,back:false,side:o.side??(Math.random()<.5?-1:1),rate:o.rate??(rainy?.2+Math.random()*.08:.08+Math.random()*.06),
    recover:o.recover??(Math.random()<(rainy?.3:.65)),turnAt:o.turnAt??(.08+Math.random()*.16),stumble:rainy?(o.stumble??.45+Math.random()*.25):0};}
  // Find the way by walkways and stairs; returns false if there is none.
  function goTo(w,id,spot){spot=safeSpot(positions.get(id),spot);const r=findRoute(graph,w.fig.position,w.island,id,spot);if(!r)return false;w.route=makeRoute(r.pts);w.sideX=0;w.sideZ=0;w.s=0;w.dir=1;w.target=id;return true;}
@@ -169,11 +175,13 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   // A cliff top: walk out past the rim (away from the islands) and only then drop — never straight down through the rock.
   // Stepped off the edge while walking: no shove — the body carries on forward and down from where the foot missed.
   if(vel){w.fallMove=null;w.fallVel={x:vel.x,z:vel.z};w.vy=.1;}
-  if(kind==='cliff'){const c=positions.get(w.island),dx=c?c.x+1.17:1,dz=c?c.z:0,n=Math.hypot(dx,dz)||1,rim=.88;const edge=c?new THREE.Vector3(c.x+dx/n*rim,p.y,c.z+dz/n*rim):p.clone();w.heading=Math.atan2(dx,dz);w.fig.rotation.y=w.heading;w.fallMove={start:p.clone(),edge,time:.6+Math.hypot(edge.x-p.x,edge.z-p.z)*.5};}onLog('錯誤路線的角色跌落，將回第 1 站重新出發',{kind:'fall'});}
+  if(kind==='cliff'){const c=positions.get(w.island),dx=c?c.x+1.17:1,dz=c?c.z:0,n=Math.hypot(dx,dz)||1,rim=.88;const edge=c?new THREE.Vector3(c.x+dx/n*rim,p.y,c.z+dz/n*rim):p.clone();const pace=Math.max(.2,Math.min(.4,w.speed||.3)),dist=Math.hypot(edge.x-p.x,edge.z-p.z);w.fallMove={start:p.clone(),edge,time:.3+dist/pace,heading:Math.atan2(edge.x-p.x,edge.z-p.z),pace,ease:true};}onLog('錯誤路線的角色跌落，將回第 1 站重新出發',{kind:'fall'});}
  function updateFall(w,dt){w.fall+=dt;
   // Intact deck: sweep sideways first. Only a broken gap drops people straight through the middle.
-  if(w.fallMove&&!w.fallMove.done){const move=w.fallMove,t=Math.min(1,w.fall/(move.time||.35));w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;
-   if(t<1){w.fig.position.y=move.start.y;w.walking=1;w.phase+=dt*6;applyPose(w.fig,pose(w.phase,1));return;}if(!move.done){move.done=true;w.fall=0;}}
+  if(w.fallMove&&!w.fallMove.done){const move=w.fallMove,raw=Math.min(1,w.fall/(move.time||.35)),t=move.ease?Math.max(0,(w.fall-.3)/(move.time-.3)):raw;
+   // A cliff top: turn towards the edge at walking speed, then walk to it at the walker's own pace.
+   if(move.heading!==undefined){w.heading=turn(w.heading,move.heading,dt*3);w.fig.rotation.y=w.heading;}w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;
+   if(raw<1&&t<1){w.fig.position.y=move.start.y;w.walking=1;w.phase+=dt*(move.pace?move.pace*34:6);applyPose(w.fig,pose(w.phase,1));return;}if(!move.done){move.done=true;w.fall=0;if(move.pace){w.fallVel={x:Math.sin(move.heading)*move.pace,z:Math.cos(move.heading)*move.pace};w.vy=.1;}}}
   if(w.fallVel){w.fig.position.x+=w.fallVel.x*dt;w.fig.position.z+=w.fallVel.z*dt;const k=Math.exp(-1.2*dt);w.fallVel.x*=k;w.fallVel.z*=k;}
   w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-Math.max(0,w.fall-1.1)/1));
   if(w.fall>2.1)w.fig.userData.hidden=true;

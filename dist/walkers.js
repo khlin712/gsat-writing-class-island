@@ -72,7 +72,6 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   const row=Math.floor(k/4);place(w,{x:lectureAt.x-.36+(k%4)*.24,y:islandTop(lectureAt)+.08+row*.035-.17*w.size,z:lectureAt.z+.16+row*.36},Math.PI);sit(w);});
  const lecturer=spawn('lecturer',{shirt:'#315e64',pants:'#3f4f63',hairStyle:'short',prop:'book',accent:'#e8c672'},{island:'signup'});
  place(lecturer,{x:lectureAt.x-.18,y:islandTop(lectureAt)+.09,z:lectureAt.z-.35});
- tag(lecturer,'<i>師</i><span>講課老師 NPC</span>','teacher-tag');lecturer.tag.el.setAttribute('aria-label','露天講堂的講課老師 NPC');
  // My character.
  let look=readAvatar(JSON.stringify(initial||{})),onClickAll=()=>{},frozen=false;
  let me=null;
@@ -97,7 +96,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  function goTo(w,id,spot){spot=safeSpot(positions.get(id),spot);const r=findRoute(graph,w.fig.position,w.island,id,spot);if(!r)return false;w.route=makeRoute(r.pts);w.s=0;w.dir=1;w.target=id;return true;}
  const reducedNow=()=>reduced?.matches;
  function arrive(w){const t=byId(w.target);w.island=w.target;w.route=null;w.target=null;w.sliding=0;return t;}
- function teleport(w,id,spot){const p=positions.get(id);spot=safeSpot(p,spot);w.fall=undefined;w.resume=null;w.fig.userData.hidden=false;w.fig.rotation.x=0;w.fig.scale.setScalar(w.size);place(w,{x:p.x+spot.x,y:islandTop(p),z:p.z+spot.z});w.island=id;w.route=null;w.target=null;w.sliding=0;}
+ function teleport(w,id,spot){const p=positions.get(id);spot=safeSpot(p,spot);w.fall=undefined;w.resume=null;w.next=null;w.fig.userData.hidden=false;w.fig.rotation.x=0;w.fig.scale.setScalar(w.size);place(w,{x:p.x+spot.x,y:islandTop(p),z:p.z+spot.z});w.island=id;w.route=null;w.target=null;w.sliding=0;}
 
  // Parents: a few strolls on one island, then off along the walkways to another, so nobody looks like a guard on duty.
  const PARENT_STOPS=()=>[...order,'start','calendar','signup','contact'];
@@ -113,23 +112,27 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   w.goal=true;if(!goTo(w,w.island,spotOn(w.island))){w.goal=undefined;w.wait=1;}}
  function updateMessenger(w,dt){if(w.wait>0){w.wait-=dt;stand(w,dt,w.heading);return;}if(walkRoute(w,dt)){w.dir=-w.dir;w.wait=1.2+Math.random()*1.5;}}
  // The guide stands at the start facing visitors until asked to lead; then it walks briskly to each stop it is sent to.
+ function stopGuideAtStart(w){teleport(w,RESTART,guideSpot(RESTART));sync();onGuide(RESTART,{recoveryFailed:true});}
  function updateGuide(w,dt){
   if(w.born!==undefined){w.born+=dt;w.fig.scale.setScalar(w.size*Math.min(1,w.born/.5));if(w.born>=.5)w.born=undefined;}
-  if(w.route){if(walkRoute(w,dt)){const id=w.target,t=arrive(w);if(t)onLog(`導覽員帶路抵達 ${t.n} ${t.title}`,{kind:'guide',id});onGuide(id);}return;}
+  if(w.route){if(walkRoute(w,dt)){const id=w.target,t=arrive(w);if(w.next){const next=w.next;w.next=null;if(!goTo(w,next,guideSpot(next)))stopGuideAtStart(w);return;}if(t)onLog(`導覽員帶路抵達 ${t.n} ${t.title}`,{kind:'guide',id});onGuide(id);}return;}
   stand(w,dt,0);}
  // Pop the guide up at any island, so a visitor who wandered off can pick the tour up again right where they are.
  function guideAppear(id){if(!positions.has(id))return false;teleport(guide,id,guideSpot(id));guide.heading=0;if(!reducedNow()){guide.born=0;guide.fig.scale.setScalar(0);}sync();return true;}
- function guideTo(id){if(!positions.has(id))return false;if(guide.fall!==undefined&&!reducedNow()&&!frozen){guide.resume=id;return true;}if(reducedNow()||frozen){teleport(guide,id,guideSpot(id));sync();onGuide(id);return true;}guide.speed=id===GUIDE_ROUTE[0]?1.2:1.6;return goTo(guide,id,guideSpot(id));}
+ function guideTo(id){if(!positions.has(id))return false;if(guide.fall!==undefined&&!reducedNow()&&!frozen){guide.resume=id;return true;}if(reducedNow()||frozen){teleport(guide,id,guideSpot(id));sync();onGuide(id);return true;}guide.speed=id===GUIDE_ROUTE[0]?1.2:1.6;guide.next=null;
+  if(goTo(guide,id,guideSpot(id)))return true;
+  // On a bridge the departure island is stale: finish this leg before replanning the latest request.
+  if(guide.route){guide.next=id;return true;}return false;}
  const MAX_UP=26;
  // Along the rim, sideways from the climb line: each climber holds one of the ropes.
  const ROPE_T=(()=>{const S=positions.get(SUMMIT),F=STOPS.wallfoot,d=Math.hypot(F.x-S.x,F.z-S.z);return {x:-(F.z-S.z)/d,z:(F.x-S.x)/d};})();
  // The outer edge of each cliff top on the rough road (facing away from the islands): where those who fall step off.
  const cliffEdge=id=>{const s=STOPS[id],dx=s.x+1.17,dz=s.z,d=Math.hypot(dx,dz)||1;return {x:dx/d*.55,z:dz/d*.55};};
- function startFall(w,kind){w.resume=w.kind==='guide'||w.kind==='avatar'?w.target:null;w.route=null;w.target=null;w.slipAt=null;w.climbing=0;w.riding=false;w.fall=0;w.fallKind=kind;w.vy=.6;onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
+ function startFall(w,kind){w.resume=w.kind==='guide'||w.kind==='avatar'?(w.next||w.target):null;w.next=null;w.route=null;w.target=null;w.slipAt=null;w.climbing=0;w.riding=false;w.fall=0;w.fallKind=kind;w.vy=.6;onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
  function updateFall(w,dt){w.fall+=dt;w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-w.fall/1.8));
   if(w.fall>1.8)w.fig.userData.hidden=true;
   if(w.fall>3.5){const resume=w.resume;w.fall=undefined;w.resume=null;w.fig.rotation.x=0;w.born=0;w.up=false;w.fallAt=null;w.goal=undefined;w.fig.scale.setScalar(w.size);w.fig.userData.hidden=false;teleport(w,RESTART,spotOn(RESTART));w.wait=1.5;
-   if(resume)goTo(w,resume,w.kind==='guide'?guideSpot(resume):AVATAR_SPOT);}}
+   if(resume&&!goTo(w,resume,w.kind==='guide'?guideSpot(resume):AVATAR_SPOT)&&w.kind==='guide')stopGuideAtStart(w);}}
  function updateStudent(w,dt){
   // Gone through the university door: shrink away, wait, then step out of the main building on SPAWN_FROM.
   if(w.gone!==undefined){w.gone+=dt;if(w.gone<.6){w.fig.scale.setScalar(w.size*Math.max(0,1-w.gone/.6));return;}w.fig.userData.hidden=true;

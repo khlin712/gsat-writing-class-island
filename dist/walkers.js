@@ -92,7 +92,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   const wantedX=at.climb?ROPE_T.x*(w.rope||0):at.heading===null?0:Math.cos(at.heading)*w.lane*taper,wantedZ=at.climb?ROPE_T.z*(w.rope||0):at.heading===null?0:-Math.sin(at.heading)*w.lane*taper;
   const dx=wantedX-w.sideX,dz=wantedZ-w.sideZ,amount=resting?0:Math.min(1,.7*dt/(Math.hypot(dx,dz)||1));w.sideX+=dx*amount;w.sideZ+=dz*amount;
   w.fig.position.set(at.x+w.sideX,at.y,at.z+w.sideZ);
-  if(at.trail&&(hazards?.gap(at.trailId,at.trailU)||rain()>.65&&Math.random()<1-Math.exp(-.12*dt))){startFall(w,hazards?.gap(at.trailId,at.trailU)?'bridge':'rain',at.heading??w.heading);return false;}
+  if(at.trail&&at.trailU>.12&&at.trailU<.88&&(hazards?.gap(at.trailId,at.trailU)||Math.random()<1-Math.exp(-(rain()>.65?.12:.03)*dt))){startFall(w,hazards?.gap(at.trailId,at.trailU)?'bridge':rain()>.65?'rain':'slip',at.heading??w.heading);return false;}
   if(at.heading!==null)w.heading=turn(w.heading,w.dir>0?at.heading:at.heading+Math.PI,dt*10);w.climbing=at.climb?1:0;w.onTrail=at.trail;w.riding=!!at.slide;w.walking+=((w.riding||resting?0:1)-w.walking)*Math.min(1,dt*8);return end;}
  // Find the way by walkways and stairs; returns false if there is none.
  function goTo(w,id,spot){spot=safeSpot(positions.get(id),spot);const r=findRoute(graph,w.fig.position,w.island,id,spot);if(!r)return false;w.route=makeRoute(r.pts);w.sideX=0;w.sideZ=0;w.s=0;w.dir=1;w.target=id;return true;}
@@ -132,13 +132,15 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const cliffEdge=id=>{const s=STOPS[id],dx=s.x+1.17,dz=s.z,d=Math.hypot(dx,dz)||1;return {x:dx/d*.55,z:dz/d*.55};};
  function startFall(w,kind,heading=w.heading){w.resume=w.kind==='guide'||w.kind==='avatar'?(w.next||w.target):null;w.next=null;w.route=null;w.target=null;w.slipAt=null;w.climbing=0;w.riding=false;w.fall=0;w.fallKind=kind;w.vy=.6;
   const offset=w.sideX*Math.cos(heading)-w.sideZ*Math.sin(heading),side=offset>=0?1:-1,d=TRAIL_WIDTH/2+.08-Math.abs(offset),p=w.fig.position;
-  w.fallMove=kind==='rain'?{start:p.clone(),edge:new THREE.Vector3(p.x+Math.cos(heading)*side*d,p.y,p.z-Math.sin(heading)*side*d)}:null;onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
+  w.fallMove=kind==='rain'||kind==='slip'?{start:p.clone(),edge:new THREE.Vector3(p.x+Math.cos(heading)*side*d,p.y,p.z-Math.sin(heading)*side*d),time:.35}:null;
+  // A cliff top: walk out past the rim (away from the islands) and only then drop — never straight down through the rock.
+  if(kind==='cliff'){const c=positions.get(w.island),dx=c?c.x+1.17:1,dz=c?c.z:0,n=Math.hypot(dx,dz)||1,rim=.88;const edge=c?new THREE.Vector3(c.x+dx/n*rim,p.y,c.z+dz/n*rim):p.clone();w.heading=Math.atan2(dx,dz);w.fig.rotation.y=w.heading;w.fallMove={start:p.clone(),edge,time:.6+Math.hypot(edge.x-p.x,edge.z-p.z)*.5};}onLog('錯誤路線的角色跌落，將回起點重新出發',{kind:'fall'});}
  function updateFall(w,dt){w.fall+=dt;
   // Intact deck: sweep sideways first. Only a broken gap drops people straight through the middle.
-  if(w.fallMove){const move=w.fallMove,t=Math.min(1,w.fall/.35);w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;
-   if(t<1){w.fig.position.y=move.start.y;return;}}
-  w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-w.fall/1.8));
-  if(w.fall>1.8)w.fig.userData.hidden=true;
+  if(w.fallMove&&!w.fallMove.done){const move=w.fallMove,t=Math.min(1,w.fall/(move.time||.35));w.fig.position.x=move.start.x+(move.edge.x-move.start.x)*t;w.fig.position.z=move.start.z+(move.edge.z-move.start.z)*t;
+   if(t<1){w.fig.position.y=move.start.y;w.walking=1;w.phase+=dt*6;applyPose(w.fig,pose(w.phase,1));return;}if(!move.done){move.done=true;w.fall=0;}}
+  w.vy-=9*dt;w.fig.position.y+=w.vy*dt;w.fig.rotation.x=Math.min(1.4,w.fall*2);w.fig.scale.setScalar(w.size*Math.max(0,1-Math.max(0,w.fall-1.1)/1));
+  if(w.fall>2.1)w.fig.userData.hidden=true;
   if(w.fall>3.5){const resume=w.resume;w.fall=undefined;w.resume=null;w.fig.rotation.x=0;w.born=0;w.up=false;w.fallAt=null;w.goal=undefined;w.fig.scale.setScalar(w.size);w.fig.userData.hidden=false;teleport(w,RESTART,spotOn(RESTART));w.wait=1.5;
    if(resume&&!goTo(w,resume,w.kind==='guide'?guideSpot(resume):AVATAR_SPOT)&&w.kind==='guide')stopGuideAtStart(w);}}
  function updateStudent(w,dt){
@@ -202,6 +204,8 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   hover(w){if(w!==hoverWalker){hoverWalker=w;sync();}},
   sync(state){({shown=shown,filterIds=filterIds,connections=connections,selectedIsland=selectedIsland,activeRelation=activeRelation}=state);if(state.filterIds)filterIds=new Set(state.filterIds);sync();},
   onClick(fn){onClickAll=fn;},
+  // Tests only: make someone fall as the game would.
+  startFallForTest:(w,kind)=>startFall(w,kind),
   guide:()=>guide,me:()=>me,guideTo,guideAppear,
   // kind is parent / student / messenger / guide / avatar, or a relation key for that relation's walker.
   find:(kind,i=0)=>kind.includes(':')?walkers.find(w=>w.key===kind)||null:walkers.filter(w=>w.kind===kind)[i]||null,

@@ -13,7 +13,7 @@ test('各類角色在斷橋上跌落、隱藏後仍重生，導覽與訪客恢�
  try{const positions=nodes(topics),graph=buildGraph(positions),scene=new THREE.Scene();let broken=true;const w=createWalkers({scene,topics,positions,graph,links:[],CSS2DObject:Label,reduced:{matches:false},hazards:{gap:()=>broken}});
   const seg=trailPath(positions.get('fork'),positions.get('pass1'));const chosen=['parent','student','guide','avatar'].map(k=>w.find(k));
   for(const person of chosen){person.route=makeRoute(seg);person.s=person.route.total*.5;person.target='pass1';person.island='fork';person.wait=0;}
-  w.update(.05,false);assert.ok(chosen.every(p=>p.fall!==undefined));for(let i=0;i<40;i++)w.update(.05,false);assert.ok(chosen.every(p=>p.fig.userData.hidden));
+  w.update(.05,false);assert.ok(chosen.every(p=>p.fall!==undefined));for(let i=0;i<46;i++)w.update(.05,false);assert.ok(chosen.every(p=>p.fig.userData.hidden));
   broken=false;for(let i=0;i<40;i++)w.update(.05,false);for(const p of chosen){assert.equal(p.fall,undefined);assert.ok(!p.fig.userData.hidden);assert.ok(p.fig.visible);assert.equal(p.island,'start');assert.ok(p.fig.scale.x>.5);}
   assert.equal(w.guide().target,'pass1');assert.equal(w.me().target,'pass1');assert.equal(w.state().studentCount,47);
  }finally{globalThis.document=old;}
@@ -117,5 +117,15 @@ test('角色從起點出生並預設自動探索，自動抵達標明自動、�
   me.wait=0;w.update(.05,false);assert.ok(me.route&&me.target!=='start');me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,1);assert.equal(arrivals[0].meta.automatic,true);
   arrivals.length=0;w.avatar.mode('stroll');me.wait=0;w.update(.05,false);assert.equal(me.target,me.island);me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,0,'同島散步不發抵達');
   w.avatar.go('start');me.s=me.route.total;w.update(.05,false);assert.equal(arrivals.length,1);assert.equal(arrivals[0].meta.automatic,false,'手動前往仍發抵達事件');
+ }finally{globalThis.document=old;}
+});
+test('走到懸崖頂的人先走到崖邊外，再往下掉，不從石台中間穿下去；掉落時先看得到人',()=>{
+ const old=globalThis.document;globalThis.document={createElement:element};
+ try{const positions=nodes(topics),graph=buildGraph(positions),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph,links:[],CSS2DObject:Label,reduced:{matches:false},hazards:{gap:()=>false}});
+  const c=positions.get('pass1'),top=(c.y||0)+TOP,p=w.find('student',3);p.route=null;p.island='pass1';p.target=null;p.up=true;p.fallAt='pass1';p.fig.position.set(c.x+.1,top,c.z+.1);
+  w.startFallForTest(p,'cliff');let sawBelow=false;
+  for(let i=0;i<40;i++){w.update(.05,false);const q=p.fig.position,r=Math.hypot(q.x-c.x,q.z-c.z);if(q.y<top-.05){sawBelow=true;assert.ok(r>.72,`還在石台範圍內就掉到台面下（r=${r.toFixed(2)}）`);}
+   if(i<16)assert.ok(p.fig.scale.x>p.size*.9,'掉落的第一秒內人還沒縮小');}
+  assert.ok(sawBelow,'有往下掉');
  }finally{globalThis.document=old;}
 });

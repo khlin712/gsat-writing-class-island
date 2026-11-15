@@ -1,6 +1,7 @@
 import {createWorld} from './world.js';
 import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY,stepParts,CIRCLED} from './content.js';
 import {buildRelations,findRelations} from './relations.js';
+import {lessons,lessonTitle,SUMMIT,SILVER,stageOf} from './course.js';
 import {mapInsets} from './motion.js';
 import {bindSheet} from './sheets.js';
 const $=s=>document.querySelector(s), list=$('#topic-list'), modal=$('#modal');
@@ -55,7 +56,7 @@ for(const b of document.querySelectorAll('[data-category]'))b.onclick=()=>{categ
 function renderRelations(){const items=findRelations(relations,topics,$('#search').value);$('#relation-count').textContent=items.length;$('#relation-list').innerHTML=items.length?items.map(r=>`<button class="relation-row" aria-pressed="${activeRelation===r.id}" data-relation="${r.id}"><span class="relation-route">${topicOf(r.a).n} ↔ ${topicOf(r.b).n}</span><strong>${topicOf(r.a).title} · ${topicOf(r.b).title}</strong><span>${r.question}</span></button>`).join(''):'<p class="empty">沒有找到關聯，試試主題名稱或清除搜尋。</p>';for(const button of $('#relation-list').querySelectorAll('[data-relation]')){button.onclick=()=>openRelation(button.dataset.relation);button.onpointerenter=()=>world?.hoverRelation(button.dataset.relation);button.onpointerleave=()=>world?.hoverRelation(null);button.onfocus=()=>world?.hoverRelation(button.dataset.relation);button.onblur=()=>world?.hoverRelation(null);}}
 function openRelation(id){const r=relations.find(r=>r.id===id);if(!r)return;
  const opener=document.activeElement;if(!$('#detail').hidden)closeDetail({restoreFocus:false});
- activeRelation=id;selected=null;selectedStep=null;world?.pins(null);setBird(false);
+ activeRelation=id;selected=null;selectedStep=null;world?.pins(null);world?.climb(-1);world?.lessonState({});setBird(false);
  $('#detail-crumb').textContent=`主題關聯 · ${topicOf(r.a).n} ↔ ${topicOf(r.b).n}`;
  $('#detail-content').innerHTML=`<div class="detail-head"><span class="detail-badge" aria-hidden="true">↔</span><div><p class="eyebrow">一起了解這兩個主題</p><h2 id="detail-title">${r.question}</h2></div></div><p class="relation-notice">這是依現有主題整理的探索問題，不是已確認的教學做法或成效。</p><div class="relation-stops">${[r.a,r.b].map(tid=>{const t=topicOf(tid);return `<button data-relation-topic="${tid}"><b>${t.n}</b><span><strong>${t.title}</strong><small>${t.intro}</small></span><i aria-hidden="true">↗</i></button>`;}).join('')}</div><section class="card-section"><h3>帶著問題繼續探索</h3><p class="pending-note">老師的具體說明與案例尚待補充。可以分別查看兩個主題，再把這個問題帶進討論。</p></section><div class="detail-actions"><button id="relation-question" class="ask-topic">${consultQuestions.includes(r.question)?'已加入提問 ✓':'把這個關聯問題加入提問'}</button><button id="relation-return" class="save-topic">返回關聯清單</button><small>只會整理提綱，不會寄送訊息。</small></div>`;
  $('#detail').hidden=false;document.body.classList.add('detail-open');if(isPhone()){indexBeforeDetail=indexSheet.state();indexSheet.set('peek');}
@@ -79,6 +80,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
  $('#detail-content').innerHTML=`<div class="detail-head"><span class="detail-badge" style="--badge:${t.color}" aria-hidden="true">${t.n}</span><div><p class="eyebrow">${t.title} · ${t.tag}</p><h2 id="detail-title">${selectedConcern?selectedConcern.question:t.title}</h2></div></div>
  <div class="chips"><span class="chip strong">主題 ${t.n}</span><span class="chip">${t.tag}</span>${selectedConcern?`<span class="chip">${audienceLabel[selectedConcern.audience]}</span>`:''}<span class="chip draft">待老師補充</span></div>
  <div class="answer-first"><p class="lead">${selectedConcern?selectedConcern.answer:t.intro}</p></div>
+${id===SUMMIT?lessonSection():''}
  <section class="card-section"><h3>重點 · 點一項看細節</h3><ol class="step-rows">${stepItems(t).map((it,k)=>`<li><button class="step-row" data-step="${k}"><b>${it.mark}</b><span><strong>${it.label}</strong><small>${it.question}</small></span><i aria-hidden="true">›</i></button></li>`).join('')}</ol></section>
  <details class="card-section evidence-section"><summary>目前資訊與證據 <span>待補充</span></summary><p>${t.body}</p><dl class="topic-facts">${t.facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></details>
  <details class="card-section question-notes" ${answers[id]?'open':''}><summary>補充你的情況 <span>選填</span></summary><div class="exercise"><label for="exercise-answer">${t.task}</label><textarea id="exercise-answer" maxlength="2000" placeholder="寫下你的顧慮、期待，或還想了解的事…">${escape(typeof answers[id]==='string'?answers[id]:'')}</textarea><small class="helper">只儲存在這個瀏覽器，不會傳送。</small><p class="question-example">${t.example}</p></div></details>
@@ -93,7 +95,7 @@ function selectTopic(id,{focus=true,concern=null}={}){
  $('#ask-topic').onclick=()=>{saved.add(id);const question=selectedConcern?.question||t.question;if(!consultQuestions.includes(question))consultQuestions.push(question);persist();updateCount();$('#save-topic').setAttribute('aria-pressed','true');$('#save-topic').textContent='✓ 已收藏這個主題';discussion();};
  $('#explore-relations').onclick=()=>{closeDetail({restoreFocus:false});showView('relations');if(isPhone())indexSheet.set('full');$('#tab-relations').focus();};
  for(const b of document.querySelectorAll('[data-related]'))b.onclick=()=>selectTopic(b.dataset.related);
- selectedStep=null;hotStep=-1;bindStepRows($('#detail-content'),id);world?.pins(id,stepItems(t),{onPick:k=>selectStep(id,k),onHover:hoverStep});world?.pinState({});setBird(false);
+ selectedStep=null;hotStep=-1;bindStepRows($('#detail-content'),id);world?.pins(id,stepItems(t),{onPick:k=>selectStep(id,k),onHover:hoverStep});world?.pinState({});setBird(false);selectedLesson=-1;world?.climb(id===SUMMIT?lessons.length-1:-1);world?.lessonState({});bindLessonRows();
  updateMap();renderList();renderConcerns();
  if(moveCamera)world?.focus(id,insets());
  if(!isPhone())document.querySelector('.topic-item.active')?.scrollIntoView({block:'nearest'});
@@ -116,7 +118,27 @@ function selectStep(id,k){const t=topicOf(id);if(!t)return;const items=stepItems
  $('#back-topic').onclick=()=>{selectTopic(id);world?.focus(id,insets());};
  hotStep=-1;world?.pinState({sel:k});renderList();$('#map-message').textContent=`正在看 ${t.title} · 重點 ${k+1}`;
  world?.focusStep(id,k,items.length,insets());$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
-function closeDetail({restoreFocus=true}={}){const id=selected,relationId=activeRelation;activeRelation=null;$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);
+// ---- Course walkway: each stretch of the golden path up to the results summit is one lesson. ----
+function lessonSection(){return `<section class="card-section stairs-section"><h3>通往成果的課程階梯 · 共 ${lessons.length} 堂</h3><p class="stairs-note">地圖上的階梯從課堂一路通到成果：前 ${SILVER} 堂是銀色階梯，接著往上是金色階梯；每一段是一堂課，前面學的會一路帶到後面。點一堂課，看那堂學什麼、沿用了哪些能力。獎盃是「成果」的象徵，不代表得獎紀錄。</p><ol class="lesson-rows">${lessons.map((l,k)=>`<li><button class="step-row lesson-row" data-lesson="${k}"><b class="${stageOf(k)}">${k+1}</b><span><strong>${escape(lessonTitle(l))}</strong><small>${l.learn.length?escape(l.learn.join('、')):'學習能力待老師補充'}</small></span><i aria-hidden="true">›</i></button></li>`).join('')}</ol></section>`;}
+function bindLessonRows(){for(const el of document.querySelectorAll('#detail-content [data-lesson]')){const k=+el.dataset.lesson;el.onclick=()=>selectLesson(k);el.onpointerenter=e=>{if(e.pointerType==='mouse')world?.lessonState({hot:k,sel:selectedLesson});};el.onpointerleave=()=>world?.lessonState({sel:selectedLesson});el.onfocus=()=>world?.lessonState({hot:k,sel:selectedLesson});el.onblur=()=>world?.lessonState({sel:selectedLesson});}}
+let selectedLesson=-1;
+function selectLesson(k){const l=lessons[k],t=topicOf(SUMMIT);if(!l||!t)return;
+ if(selected!==SUMMIT||$('#detail').hidden)selectTopic(SUMMIT,{focus:false});
+ selectedLesson=k;const n=lessons.length,uses=l.uses.length?`<ul class="lesson-uses">${l.uses.map(u=>`<li><b>第 ${u.lesson} 課</b>${escape(u.skill)}</li>`).join('')}</ul>`:`<p class="pending-note">${k===0?'這是第一堂，階梯從這裡開始。':'這堂課沿用前面哪些能力，待老師補充。'}</p>`;
+ $('#detail-crumb').textContent=`主題 ${t.n} · ${t.title} › 第 ${k+1} 堂課`;
+ $('#detail-content').innerHTML=`<div class="detail-head"><span class="detail-badge" style="--badge:${t.color}" aria-hidden="true">${k+1}</span><div><p class="eyebrow">課程階梯 · 第 ${k+1} / ${n} 堂</p><h2 id="detail-title">${escape(lessonTitle(l))}</h2></div></div>
+ <div class="chips"><span class="chip strong">第 ${k+1} 堂課</span><span class="chip">${stageOf(k)==='silver'?'銀色階梯':'金色階梯'}</span>${l.title?'':'<span class="chip draft">待老師補充</span>'}</div>
+ <div class="answer-first"><p class="lead">走到第 ${k+1} 堂：前面 ${k} 堂課學到的，會在這裡繼續用上。</p></div>
+ <section class="card-section"><h3>本課學習的能力</h3>${l.learn.length?`<div class="chips">${l.learn.map(x=>`<span class="chip">${escape(x)}</span>`).join('')}</div>`:'<p class="pending-note">老師還沒有提供這堂課的內容。</p>'}</section>
+ <section class="card-section"><h3>沿用前面學過的</h3>${uses}</section>
+ <nav class="step-nav" aria-label="切換課程">${k>0?`<button data-lesson="${k-1}"><small>上一堂</small><span>${escape(lessonTitle(lessons[k-1]))}</span></button>`:'<span></span>'}${k<n-1?`<button data-lesson="${k+1}" class="next"><small>下一堂</small><span>${escape(lessonTitle(lessons[k+1]))}</span></button>`:'<span></span>'}</nav>
+ <div class="detail-actions"><button class="ask-topic" id="to-summit">一路走到成果 ↗</button><button class="save-topic" id="back-summit">← 回到「${t.title}」</button></div>`;
+ bindLessonRows();
+ const toSummit=()=>{selectedLesson=-1;selectTopic(SUMMIT,{focus:false});world?.focus(SUMMIT,insets());$('#detail').scrollTop=0;$('#close-detail').focus();};
+ $('#to-summit').onclick=toSummit;$('#back-summit').onclick=toSummit;
+ world?.pinState({});world?.climb(k);world?.lessonState({sel:k});$('#map-message').textContent=`正在看課程階梯 · 第 ${k+1} 堂`;
+ world?.focusLesson(k,insets());$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
+function closeDetail({restoreFocus=true}={}){const id=selected,relationId=activeRelation;activeRelation=null;$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);world?.climb(-1);world?.lessonState({});
  if(isPhone()&&indexBeforeDetail)indexSheet.set(indexBeforeDetail);indexBeforeDetail=null;
  updateMap();renderList();renderConcerns();renderRelations();refitView();$('#map-message').textContent='點一座島，開始你的寫作旅程';
  if(!restoreFocus)return;const row=document.querySelector(`.topic-row[data-id="${id}"]`);const relationRow=relationId?[...$('#relation-list').querySelectorAll('[data-relation]')].find(el=>el.dataset.relation===relationId):null;const target=[relationRow,detailOpener,row,$('#concerns-list button'),$('#tab-concerns')].find(el=>el?.isConnected&&el.getClientRects().length);target?.focus();}
@@ -166,7 +188,7 @@ $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')
 function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.contains('sheet-peek'):!document.body.classList.contains('index-collapsed');$('#list-toggle').setAttribute('aria-expanded',open);$('#list-toggle').classList.toggle('active',open);}
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
-try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,lessons,onLesson:k=>selectLesson(k)});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});
 const indexSheet=bindSheet($('#index-panel'),$('#index-handle'),$('#index-size'),{peekable:true,onChange:()=>{syncListToggle();requestAnimationFrame(refitView);}});
@@ -187,4 +209,5 @@ let seenIntro=false;try{seenIntro=localStorage.getItem(INTRO_KEY)==='1';}catch{}
 for(const button of document.querySelectorAll('.map-tools button,.top-actions button'))button.title=button.getAttribute('aria-label');
 // Read-only camera state for manual QA of pan / rotate / zoom / fly (no effect on the page).
 window.__islandView=()=>world?.view();
+window.__islandClimb=()=>({lessons:world?.climbState(),trophy:world?.trophy()});window.__lessonPoint=k=>world?.lessonPoint(k);
 setInterval(()=>{if(world)$('#map').dataset.cameraView=JSON.stringify(world.view());},150);

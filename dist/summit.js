@@ -6,7 +6,7 @@
 export const SUMMIT='stories',STAIRS_FROM='method',UNIVERSITY='university';
 // Where new students step out of: the main building on this island (01 認識老師 for now). Change this one id to move it.
 export const SPAWN_FROM='teacher';
-export const RISE=3.2,TOP=.25,RING=1.06;
+export const RISE=2,TOP=.25,RING=1.06;
 const C={x:-1.17,z:0},R=6,BACK=Math.atan2(-13.6,-2.8);
 const onArc=(a,y,r=R)=>({x:C.x+Math.cos(a)*r,y,z:C.z+Math.sin(a)*r});
 export const SUMMIT_AT=onArc(BACK,RISE),UNIVERSITY_AT=onArc(BACK-.62,RISE);

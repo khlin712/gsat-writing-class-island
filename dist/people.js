@@ -59,7 +59,8 @@ export function makeFigure(look={}){
 }
 // A walk cycle: legs and arms swing against each other and the body bobs twice per stride.
 // Sliding: sitting with legs out in front and both arms up.
-export function pose(phase,amount,sliding=0){const s=Math.sin(phase),k=amount*(1-sliding);return {leg:s*.6*k-1.35*sliding,legB:-s*.6*k-1.35*sliding,arm:-s*.5*k-2.7*sliding,armB:s*.5*k-2.7*sliding,bob:Math.abs(Math.cos(phase))*.016*k,turn:s*.05*k};}
+// Climbing: arms reach up in turn and the knees lift, facing the rock.
+export function pose(phase,amount,sliding=0,climbing=0){const s=Math.sin(phase),k=amount*(1-sliding)*(1-climbing),c=climbing;return {leg:s*.6*k-1.35*sliding-(.5+.4*s)*c,legB:-s*.6*k-1.35*sliding-(.5-.4*s)*c,arm:-s*.5*k-2.7*sliding-(2.6+.4*s)*c,armB:s*.5*k-2.7*sliding-(2.6-.4*s)*c,bob:Math.abs(Math.cos(phase))*.016*k,turn:s*.05*k};}
 export function applyPose(fig,p){const r=fig.userData.rig;r.legs[0].rotation.x=p.leg;r.legs[1].rotation.x=p.legB;r.arms[0].rotation.x=p.arm;r.arms[1].rotation.x=p.armB;r.torso.position.y=.17+p.bob;r.torso.rotation.y=p.turn;}
 
 export const FRONT_Z=.62;
@@ -68,4 +69,4 @@ export function makeRoute(pts){const cum=[0];for(let i=1;i<pts.length;i++)cum.pu
 // Where a walker is after covering distance s, which way it faces, and whether it is on the slide.
 export function along(route,s){const {pts,cum,total}=route;if(pts.length===1||total===0)return {...pts[pts.length-1],heading:null,slide:false};const d=Math.max(0,Math.min(total,s));let i=1;while(i<pts.length-1&&cum[i]<d)i++;
  const a=pts[i-1],b=pts[i],t=(d-cum[i-1])/((cum[i]-cum[i-1])||1);
- return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,slide:!!(a.slide&&b.slide)};}
+ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,slide:!!(a.slide&&b.slide),climb:a.path==='climb'&&b.path==='climb'};}

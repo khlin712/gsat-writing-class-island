@@ -9,6 +9,7 @@ export function createArchitecture({box,mesh,tree}){
  const cup=new THREE.LatheGeometry([[0,0],[.07,0],[.17,.06],[.27,.24],[.32,.46],[.33,.6],[.3,.6]].map(([x,y])=>new THREE.Vector2(x,y)),24);
  const handle=new THREE.TorusGeometry(.13,.028,8,16,Math.PI);
  function golden(m){m.material=gold;return m;}
+ const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
  function glazed(g,x,y,z,w,h){const m=box(g,x,y,z,w,h,.025,'#638d97');m.material=glass;m.castShadow=false;return m;}
  function window(g,x,y,z,w=.18,h=.25){box(g,x,y-.025,z-.012,w+.06,h+.05,.045,'#ece4d1');glazed(g,x,y,z+.018,w,h);box(g,x,y,z+.038,.018,h,.018,'#d5c5a3');box(g,x,y+h*.48,z+.04,w,.018,.018,'#d5c5a3');}
@@ -64,6 +65,34 @@ export function createArchitecture({box,mesh,tree}){
    for(const dx of [-.2,-.065,.065,.2])box(g,dx,.39,.37,.04,.52,.04,stone);box(g,0,.9,.37,.48,.07,.05,stone);
    for(let i=0;i<3;i++)box(g,0,.245+i*.03,.47+i*.04,.5-i*.04,.03,.12,'#dfd6c1');
    lamp(g,-.62,.42);lamp(g,.62,.42);planter(g,-.32,.5);planter(g,.32,.5);
+  }else if(t.kind==='start'){
+   // ① Start: a wooden trail gate with a big question board under it.
+   base(g,.9,.6);for(const x of [-.42,.42]){box(g,x,.33,.05,.08,.95,.08,'#8a6a48');}box(g,0,1.24,.05,1.06,.09,.12,'#7a5a3c');box(g,0,1.33,.05,.86,.06,.1,'#c4612f');
+   box(g,0,.62,.09,.66,.44,.04,'#fff4d6');box(g,0,.62,.07,.72,.5,.03,'#8a6a48');mesh(g,new THREE.TorusGeometry(.09,.025,8,16,Math.PI*1.4),'#c4612f',0,.7,.115).rotation.z=-.5;box(g,.02,.5,.115,.04,.06,.01,'#c4612f');
+   for(const x of [-.62,.62])mesh(g,geo.cylinder,'#e2793f',x,.6,-.25,.02,.7,.02);for(const x of [-.62,.62]){const f=box(g,x+.08,.84,-.25,.16,.1,.01,'#f2c14e');f.castShadow=false;}bench(g,-.5,.5);planter(g,.55,.5);
+  }else if(t.kind==='lava'){
+   // A lava cave: a dark rock mound with a glowing pool at its mouth. Walk in and you do not come out.
+   const rock='#5b4a42';for(const [x,z,r,h]of [[0,-.2,.55,.75],[-.42,-.05,.35,.5],[.42,-.1,.38,.55],[.15,-.45,.4,.6]])mesh(g,new THREE.DodecahedronGeometry(1,0),rock,x,.25+h*.45,z,r,h,r);
+   mesh(g,geo.dome,'#1d1512',0,.25,.18,.24,.34,.12);const pool=mesh(g,new THREE.CylinderGeometry(1,1,1,20),'#ff7a2a',0,.26,.36,.3,.02,.2);pool.material=lava;pool.castShadow=false;
+   for(const [x,z]of [[-.55,.42],[.55,.38]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#3e3330',x,.3,z,.09,.08,.09);
+  }else if(t.kind==='cliff'){
+   // A cliff: grass that simply ends at the far edge, with a lone pine leaning out. Walk on and you fall.
+   for(const [x,z,r]of [[-.3,-.3,.12],[.25,-.45,.09],[-.55,.1,.08]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#9b8a6c',x,.3,z,r,r*.8,r);tree(g,.45,-.1,.7);tree(g,-.4,-.55,.55);
+  }else if(t.kind==='wall'){
+   // The top of the steep wall: a cairn and a little flag for those who made it up.
+   for(let i=0;i<4;i++)mesh(g,new THREE.DodecahedronGeometry(1,0),'#a89c86',0,.28+i*.09,-.1,.16-i*.03,.06,.16-i*.03);mesh(g,geo.cylinder,'#6b5a45',.25,.55,-.2,.012,.6,.012);box(g,.32,.78,-.2,.14,.09,.01,'#f2c14e');tree(g,-.5,-.4,.55);
+  }else if(t.kind==='calendar'){
+   // ⑤ The course calendar: a small hall with a big calendar board out front.
+   base(g,1,.62);hall(g,0,-.12,.86,.5,.5,'#eee5d2','#6d7f9a');box(g,0,.36,.3,.86,.6,.05,'#8a6a48');box(g,0,.42,.33,.78,.5,.02,'#fffaf0');box(g,0,.84,.335,.78,.1,.02,'#d0695a');
+   for(let r=0;r<3;r++)for(let c=0;c<6;c++)box(g,-.3+c*.12,.5+r*.11,.345,.08,.07,.006,(r===1&&c===3)?'#f2c14e':'#e6dccb');
+  }else if(t.kind==='signup'){
+   // ⑥ Sign-up: a booth with a striped awning and a counter.
+   base(g,.9,.6);box(g,0,.33,-.05,.7,.5,.45,'#f3ead8');box(g,0,.33,.19,.72,.24,.04,'#e2793f');for(let i=0;i<6;i++){const a=box(g,-.3+i*.12,.86,.22,.12,.03,.24,i%2?'#fff4d6':'#e2793f');a.rotation.x=-.35;}
+   box(g,0,.83,-.05,.74,.05,.5,'#c4612f');box(g,0,.92,-.05,.4,.16,.04,'#fff4d6');lamp(g,-.55,.4);planter(g,.55,.45);
+  }else if(t.kind==='contact'){
+   // ⑦ Contact: a little post office with a mailbox and a letter sign.
+   base(g,.9,.62);hall(g,-.05,-.1,.72,.48,.48,'#f1e7d4','#4f7d74');box(g,.5,.25,.38,.16,.32,.14,'#3f7d4f');mesh(g,geo.dome,'#3f7d4f',.5,.57,.38,.08,.06,.07);box(g,.5,.47,.452,.1,.015,.01,'#1f2a24');
+   box(g,-.05,.98,.15,.3,.2,.03,'#fff4d6');box(g,-.05,.98,.168,.22,.12,.004,'#e2793f');bench(g,-.55,.45);
   }else if(t.kind==='clock'){
    base(g,.72,.68);hall(g,0,-.05,.57,.94,.55,'#e6dbc0','#81795c');
    box(g,0,1.34,-.05,.69,.11,.67,'#c0a77c');box(g,0,1.45,-.05,.5,.45,.5,'#e8dec8');mesh(g,geo.dome,'#657d70',0,1.92,-.05,.34,.22,.34);

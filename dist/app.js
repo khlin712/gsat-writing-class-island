@@ -164,7 +164,7 @@ $('#quiz').onclick=()=>{quizIndex=0;quizAnswers=[];quiz();};
 // ---- People on the map: the guide, a parent on each island, the students and the visitor's own character. ----
 // All of them are map characters; none stands for a real teacher, student, parent or case.
 let avatarLook=(()=>{try{return readAvatar(localStorage.getItem(AVATAR_KEY));}catch{return readAvatar('');}})();
-let castCard=null,castTab='look',placingAvatar=false,avatarStatus='在「01 認識老師」散步',arrivedAt=null;
+let castCard=null,castTab='look',placingAvatar=false,avatarStatus='從起點開始，自動探索各座島',arrivedAt=null;
 const islandLog=[];
 function saveAvatar(){try{localStorage.setItem(AVATAR_KEY,JSON.stringify(avatarLook));}catch{toast('瀏覽器無法儲存角色外觀；這次仍可使用。');}}
 function logEvent(text,{id=null}={}){const d=new Date(),pad=n=>String(n).padStart(2,'0');islandLog.unshift({time:`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,text,id});if(islandLog.length>40)islandLog.pop();if(modal.open&&$('#log-list'))renderLog();}
@@ -191,18 +191,20 @@ function openResident(w){const t=topicOf(w.island);if(!t)return;const parent=w.k
 function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t=placeOf(g.target||g.island);if(!t)return '';return g.target?`正走向 ${t.n} ${t.title}`:`停在 ${t.n} ${t.title}`;}
 // ---- The guide waits at ① start; when asked, it leads the visitor round GUIDE_ROUTE one stop at a time, the camera following. ----
 const guideTour={active:false,index:0,walking:false};
+const SKIP_WALK='<button class="ask-topic" id="tour-skip">跳過走路，直接抵達 →</button>';
+function skipTourWalk(){if(!guideTour.active||!guideTour.walking)return;const id=guideTour.detour||GUIDE_ROUTE[guideTour.index];if(!world?.guideAppear(id,{instant:true}))return;world.stopFollow();onGuide(id);world.walkerFocus(world.guide(),{...insets(),instant:true});}
 const stopName=id=>placeOf(id)?.title||'';
 const DETOURS=[['pass1','cliff','帶我去看懸崖'],['wallfoot','wall','帶我去看陡峭山壁']];
 function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
  if(guideTour.detour)return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶你看錯的路</b> · ${escape(DETOURS.find(d=>d[0]===guideTour.detour)?.[2].replace('帶我去看','')||'')}</p><div class="tour-actions"><button class="ask-topic" id="tour-back">看完了，回到指引牌 →<small>再照著指引走上橋</small></button>${DETOURS.filter(d=>d[0]!==guideTour.detour).map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join('')}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;
  const extra=GUIDE_ROUTE[k]==='fork'?DETOURS.map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join(''):'';
  return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">看完了，繼續前進 →<small>下一站：${escape(stopName(next))}</small></button>`}${extra}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
-function bindTourBar(){$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-back')?.addEventListener('click',()=>{guideTour.detour=null;tourStep(GUIDE_ROUTE.indexOf('fork'));});for(const b of document.querySelectorAll('#detail-content [data-detour]'))b.onclick=()=>tourDetour(b.dataset.detour);$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
+function bindTourBar(){$('#tour-skip')?.addEventListener('click',skipTourWalk);$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-back')?.addEventListener('click',()=>{guideTour.detour=null;tourStep(GUIDE_ROUTE.indexOf('fork'));});for(const b of document.querySelectorAll('#detail-content [data-detour]'))b.onclick=()=>tourDetour(b.dataset.detour);$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
 // Open the card for the stop the guide has reached, with the tour bar on top. The camera is already with the guide, so it stays put.
 function showTourStop(id){if(topicOf(id))selectTopic(id,{camera:false});else openStation(id,{camera:false});}
 // From the trailhead the guide can take the visitor to look at the wrong ways (a cliff top, the foot of the steep wall), then back.
 function tourDetour(stop){const d=DETOURS.find(x=>x[0]===stop);if(!d)return;guideTour.active=true;guideTour.detour=stop;guideTour.walking=true;
- const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你去看「${escape(d[2].replace('帶我去看',''))}」</b> · 跟著它走…</p>`;
+ const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你去看「${escape(d[2].replace('帶我去看',''))}」</b> · 跟著它走…</p><div class="tour-actions">${SKIP_WALK}</div>`;bindTourBar();
  if(!world?.guideTo(stop)){guideTour.walking=false;openStation('fork',{path:d[1],camera:false});return;}world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());}
 // Every island and station card offers the tour: the tour bar when the guide has brought you here, otherwise a button that makes
 // the guide pop up on this island and lead on from here (a visitor who left the tour halfway need not go back to find the guide).
@@ -215,7 +217,7 @@ function resumeHere(id){const k=GUIDE_ROUTE.indexOf(id);world?.guideAppear(id);g
  if(k<0){$('.tour-resume')?.remove();$('#detail-content').insertAdjacentHTML('afterbegin',tourBar().replace(`第 1 / ${GUIDE_ROUTE.length} 站`,'從這裡出發'));bindTourBar();}else cardTourUI(id);
  toast('導覽員來了，接著帶你走');}
 function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true;guideTour.index=k;guideTour.walking=true;guideTour.detour=null;
- const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你走向「${escape(stopName(id))}」</b> · 跟著它走…</p>`;
+ const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你走向「${escape(stopName(id))}」</b> · 跟著它走…</p><div class="tour-actions">${SKIP_WALK}</div>`;bindTourBar();
  if(!world?.guideTo(id)){guideTour.walking=false;showTourStop(id);return;}
  world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());$('#map-message').textContent=`導覽員帶你走向「${stopName(id)}」`;}
 // While the guide is leading, a stray swipe or scroll on the map would leave it behind: once the visitor lets go, the camera
@@ -229,9 +231,10 @@ function onGuide(id,{recoveryFailed=false}={}){if(!guideTour.active)return;
 function endTour(home){guideTour.active=false;guideTour.walking=false;guideTour.detour=null;$('.tour-bar')?.remove();if(home){world?.guideTo(GUIDE_ROUTE[0]);toast('導覽員回到起點等你');}}
 function openGuide(){const g=world?.guide();if(!g)return;const st=world.walkerState().guide,atStart=st.island===GUIDE_ROUTE[0]&&!st.target;
  const route=GUIDE_ROUTE.map(stopName).join(' → ');
- openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">${atStart?'我在起點等你，一起走一圈吧':'導覽員'}</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">我會帶你依序走過：${escape(route)}。每到一站我會停下來，等你看完再走下一站。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions">${guideTour.active&&!guideTour.walking?`<button class="ask-topic" id="guide-tour">繼續導覽：前往「${escape(stopName(GUIDE_ROUTE[guideTour.index+1]||GUIDE_ROUTE[0]))}」 →</button>`:`<button class="ask-topic" id="guide-tour">跟著導覽員出發 →</button>`}<button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
+ openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">${atStart?'我在起點等你，一起走一圈吧':'導覽員'}</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">我會帶你依序走過：${escape(route)}。每到一站我會停下來，等你看完再走下一站。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions">${guideTour.active&&guideTour.walking?SKIP_WALK:guideTour.active&&!guideTour.walking?`<button class="ask-topic" id="guide-tour">繼續導覽：前往「${escape(stopName(GUIDE_ROUTE[guideTour.index+1]||GUIDE_ROUTE[0]))}」 →</button>`:`<button class="ask-topic" id="guide-tour">跟著導覽員出發 →</button>`}<button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
  world.walkerSelect(g);world.walkerFocus(g,insets());bindFollow(g);
- $('#guide-tour').onclick=()=>{if(guideTour.active&&!guideTour.walking){if(guideTour.index>=GUIDE_ROUTE.length-1){endTour(true);return;}tourStep(guideTour.index+1);return;}
+ $('#tour-skip')?.addEventListener('click',skipTourWalk);
+ const tourButton=$('#guide-tour');if(tourButton)tourButton.onclick=()=>{if(guideTour.active&&!guideTour.walking){if(guideTour.index>=GUIDE_ROUTE.length-1){endTour(true);return;}tourStep(guideTour.index+1);return;}
   // Start: the guide is at ① already (or walks back there first), then shows the first stop.
   guideTour.active=true;guideTour.index=0;if(atStart){guideTour.walking=false;showTourStop(GUIDE_ROUTE[0]);}else tourStep(0);};
  $('#map-message').textContent=atStart?'導覽員在起點等你':'跟著導覽員走一圈旅程';$('#close-detail').focus();}
@@ -241,7 +244,7 @@ function avatarPanel(){const a=avatarLook,me=world?.walkerState().me;
  <div class="cast-field"><span class="cast-label" id="pick-hair">髮型</span><div class="cast-options" role="group" aria-labelledby="pick-hair">${Object.entries(HAIR_STYLES).map(([k,v])=>`<button data-pick="hairStyle" data-value="${k}" aria-pressed="${a.hairStyle===k}">${v}</button>`).join('')}</div></div>
  <div class="cast-field"><span class="cast-label" id="pick-shirt">衣服顏色</span><div class="cast-options" role="group" aria-labelledby="pick-shirt">${SHIRTS.map((c,i)=>`<button class="swatch" style="--swatch:${c}" data-pick="shirt" data-value="${c}" aria-pressed="${a.shirt===c}" aria-label="衣服顏色 ${i+1}"></button>`).join('')}</div></div>
  <p class="helper">角色外觀只存在這個瀏覽器，不會上傳。</p>`;
- const mode=me?.mode||'stroll';
+ const mode=me?.mode||'auto';
  return `<p class="cast-status" id="avatar-status" aria-live="polite">${escape(avatarStatus)}</p><div id="avatar-arrived">${arrivedAt?`<button class="text-button" id="avatar-open-island">看「${placeOf(arrivedAt).title}」 ↗</button>`:''}</div>
  <div class="cast-options wide" role="group" aria-label="角色怎麼走"><button data-mode="stroll" aria-pressed="${mode==='stroll'&&!placingAvatar}">自由漫步</button><button data-mode="auto" aria-pressed="${mode==='auto'&&!placingAvatar}">自動逛逛</button><button id="avatar-place" aria-pressed="${placingAvatar}">點地圖指定</button></div>
  <h3 class="cast-subhead">前往某座島</h3><div class="cast-islands">${[...AVATAR_STOPS.map(placeOf),...topics].map(t=>`<button data-go="${t.id}" aria-current="${me?.target===t.id}"><b>${t.n}</b>${t.title}</button>`).join('')}</div>`;}
@@ -256,7 +259,7 @@ function renderAvatar(focusSel){const panel=$('#cast-panel');if(!panel)return;pa
 function sendAvatar(id,spot){const t=placeOf(id);if(!t)return;setPlacing(false);world?.avatarGo(id,spot);arrivedAt=null;const me=world?.walkerState().me;avatarStatus=me?.target?`正走向 ${t.n} ${t.title}`:`已抵達 ${t.n} ${t.title}`;if(!me?.target)arrivedAt=id;if(castCard==='avatar'){castTab='trip';renderAvatar(`[data-go="${id}"]`);}world?.walkerFocus(world.me(),insets());$('#map-message').textContent=`${avatarLook.name||'你的角色'}${me?.target?'正走向':'已抵達'}「${t.title}」`;}
 function setPlacing(on){placingAvatar=on;world?.placing(on);$('#map').classList.toggle('placing',on);if(on){world?.stopFollow();$('#map-message').textContent='點地圖指定：點一座島上的位置，角色會走過去';}else if($('#map-message').textContent.startsWith('點地圖指定'))$('#map-message').textContent='點一座島，開始你的寫作旅程';}
 function onPlace(id,spot){if(!id){toast('請點在島上的地面，角色才走得過去');return;}sendAvatar(id,spot);}
-function onArrive(id){const t=placeOf(id);if(!t)return;arrivedAt=id;avatarStatus=`已抵達 ${t.n} ${t.title}`;toast(`${avatarLook.name||'你的角色'}抵達「${t.title}」`);if(castCard==='avatar'&&castTab==='trip')renderAvatar();}
+function onArrive(id,{automatic=false}={}){const t=placeOf(id);if(!t)return;arrivedAt=id;avatarStatus=`已抵達 ${t.n} ${t.title}`;if(!automatic)toast(`${avatarLook.name||'你的角色'}抵達「${t.title}」`);if(castCard==='avatar'&&castTab==='trip')renderAvatar();}
 function openAvatar(){castTab=castTab||'look';
  openCastCard('avatar','我的角色',`<div class="detail-head"><span class="detail-badge cast-badge me" aria-hidden="true">我</span><div><p class="eyebrow">我的角色 · 只存在這個瀏覽器</p><h2 id="detail-title">${escape(avatarLook.name||'我的角色')}</h2></div></div><div class="cast-tabs" role="group" aria-label="角色設定"><button data-cast-tab="look" aria-pressed="${castTab==='look'}">外觀</button><button data-cast-tab="trip" aria-pressed="${castTab==='trip'}">行程</button></div><div id="cast-panel"></div><div class="detail-actions"><button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
  for(const b of document.querySelectorAll('[data-cast-tab]'))b.onclick=()=>{castTab=b.dataset.castTab;if(castTab!=='trip')setPlacing(false);renderAvatar(`[data-cast-tab="${castTab}"]`);};

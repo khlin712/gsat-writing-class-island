@@ -90,7 +90,7 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
     for(const r of ropes)r.visible=!broken;
     list.forEach((x,i)=>{const u=i/(list.length-1),gap=hazards?.gap(segment,u),warning=h?.phase==='warning'&&Math.abs(u-h.center)<.09;
      eo.position.copy(x.p);eo.rotation.set(x.rx||0,x.yaw,0);eo.scale.copy(x.s);
-     if(gap){const k=h.phase==='repair'?Math.min(1,h.left/1.5):Math.min(1,h.age*2);eo.position.y-=k*2;eo.rotation.x+=k*(i%2?1:-1);eo.scale.y*=Math.max(.01,1-k);}
+     if(gap){eo.position.y-=h.phase==='repair'?12:4.5*h.age*h.age;eo.rotation.x+=h.age*(i%2?1:-1);if(h.phase==='repair'||h.age>1.5)eo.scale.setScalar(0);}
      else if(warning)eo.rotation.z=Math.sin(elapsed*18+i)*.06;
      eo.updateMatrix();deck.setMatrixAt(i,eo.matrix);});deck.instanceMatrix.needsUpdate=true;}
 for(const q of feet){for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24)st.foot=1;}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;

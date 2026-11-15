@@ -3,9 +3,12 @@
 // Links open outside pages (forms, messaging apps); this site never sends a message or collects personal data itself.
 
 export const STATIONS=[
- {id:'start',n:'①',title:'為什麼高中一定要學國寫？',short:'起點',
-  lead:'整座島從這個問題開始。',
-  body:'',                       // The teacher's own answer to the question. Empty → 待老師提供.
+ {id:'start',n:'①',title:'從這裡出發：先想清楚兩件事',short:'起點',
+  lead:'起點有兩個主題：第一，為什麼高中一定要學國寫？第二，為什麼要選擇我、選擇這堂課？',
+  // The two themes of the start, each with the teacher's own answer. Empty answer → 待老師提供.
+  themes:[
+   {q:'為什麼高中一定要學國寫？',label:'主題一 · 作文',body:''},
+   {q:'為什麼要選擇我？為什麼要選擇這堂課？',label:'主題二 · 選擇',body:''}],
   next:'fork',nextLabel:'走到入口指引牌'},
  {id:'fork',n:'②',title:'入口指引牌：三條路',short:'指引牌',
   lead:'像登山步道入口的指引牌：照著指引走上橋，路最順。走錯了，就會難以接近目標。',

@@ -5,9 +5,11 @@ import {FLY_MS,easeInOutCubic} from './motion.js';
 import {createArchitecture} from './architecture.js';
 import {relationKey} from './relations.js';
 import {mapGestures} from './gestures.js';
-import {createSky,random} from './sky.js';
+import {createSky,random,dayPhase} from './sky.js';
+import {createWeather} from './weather.js';
+import {createDecor} from './decor.js';
 import {placeLabels,fitDistance,pinSpots} from './layout.js';
-import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,descentPath,climbPath,buildGraph} from './summit.js';
+import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,slidePath,climbPath,buildGraph} from './summit.js';
 import {STATIONS} from './journey.js';
 import {createRoute} from './route3d.js';
 import {createWalkers} from './walkers.js';
@@ -81,7 +83,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  // ② The steep wall: a sheer rock face on the trophy island's outer side, rising from the ledge at its foot.
  {const S=positions.get(SUMMIT),F=STOPS.wallfoot,a=Math.atan2(F.z-S.z,F.x-S.x),w=stopGroups.get('wallfoot'),h=S.y+.55;const slab=new THREE.Mesh(new THREE.BoxGeometry(1.5,h,.5),rockMaterial);
   slab.position.set(S.x+Math.cos(a)*1.08-F.x,h/2-.3,S.z+Math.sin(a)*1.08-F.z);slab.rotation.y=-a+Math.PI/2;slab.castShadow=slab.receiveShadow=true;w.add(slab);}
- const route=createRoute({scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),trail:trailPath(),trophyAt:positions.get(SUMMIT),reduced});
+ createDecor({scene,centers,graph,skip:id=>id==='lava'||!!STOPS[id]?.ledge});
+ const route=createRoute({scene,centers,walkways:WALKWAYS,bridge,slide:slidePath(),climb:climbPath(),trail:trailPath(),trophyAt:positions.get(SUMMIT),reduced});
  {const m=bridge[Math.floor(bridge.length/2)];stationLabel('bridge',`<b>${st('bridge').n}</b><span>${st('bridge').short}</span>`,new THREE.Vector3(m.x,m.y+.75,m.z),'','bridge');}
  // Choosing the summit (trophy or bridge) lights the bridge step by step from the bottom up; the trophy itself always shines.
  let trophyLit=0,summitOn=false;
@@ -116,7 +119,17 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  function pinState({hot=-1,sel=-1}={}){pinViews.forEach((v,k)=>{v.el.classList.toggle('hot',k===hot);v.el.classList.toggle('sel',k===sel);v.el.setAttribute('aria-pressed',k===sel);});}
  // Times of day: sky, haze and light change together.
  const LIGHT={dawn:{sun:'#ffd5b8',power:2.4,at:[12,6,7],sky:'#f4e7f0',ground:'#c8b6a6',ambient:2.4,clear:'#f7d6c8'},day:{sun:'#fff3d5',power:3.2,at:[-7,14,8],sky:'#f6f9ff',ground:'#cbbd9c',ambient:2.8,clear:'#dcebf4'},dusk:{sun:'#ffbe8c',power:2.8,at:[-11,8,6],sky:'#f6dcd2',ground:'#c2a598',ambient:2.7,clear:'#f3a87c'},night:{sun:'#c9d5ff',power:.7,at:[-7,14,8],sky:'#9fb2d8',ground:'#4a5068',ambient:1.2,clear:'#24365a'}};
- function time(name){const l=LIGHT[name]||LIGHT.day;sky.time(name);architecture.time(name);renderer.setClearColor(l.clear);sun.color.set(l.sun);sun.intensity=l.power;sun.position.set(...l.at);ambient.color.set(l.sky);ambient.groundColor.set(l.ground);ambient.intensity=l.ambient;}
+ // The clock: light, sky, stars and lit windows follow the hour, blending smoothly between dawn, day, dusk and night; rain greys it all.
+ const weather=createWeather(scene,{reduced});
+ let hour=8,lightAt=-Infinity,lastPaint=null,phase=dayPhase(8);
+ const C1=new THREE.Color(),C2=new THREE.Color(),V1=new THREE.Vector3();
+ function applyLight(){const p=dayPhase(hour),A=LIGHT[p.a],B=LIGHT[p.b],t=p.t,wet=weather.rain();phase=p;
+  sun.color.set(A.sun).lerp(C1.set(B.sun),t);sun.intensity=(A.power+(B.power-A.power)*t)*(1-.45*wet);sun.position.copy(V1.set(...A.at).lerp(new THREE.Vector3(...B.at),t));
+  ambient.color.set(A.sky).lerp(C1.set(B.sky),t);ambient.groundColor.set(A.ground).lerp(C1.set(B.ground),t);ambient.intensity=(A.ambient+(B.ambient-A.ambient)*t)*(1-.2*wet);
+  renderer.setClearColor(C2.set(A.clear).lerp(C1.set(B.clear),t));
+  const key=`${Math.round(hour*30)}:${Math.round(wet*30)}`;if(key!==lastPaint){lastPaint=key;sky.blend(p.a,p.b,t,wet,p.stars);}
+  architecture.time(p.stars>.5?'night':p.name==='dusk'||p.name==='dawn'?'dusk':'day');}
+ function time(name){hour={dawn:6.4,day:12,dusk:18,night:22}[name]??12;applyLight();}
  const flows=[],seen=new Set();
  for(const t of topics)for(const id of t.links){const key=relationKey(t.id,id);if(seen.has(key))continue;seen.add(key);const a=positions.get(t.id).clone(),b=positions.get(id).clone();a.y+=.3;b.y+=.3;const mid=a.clone().lerp(b,.5);mid.y=Math.max(a.y,b.y)+.17;const curve=new THREE.QuadraticBezierCurve3(a,mid,b);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineDashedMaterial({color:'#fff0ba',dashSize:.12,gapSize:.12,transparent:true,opacity:.9}));line.computeLineDistances();scene.add(line);const dot=mesh(scene,new THREE.SphereGeometry(.035,6,4),'#fff4c5',0,.3,0);dot.castShadow=false;line.userData.relation=key;flows.push({key,line,dot,curve,a:t.id,b:id});}
  // People walking on the map (see walkers.js); the visitor's own character is one of them.
@@ -184,11 +197,12 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
 
  function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.fov=camera.aspect<.8?50:38;camera.updateProjectionMatrix();renderer.setSize(w,h);labels.setSize(w,h);lastLayout=-Infinity;}
  const observer=new ResizeObserver(resize);observer.observe(host);resize();home({instant:true});
- function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);if(!reduced.matches)lavaMat.emissiveIntensity=1.2+Math.sin(elapsed*2.6)*.25+Math.sin(elapsed*7.1)*.1;updateStairs(now,delta);if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);labels.render(scene,camera);if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
+ function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}if(!reduced.matches)lavaMat.emissiveIntensity=1.2+Math.sin(elapsed*2.6)*.25+Math.sin(elapsed*7.1)*.1;updateStairs(now,delta);if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);labels.render(scene,camera);if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
  frame=requestAnimationFrame(animate);
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();host.querySelector('.webgl-message')?.remove();const message=document.createElement('p');message.className='webgl-message';message.textContent='3D 畫面暫時中斷。你仍可用主題清單探索；請重新整理恢復地圖。';host.append(message);});
  return {
-  people(on){peopleOn=on;redrawSelection();},guideTo(id){return walkers.guideTo(id);},guideAppear(id){return walkers.guideAppear(id);},
+  people(on){peopleOn=on;redrawSelection();},
+  setHour(h){hour=h;},hour:()=>hour,phase:()=>phase,weather:()=>weather.state(),rain(on){weather.setRain(on);},guideTo(id){return walkers.guideTo(id);},guideAppear(id){return walkers.guideAppear(id);},
   focusStation(id,inset){focusStation(id,inset);},stationSelect(id){for(const [k,v]of stationLabels)v.el.classList.toggle('selected',k===id||(id==='fork'&&k.startsWith('path-')));},
   stationPoint(id){const l=stationLabels.get(id);if(!l)return null;const v=l.o.position.clone().project(camera),r=renderer.domElement.getBoundingClientRect();return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height};},stopFollow(){follow=null;if(framing?.kind==='walker')framing=null;},
   walkerSelect(w){walkers.select(w);},walkerFocus(w,inset){focusWalker(w,inset);},following:()=>!!follow,guide:()=>walkers.guide(),me:()=>walkers.me(),

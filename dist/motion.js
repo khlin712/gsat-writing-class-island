@@ -27,3 +27,13 @@ export function pinchStep(a0,b0,a1,b1){
  if(angle>Math.PI)angle-=2*Math.PI;else if(angle<=-Math.PI)angle+=2*Math.PI;
  return {scale:d0>0&&d1>0?d1/d0:1,angle,dx:(a1.x+b1.x-a0.x-b0.x)/2,dy:(a1.y+b1.y-a0.y-b0.y)/2};
 }
+// A drag released while moving keeps gliding, like a map flicked with a finger.
+// samples are {t, x, z}: the total ground distance moved so far at each moment (ms).
+export const FLING_TAU=260;
+export function releaseVelocity(samples,now){
+ const last=samples[samples.length-1];if(!last||now-last.t>60)return {x:0,z:0};
+ let first=last;for(let i=samples.length-1;i>=0&&last.t-samples[i].t<=100;i--)first=samples[i];
+ const dt=last.t-first.t;if(dt<12)return {x:0,z:0};
+ return {x:(last.x-first.x)/dt,z:(last.z-first.z)/dt};
+}
+export function decay(speed,dt,tau=FLING_TAU){return speed*Math.exp(-dt/tau);}

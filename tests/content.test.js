@@ -29,3 +29,9 @@ s=pinchStep({x:100,y:100},{x:200,y:100},{x:150,y:50},{x:150,y:150});assert.ok(cl
 s=pinchStep({x:100,y:100},{x:200,y:100},{x:130,y:80},{x:230,y:80});assert.ok(close(s.scale,1)&&close(s.angle,0));assert.ok(close(s.dx,30)&&close(s.dy,-20));
 s=pinchStep({x:0,y:0},{x:-100,y:-1},{x:0,y:0},{x:-100,y:1});assert.ok(Math.abs(s.angle)<.03,'跨越 ±180° 時不跳一整圈');
 assert.equal(pinchStep({x:5,y:5},{x:5,y:5},{x:5,y:5},{x:9,y:9}).scale,1);});
+test('拖曳放手時依最後 0.1 秒速度滑行，停住再放手就不滑',async()=>{const {releaseVelocity,decay,FLING_TAU}=await import('../dist/motion.js');
+const samples=[{t:0,x:0,z:0},{t:50,x:5,z:0},{t:100,x:10,z:-2},{t:150,x:20,z:-4},{t:200,x:30,z:-6}];
+const v=releaseVelocity(samples,210);assert.ok(Math.abs(v.x-.2)<1e-9&&Math.abs(v.z+.04)<1e-9);
+assert.deepEqual(releaseVelocity(samples,300),{x:0,z:0},'停住超過 60ms 再放手不滑行');
+assert.deepEqual(releaseVelocity([{t:0,x:0,z:0}],5),{x:0,z:0});assert.deepEqual(releaseVelocity([],5),{x:0,z:0});
+assert.ok(Math.abs(decay(1,FLING_TAU)-Math.exp(-1))<1e-12);assert.ok(decay(1,16)<1&&decay(1,16)>.9);});

@@ -2,7 +2,7 @@ import * as THREE from './vendor/three.module.min.js';
 
 // Original course miniatures: shared construction details, nine distinct silhouettes.
 export function createArchitecture({box,mesh,tree}){
- const geo={cylinder:new THREE.CylinderGeometry(1,1,1,16),dome:new THREE.SphereGeometry(1,20,10,0,Math.PI*2,0,Math.PI/2)};
+ const geo={cylinder:new THREE.CylinderGeometry(1,1,1,16),dome:new THREE.SphereGeometry(1,20,10,0,Math.PI*2,0,Math.PI/2),ball:new THREE.SphereGeometry(1,12,8)};
  const roof=new THREE.BufferGeometry();roof.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,-.5,.5,0,-.5,0,1,-.5,-.5,0,.5,.5,0,.5,0,1,.5],3));roof.setIndex([0,2,1,3,4,5,0,3,5,0,5,2,1,2,5,1,5,4,0,1,4,0,4,3]);roof.computeVertexNormals();
  // The summit trophy is a symbol of results, not a record of any award.
  const gold=new THREE.MeshStandardMaterial({color:'#e0b13f',roughness:.32,metalness:.55,emissive:'#ffb52e',emissiveIntensity:0});
@@ -30,15 +30,29 @@ export function createArchitecture({box,mesh,tree}){
  function lamp(g,x,z){box(g,x,.25,z,.025,.5,.025,'#536961');const m=box(g,x,.73,z,.09,.09,.09,'#ffe6a6');m.material=glass;m.castShadow=false;}
  function build(parent,t){const g=new THREE.Group();g.name='course-architecture';g.userData.kind=t.kind;parent.add(g);
   if(t.kind==='school'){
-   base(g,1.25,.72);hall(g,0,-.08,1.18,.55,.6);hall(g,-.43,-.05,.26,.72,.62,'#e2d8be','#668b7a');hall(g,.43,-.05,.26,.72,.62,'#e2d8be','#668b7a');
-   box(g,0,.4,.29,.28,.44,.06,'#59756b');for(const x of [-.2,.2])box(g,x,.4,.4,.045,.5,.045,'#f5eddc');box(g,0,.9,.37,.53,.07,.2,'#ede1c7');steps(g,0,.58,.46);
-   // Open book above the entrance is a course symbol, not a claim about premises.
-   for(const side of [-1,1]){const p=box(g,side*.095,1.18,-.08,.18,.025,.25,'#fff4d6');p.rotation.z=side*.18;}bench(g,-.63,.55);lamp(g,.65,.37);
+   // 01 The teacher's writing studio: a low, wide house with big windows and a warm desk lamp inside, books stacked by the door,
+   // loose manuscript pages on the bench, and a giant fountain pen standing out front as the island's landmark.
+   base(g,1.25,.72);box(g,0,.4,-.14,1.12,.48,.52,'#f1e6cf');box(g,0,.86,-.14,1.18,.05,.58,'#d1c5a8');mesh(g,roof,'#5c7a6c',0,.9,-.14,1.3,.28,.68);
+   for(const x of [-.36,-.06])glazed(g,x,.6,.125,.24,.32);for(const x of [-.36,-.06]){box(g,x,.43,.13,.3,.03,.05,'#d5c5a3');box(g,x,.76,.13,.3,.03,.05,'#d5c5a3');}
+   const deskLamp=mesh(g,geo.dome,'#ffd27a',-.2,.66,.0,.06,.05,.06);deskLamp.material=glass;box(g,-.2,.5,.0,.42,.03,.16,'#8a6a48');
+   box(g,.33,.4,.13,.2,.4,.03,'#7a5a3c');mesh(g,geo.dome,'#d9a521',.39,.6,.15,.015,.015,.015);box(g,-.22,.84,.2,.66,.025,.16,'#c4612f').rotation.x=-.35;
+   for(let i=0;i<4;i++)box(g,.52,.25+i*.045,.24,.16-i*.012,.04,.11,['#e07a5f','#5f8fb4','#f2c14e','#7aa66b'][i]);
+   bench(g,.05,.55);for(let i=0;i<3;i++){const sh=box(g,-.02+i*.05,.34,.55+(i%2)*.02,.09,.004,.12,'#fffdf5');sh.rotation.y=(i-1)*.3;}
+   // The landmark pen: dark barrel, gold band and nib, writing into a stone plinth.
+   box(g,-.62,.25,.42,.22,.1,.22,'#cfc3ab');const pen=new THREE.Group();pen.position.set(-.62,.35,.42);pen.rotation.z=.32;g.add(pen);
+   mesh(pen,geo.cylinder,'#2f3b33',0,.52,0,.055,.62,.055);mesh(pen,geo.cylinder,'#d9a521',0,.82,0,.06,.05,.06);mesh(pen,geo.cylinder,'#2f3b33',0,.95,0,.05,.22,.05);
+   const nib=mesh(pen,new THREE.ConeGeometry(.055,.2,8),'#d9a521',0,.12,0);nib.rotation.z=Math.PI;golden(mesh(pen,geo.cylinder,'#d9a521',0,.23,0,.058,.03,.058));
+   lamp(g,.68,.4);
   }else if(t.kind==='tower'){
-   base(g,.66,.66);hall(g,0,0,.57,1,.54,'#e6dec7','#586e78');
-   mesh(g,geo.cylinder,'#b7a58a',0,1.48,0,.41,.12,.41);mesh(g,geo.dome,'#739799',0,1.54,0,.41,.34,.41);
-   const scope=mesh(g,geo.cylinder,'#c8b787',.17,1.85,.08,.08,.58,.08);scope.rotation.z=-.85;mesh(g,geo.cylinder,'#3e646e',.39,2.04,.08,.1,.035,.1).rotation.z=-.85;
-   for(const z of [-.24,0,.24])window(g,0,.88+z,.29,.16,.14);steps(g,0,.5,.4);planter(g,-.62,.35);
+   // 02 Teaching approach & how a class runs: a classroom with a big chalkboard on its front wall and a small observatory dome
+   // on the roof (the approach: looking further ahead). Three stepping stones for before, during and after class are laid by the
+   // map where those key-point pins stand.
+   base(g,1.06,.7);box(g,0,.4,-.1,.96,.56,.54,'#ece2cc');box(g,0,.94,-.1,1.02,.05,.6,'#c9b38a');mesh(g,roof,'#586e78',0,.98,-.1,1.12,.24,.66);
+   box(g,-.16,.47,.172,.56,.34,.012,'#8a6a48');box(g,-.16,.48,.18,.52,.3,.012,'#2f5a46');for(const [y,w]of [[.58,.3],[.52,.38],[.46,.22],[.4,.32]]){const l=box(g,-.38+w/2,y,.19,w,.012,.004,'#f4f1e6');l.castShadow=false;}
+   box(g,.3,.4,.17,.18,.4,.03,'#59756b');glazed(g,.3,.68,.17,.1,.08);
+   mesh(g,geo.cylinder,'#b7a58a',.25,1.12,-.15,.18,.1,.18);mesh(g,geo.dome,'#739799',.25,1.17,-.15,.18,.16,.18);
+   const scope=mesh(g,geo.cylinder,'#c8b787',.33,1.32,-.12,.04,.3,.04);scope.rotation.z=-.85;mesh(g,geo.cylinder,'#3e646e',.44,1.42,-.12,.05,.02,.05).rotation.z=-.85;
+   planter(g,-.62,.42);lamp(g,.62,.4);
   }else if(t.kind==='trees'){
    box(g,0,.25,.05,1.12,.08,.92,'#b79c70');for(let i=0;i<6;i++)box(g,-.5+i*.2,.33,.05,.012,.008,.92,'#927b59');
    for(const x of [-.48,.48])for(const z of [-.3,.36])box(g,x,.33,z,.035,.62,.035,'#e1d1ab');for(const x of [-.44,-.22,0,.22,.44])box(g,x,.95,.03,.045,.045,.86,'#e1d1ab');
@@ -126,9 +140,16 @@ export function createArchitecture({box,mesh,tree}){
    mesh(g,geo.cylinder,'#ddd5c2',.25,.68,-.08,.36,.55,.36);mesh(g,geo.dome,'#7e9a9f',.25,.96,-.08,.4,.36,.4);
    for(const x of [.08,.28,.48])window(g,x,.51,.3,.12,.22);box(g,.25,.39,.34,.22,.3,.04,'#67827c');steps(g,.25,.55,.43);planter(g,-.65,.47);
   }else if(t.kind==='pavilion'){
+   // 03 Parents' and students' questions: a pavilion to sit and talk in — a round table with two chairs (a parent and a student
+   // sit there), lanterns at the corners, and a question box by the steps.
    base(g,1.12,.88);for(const x of [-.45,.45])for(const z of [-.3,.3])box(g,x,.4,z,.055,.65,.055,'#b28e61');
    mesh(g,roof,'#6d8c79',0,1.05,0,1.27,.3,1.02);box(g,0,1.02,0,1.25,.045,1.02,'#d4bd96');
-   mesh(g,geo.cylinder,'#c1a077',0,.63,.02,.29,.08,.29);for(const x of [-.38,.38])bench(g,x,.14);steps(g,0,.62,.5);planter(g,.66,.46);
+   mesh(g,geo.cylinder,'#8a6a48',0,.42,.02,.04,.34,.04);mesh(g,geo.cylinder,'#c1a077',0,.6,.02,.24,.035,.24);
+   for(const side of [-1,1]){box(g,side*.27,.25,.02,.16,.18,.16,'#9c7a55');box(g,side*.34,.25,.02,.03,.36,.16,'#9c7a55');}
+   for(const x of [-.45,.45])for(const z of [-.3,.3]){mesh(g,geo.cylinder,'#5b4a3c',x,.9,z,.006,.08,.006);const ln=mesh(g,geo.ball,'#ffd99a',x,.83,z,.045,.06,.045);ln.material=glass;}
+   box(g,.66,.25,.42,.04,.34,.04,'#5b4a3c');box(g,.66,.58,.42,.2,.16,.14,'#4f7d74');box(g,.66,.62,.495,.12,.012,.004,'#1f2a24');
+   mesh(g,new THREE.TorusGeometry(.035,.012,6,12,Math.PI*1.4),'#fff4d6',.66,.555,.5).rotation.z=-.5;mesh(g,geo.ball,'#fff4d6',.66,.505,.5,.012,.012,.012);
+   steps(g,0,.62,.5);
   }else{
    box(g,0,.25,.05,1.2,.08,.96,'#bc9b70');for(let i=0;i<7;i++)box(g,-.55+i*.18,.33,.05,.012,.008,.96,'#8f795d');hall(g,-.2,-.24,.65,.45,.46,'#e9ddc4','#65857d');
    for(const x of [-.5,.5]){box(g,x,.33,.45,.035,.36,.035,'#d6c5a0');box(g,x,.33,.08,.035,.36,.035,'#d6c5a0');box(g,x,.66,.27,.035,.035,.42,'#e9d6aa');}bench(g,-.1,.35);lamp(g,.65,-.12);

@@ -11,6 +11,8 @@ function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.ma
 // Where the ropes hang, side by side along the rim (offsets along the rim from the climb line). Climbers pick one.
 // How long the light takes to climb the whole bridge, bottom to top.
 export const SWEEP_MS=2600;
+// How much a step brightens under a foot; the sweep up the bridge (choosing the trophy) lights each step by the same amount.
+export const FOOT_GLOW=.95;
 export const ROPES=[-.48,-.16,.16,.48];
 export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced,hazards}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
@@ -96,8 +98,8 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
      }
      else if(warning)eo.rotation.z=Math.sin(elapsed*18+i)*.06;
      eo.updateMatrix();deck.setMatrixAt(i,eo.matrix);});deck.instanceMatrix.needsUpdate=true;}
-for(const q of feet){for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24)st.foot=1;}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
-   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.foot=Math.max(0,s.foot-dt*1.6);s.m.emissiveIntensity=Math.min(1.8,s.glow+s.lit*.18+s.foot*.95);sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=1.1+lit*.9;
+for(const q of feet){for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24){st.foot=1;st.fresh=true;}}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
+   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;if(s.fresh)s.fresh=false;else s.foot=Math.max(0,s.foot-dt*1.6);s.m.emissiveIntensity=Math.min(1.8,s.glow+Math.max(s.lit,s.foot)*FOOT_GLOW);sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=1.1+lit*.9;
    const show=!reduced?.matches;moteMat.opacity=.4+Math.min(.5,lit*.5);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
   points(){return [...stairs,...descent,...slide,...trail.flat()];},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}

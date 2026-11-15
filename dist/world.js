@@ -9,7 +9,7 @@ import {createSky,random,dayPhase} from './sky.js';
 import {createWeather} from './weather.js';
 import {createDecor} from './decor.js';
 import {placeLabels,fitDistance,pinSpots} from './layout.js';
-import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,slidePath,climbPath,buildGraph} from './summit.js';
+import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,slidePath,climbPath,buildGraph} from './summit.js';
 import {STATIONS} from './journey.js';
 import {createRoute} from './route3d.js';
 import {createWalkers} from './walkers.js';
@@ -57,7 +57,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  mesh(uniGroup,baseGeometry,'#a3aa84',0,.025,0);mesh(uniGroup,topGeometry,'#cdb98f',0,.2,0);box(uniGroup,0,.245,.59,1.52,.012,.15,'#e5dabb');architecture.build(uniGroup,{kind:'university'});underside(uniGroup,{lift:RISE,kind:'university'},topics.length);
  // ---- The journey stops (see summit.js / journey.js): start, trailhead, lava cave, cliff, steep wall, calendar, sign-up, contact. ----
  const lavaMat=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.3,roughness:.5});
- const stopGroups=new Map(),stationLabels=new Map(),stationOf={start:'start',fork:'fork',lava:'fork',cliff:'fork',wallfoot:'fork',wall:'fork',calendar:'calendar',signup:'signup',contact:'contact',[UNIVERSITY]:'university'};
+ const stopGroups=new Map(),stationLabels=new Map(),stationOf={start:'start',fork:'fork',lava:'fork',cliff:'fork',wallfoot:'fork',wall:'fork',pass1:'fork',pass2:'fork',calendar:'calendar',signup:'signup',contact:'contact',[UNIVERSITY]:'university'};
  const stopColor={start:'#9fc47e',lava:'#8d7a6c',cliff:'#a7b48a',wall:'#b9ad95',calendar:'#c9d3dc',signup:'#e9bf95',contact:'#a8c3ae'};
  Object.entries(STOPS).forEach(([id,s],k)=>{const g=new THREE.Group();g.position.set(s.x,s.y,s.z);g.name='stop-'+id;g.userData.stop=id;scene.add(g);stopGroups.set(id,g);
   if(s.ledge){mesh(g,new THREE.CylinderGeometry(.7,.62,.22,7),'#b9ad95',0,.13,0);mesh(g,new THREE.CylinderGeometry(.66,.66,.04,7),'#d8ccb2',0,.25,0);const r=new THREE.Mesh(rock(.6,1.1,40+k,5),rockMaterial);r.position.y=-.55;g.add(r);}
@@ -69,7 +69,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
    else underside(g,{lift:s.y,kind:s.kind},topics.length+1+k);}});
  // ② The trailhead: a roofed notice board, like the one at the start of a mountain trail, and three arrows pointing down the three paths.
  {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48';for(const x of [-.32,.32])box(f,x,.27,-.28,.06,.78,.06,wood);box(f,0,.62,-.27,.74,.42,.05,wood);box(f,0,.63,-.24,.66,.34,.01,'#fff4d6');const roof=mesh(f,new THREE.BoxGeometry(1,1,1),'#5f5047',0,1.08,-.27,.84,.05,.2);roof.rotation.x=.18;
-  box(f,.25,.27,.18,.05,.72,.05,wood);[['bridge','#d9a521'],['lava','#d0482a'],['cliff','#8a8f99'],['wallfoot','#6b5a45']].forEach(([to,c],i)=>{const T=to==='bridge'?bridgePath()[6]:STOPS[to],a=Math.atan2(T.z-F.z,T.x-F.x),arm=new THREE.Group();arm.position.set(.25,.84-i*.13,.18);arm.rotation.y=-a;f.add(arm);box(arm,.17,0,0,.34,.1,.025,c).castShadow=true;});}
+  box(f,.25,.27,.18,.05,.72,.05,wood);[['bridge','#d9a521'],['pass1','#6b5a45']].forEach(([to,c],i)=>{const T=to==='bridge'?bridgePath()[6]:STOPS[to],a=Math.atan2(T.z-F.z,T.x-F.x),arm=new THREE.Group();arm.position.set(.25,.84-i*.13,.18);arm.rotation.y=-a;f.add(arm);box(arm,.17,0,0,.34,.1,.025,c).castShadow=true;});}
  {const w=stopGroups.get('wallfoot');for(let i=0;i<3;i++)mesh(w,new THREE.TorusGeometry(.12-i*.025,.018,6,16),'#d8b679',.15,.29+i*.02,-.1).rotation.x=Math.PI/2;}
  // Map labels for the stations (①–⑦) and the three paths at the trailhead.
  function stationLabel(id,text,at,cls,station,extra){const el=document.createElement('button');el.type='button';el.className='station-label '+cls;el.innerHTML=text;el.setAttribute('aria-label',el.textContent);el.onclick=e=>{e.stopPropagation();onStation(station,extra);};const o=new CSS2DObject(el);o.position.copy(at);scene.add(o);stationLabels.set(id,{el,o});}
@@ -79,18 +79,17 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const p of st('fork').paths){const s=STOPS[p.id==='wall'?'wallfoot':p.id];stationLabel('path-'+p.id,`<span>${p.name}</span>`,new THREE.Vector3(s.x,s.y+(p.id==='wall'?1.3:1),s.z),'path '+p.id,'fork',{path:p.id});}
  // Walkways, ② the climb, ③ the golden bridge to the trophy and the stairs down from the university (see summit.js / route3d.js).
  const centers=new Map(positions);centers.set(UNIVERSITY,uniGroup.position.clone());for(const [id,s]of Object.entries(STOPS))centers.set(id,new THREE.Vector3(s.x,s.y,s.z));for(const [id,s]of Object.entries(STOPS))if(s.ring)centers.get(id).ring=s.ring;
- const bridge=bridgePath(STOPS.fork,positions.get(SUMMIT)),graph=buildGraph(centers);
+ const bridge=bridgePath(centers.get('fork'),positions.get(SUMMIT)),graph=buildGraph(centers);
  // ② The steep wall: a sheer rock face on the trophy island's outer side, rising from the ledge at its foot.
- {const S=positions.get(SUMMIT),F=STOPS.wallfoot,a=Math.atan2(F.z-S.z,F.x-S.x),w=stopGroups.get('wallfoot'),h=S.y+.55;const slab=new THREE.Mesh(new THREE.BoxGeometry(1.5,h,.5),rockMaterial);
-  slab.position.set(S.x+Math.cos(a)*1.08-F.x,h/2-.3,S.z+Math.sin(a)*1.08-F.z);slab.rotation.y=-a+Math.PI/2;slab.castShadow=slab.receiveShadow=true;w.add(slab);}
+ // (The climb itself is a set of ropes hanging from the trophy island's rim — see route3d.js.)
  createDecor({scene,centers,graph,skip:id=>id==='lava'||!!STOPS[id]?.ledge});
- const route=createRoute({scene,centers,walkways:WALKWAYS,bridge,slide:slidePath(),climb:climbPath(),trail:trailPath(),trophyAt:positions.get(SUMMIT),reduced});
+ const route=createRoute({scene,centers,walkways:WALKWAYS,bridge,slide:slidePath(),climb:climbPath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
  {const m=bridge[Math.floor(bridge.length/2)];stationLabel('bridge',`<b>${st('bridge').n}</b><span>${st('bridge').short}</span>`,new THREE.Vector3(m.x,m.y+.75,m.z),'','bridge');}
  // Choosing the summit (trophy or bridge) lights the bridge step by step from the bottom up; the trophy itself always shines.
  let trophyLit=0,summitOn=false;
  function climb(on){summitOn=!!on&&on!==-1;route.light(summitOn);}
  // The trophy always shines gold; choosing it (or the bridge) lights the bridge step by step from the bottom up.
- function updateStairs(now,delta){route.update(delta,elapsed);trophyLit=1;architecture.shine(1);}
+ function updateStairs(now,delta){route.update(delta,elapsed,walkers.feet());trophyLit=1;architecture.shine(1);}
  const routePoints=[...route.points().filter((_,i)=>i%6===0),...Object.values(STOPS).flatMap(s=>[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:s.x+x*1.3,y:s.y+(s.ledge?.6:1.3),z:s.z+z*1.2}))),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:UNIVERSITY_AT.x+x*1.3,y:UNIVERSITY_AT.y+1.7,z:UNIVERSITY_AT.z+z*1.2}))];
  function stairBox(){const box=new THREE.Box3();for(const id of [SUMMIT]){const p=positions.get(id);box.expandByPoint(p.clone().add(new THREE.Vector3(-1.3,0,-1.2)));box.expandByPoint(p.clone().add(new THREE.Vector3(1.3,id===SUMMIT?1.9:1.1,1.2)));}for(const p of routePoints)box.expandByPoint(new THREE.Vector3(p.x,p.y,p.z));return box;}
  // Choosing the trophy: the camera rides along the bridge with the light as it climbs, then closes in on the trophy.
@@ -128,7 +127,10 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   ambient.color.set(A.sky).lerp(C1.set(B.sky),t);ambient.groundColor.set(A.ground).lerp(C1.set(B.ground),t);ambient.intensity=(A.ambient+(B.ambient-A.ambient)*t)*(1-.2*wet);
   renderer.setClearColor(C2.set(A.clear).lerp(C1.set(B.clear),t));
   const key=`${Math.round(hour*30)}:${Math.round(wet*30)}`;if(key!==lastPaint){lastPaint=key;sky.blend(p.a,p.b,t,wet,p.stars);}
-  architecture.time(p.stars>.5?'night':p.name==='dusk'||p.name==='dawn'?'dusk':'day');}
+  architecture.time(p.stars>.5?'night':p.name==='dusk'||p.name==='dawn'?'dusk':'day');
+  // City lights after dark: every building, path and island surface gets a warm self-light so the town stays readable at night.
+  const glow=Math.max(0,p.stars-.15)*.32*(1-.3*wet);if(Math.abs(glow-townGlow)>.005){townGlow=glow;for(const m of materialCache.values()){m.emissive.copy(m.color).lerp(WARM,.35);m.emissiveIntensity=glow;}}}
+ let townGlow=-1;const WARM=new THREE.Color('#ffcf8a');
  function time(name){hour={dawn:6.4,day:12,dusk:18,night:22}[name]??12;applyLight();}
  const flows=[],seen=new Set();
  for(const t of topics)for(const id of t.links){const key=relationKey(t.id,id);if(seen.has(key))continue;seen.add(key);const a=positions.get(t.id).clone(),b=positions.get(id).clone();a.y+=.3;b.y+=.3;const mid=a.clone().lerp(b,.5);mid.y=Math.max(a.y,b.y)+.17;const curve=new THREE.QuadraticBezierCurve3(a,mid,b);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineDashedMaterial({color:'#fff0ba',dashSize:.12,gapSize:.12,transparent:true,opacity:.9}));line.computeLineDistances();scene.add(line);const dot=mesh(scene,new THREE.SphereGeometry(.035,6,4),'#fff4c5',0,.3,0);dot.castShadow=false;line.userData.relation=key;flows.push({key,line,dot,curve,a:t.id,b:id});}
@@ -179,7 +181,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  function followStep(){if(!follow)return;const now=walkers.where(follow),d=now.clone().sub(followLast);followLast=now;if(d.lengthSq()===0)return;if(fly){fly.to.add(d);fly.target.add(d);}else{camera.position.add(d);controls.target.add(d);}}
  // Fly to one station of the journey; the trailhead shows all three paths at once, the bridge its whole length.
  function focusStation(id,{instant=false,...inset}={}){lastInset=inset;framing={kind:'station',id};let target,radius=1.7;
-  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?['fork','lava','cliff','wallfoot'].map(k=>centers.get(k).clone()):null;
+  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?['fork','pass1','pass2','lava','cliff','wallfoot'].map(k=>centers.get(k).clone()):null;
   if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;}
   else{const c=centers.get(id==='university'?UNIVERSITY:id);target=new THREE.Vector3(c.x,c.y+.7,c.z);}
   const [wf,hf]=fractions(inset);const distance=Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add(new THREE.Vector3(1.2,4.4,8.3).normalize().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}

@@ -78,7 +78,7 @@ function openRelation(id){const r=relations.find(r=>r.id===id);if(!r)return;cast
 
 // ---- Detail card: floats on the left of the map on desktop, a bottom sheet on phones. ----
 const audienceLabel={parents:'對象：家長',students:'對象：學生',teacher:'認識老師'};
-function selectTopic(id,{focus=true,concern=null}={}){
+function selectTopic(id,{focus=true,concern=null,camera=true}={}){
  const t=topicOf(id);if(!t)return;activeRelation=null;if(castCard){castCard=null;world?.walkerSelect(null);if(placingAvatar)setPlacing(false);}
  if(!findTopics($('#search').value,category).some(t=>t.id===id)){$('#search').value='';category='全部';for(const b of document.querySelectorAll('[data-category]')){const active=b.dataset.category===category;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}}
  const moveCamera=id!==selected||$('#detail').hidden;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
@@ -104,7 +104,7 @@ ${id===SUMMIT?routeSection():''}
  for(const b of document.querySelectorAll('[data-related]'))b.onclick=()=>selectTopic(b.dataset.related);
  selectedStep=null;hotStep=-1;bindStepRows($('#detail-content'),id);world?.pins(id,stepItems(t),{onPick:k=>selectStep(id,k),onHover:hoverStep});world?.pinState({});setBird(false);world?.climb(id===SUMMIT);$('#to-journey')?.addEventListener('click',()=>openStation('start'));
  updateMap();renderList();renderConcerns();
- if(moveCamera)world?.focus(id,insets());
+ if(moveCamera&&camera)world?.focus(id,insets());
  cardTourUI(id);
  if(!isPhone())document.querySelector('.topic-item.active')?.scrollIntoView({block:'nearest'});
  if(focus){$('#detail').scrollTop=0;$('#close-detail').focus();}
@@ -192,22 +192,29 @@ function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t
 // ---- The guide waits at ① start; when asked, it leads the visitor round GUIDE_ROUTE one stop at a time, the camera following. ----
 const guideTour={active:false,index:0,walking:false};
 const stopName=id=>placeOf(id)?.title||'';
+const DETOURS=[['pass1','cliff','帶我去看懸崖'],['wallfoot','wall','帶我去看陡峭山壁']];
 function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
- return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">看完了，繼續前進 →<small>下一站：${escape(stopName(next))}</small></button>`}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
-function bindTourBar(){$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
-// Open the card for the stop the guide has reached, with the tour bar on top.
-function showTourStop(id){if(topicOf(id))selectTopic(id);else openStation(id);}
+ if(guideTour.detour)return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶你看錯的路</b> · ${escape(DETOURS.find(d=>d[0]===guideTour.detour)?.[2].replace('帶我去看','')||'')}</p><div class="tour-actions"><button class="ask-topic" id="tour-back">看完了，回到指引牌 →<small>再照著指引走上橋</small></button>${DETOURS.filter(d=>d[0]!==guideTour.detour).map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join('')}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;
+ const extra=GUIDE_ROUTE[k]==='fork'?DETOURS.map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join(''):'';
+ return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">看完了，繼續前進 →<small>下一站：${escape(stopName(next))}</small></button>`}${extra}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
+function bindTourBar(){$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-back')?.addEventListener('click',()=>{guideTour.detour=null;tourStep(GUIDE_ROUTE.indexOf('fork'));});for(const b of document.querySelectorAll('#detail-content [data-detour]'))b.onclick=()=>tourDetour(b.dataset.detour);$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
+// Open the card for the stop the guide has reached, with the tour bar on top. The camera is already with the guide, so it stays put.
+function showTourStop(id){if(topicOf(id))selectTopic(id,{camera:false});else openStation(id,{camera:false});}
+// From the trailhead the guide can take the visitor to look at the wrong ways (a cliff top, the foot of the steep wall), then back.
+function tourDetour(stop){const d=DETOURS.find(x=>x[0]===stop);if(!d)return;guideTour.active=true;guideTour.detour=stop;guideTour.walking=true;
+ const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你去看「${escape(d[2].replace('帶我去看',''))}」</b> · 跟著它走…</p>`;
+ if(!world?.guideTo(stop)){guideTour.walking=false;openStation('fork',{path:d[1],camera:false});return;}world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());}
 // Every island and station card offers the tour: the tour bar when the guide has brought you here, otherwise a button that makes
 // the guide pop up on this island and lead on from here (a visitor who left the tour halfway need not go back to find the guide).
 function cardTourUI(id){$('.tour-bar,.tour-resume')?.remove();if(!world)return;
- if(guideTour.active&&!guideTour.walking&&GUIDE_ROUTE[guideTour.index]===id){$('#detail-content').insertAdjacentHTML('afterbegin',tourBar());bindTourBar();return;}
+ if(guideTour.active&&!guideTour.walking&&(guideTour.detour?id==='fork':GUIDE_ROUTE[guideTour.index]===id)){$('#detail-content').insertAdjacentHTML('afterbegin',tourBar());bindTourBar();return;}
  $('#detail-content').insertAdjacentHTML('afterbegin',`<div class="tour-resume"><button class="text-button" id="tour-resume">⚑ 請導覽員從這裡帶我走 →</button></div>`);
  $('#tour-resume').onclick=()=>resumeHere(id);}
 function resumeHere(id){const k=GUIDE_ROUTE.indexOf(id);world?.guideAppear(id);guideTour.active=true;guideTour.walking=false;guideTour.index=k>=0?k:0;
  // Off the route (the islands in the middle): the guide leads on as if from the start, so the next stop is ② the trailhead.
  if(k<0){$('.tour-resume')?.remove();$('#detail-content').insertAdjacentHTML('afterbegin',tourBar().replace(`第 1 / ${GUIDE_ROUTE.length} 站`,'從這裡出發'));bindTourBar();}else cardTourUI(id);
  toast('導覽員來了，接著帶你走');}
-function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true;guideTour.index=k;guideTour.walking=true;
+function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true;guideTour.index=k;guideTour.walking=true;guideTour.detour=null;
  const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你走向「${escape(stopName(id))}」</b> · 跟著它走…</p>`;
  if(!world?.guideTo(id)){guideTour.walking=false;showTourStop(id);return;}
  world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());$('#map-message').textContent=`導覽員帶你走向「${stopName(id)}」`;}
@@ -215,8 +222,9 @@ function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true
 // catches up with the guide again by itself.
 let lastMapInput=0;for(const type of ['pointerup','wheel','touchend'])$('#map').addEventListener(type,()=>{lastMapInput=performance.now();},{passive:true});
 setInterval(()=>{if(!guideTour.active||!guideTour.walking||!world||world.following())return;if(performance.now()-lastMapInput<1200)return;world.walkerFocus(world.guide(),insets());$('#map-message').textContent='鏡頭跟回導覽員';},300);
-function onGuide(id){if(!guideTour.active||!guideTour.walking||id!==GUIDE_ROUTE[guideTour.index])return;guideTour.walking=false;world?.walkerSelect(null);showTourStop(id);}
-function endTour(home){guideTour.active=false;guideTour.walking=false;$('.tour-bar')?.remove();if(home){world?.guideTo(GUIDE_ROUTE[0]);toast('導覽員回到起點等你');}}
+function onGuide(id){if(!guideTour.active||!guideTour.walking)return;if(guideTour.detour){if(id!==guideTour.detour)return;guideTour.walking=false;world?.walkerSelect(null);openStation('fork',{path:DETOURS.find(d=>d[0]===id)[1],camera:false});return;}
+ if(id!==GUIDE_ROUTE[guideTour.index])return;guideTour.walking=false;world?.walkerSelect(null);showTourStop(id);}
+function endTour(home){guideTour.active=false;guideTour.walking=false;guideTour.detour=null;$('.tour-bar')?.remove();if(home){world?.guideTo(GUIDE_ROUTE[0]);toast('導覽員回到起點等你');}}
 function openGuide(){const g=world?.guide();if(!g)return;const st=world.walkerState().guide,atStart=st.island===GUIDE_ROUTE[0]&&!st.target;
  const route=GUIDE_ROUTE.map(stopName).join(' → ');
  openCastCard('guide','地圖角色 · 導覽員',`<div class="detail-head"><span class="detail-badge cast-badge guide" aria-hidden="true">⚑</span><div><p class="eyebrow">地圖角色 · 帶路</p><h2 id="detail-title">${atStart?'我在起點等你，一起走一圈吧':'導覽員'}</h2></div></div><div class="chips"><span class="chip strong" id="guide-where" aria-live="polite">${guideWhere()}</span></div><div class="answer-first"><p class="lead">我會帶你依序走過：${escape(route)}。每到一站我會停下來，等你看完再走下一站。</p></div><p class="relation-notice">導覽員是帶路用的地圖角色，不代表老師本人或任何真實人物。</p><div class="detail-actions">${guideTour.active&&!guideTour.walking?`<button class="ask-topic" id="guide-tour">繼續導覽：前往「${escape(stopName(GUIDE_ROUTE[guideTour.index+1]||GUIDE_ROUTE[0]))}」 →</button>`:`<button class="ask-topic" id="guide-tour">跟著導覽員出發 →</button>`}<button class="save-topic" id="cast-follow" aria-pressed="true">鏡頭跟隨中 · 按下停止</button></div>`);
@@ -272,7 +280,7 @@ function openStation(id,extra={}){const st=stationOf(id);if(!st)return;const k=S
  <nav class="step-nav" aria-label="切換旅程站">${prev?`<button data-goto-station="${prev.id}"><small>上一站</small><span>${prev.n} ${prev.short}</span></button>`:'<span></span>'}${next?`<button data-goto-station="${next.id}" class="next"><small>下一站</small><span>${next.n} ${escape(st.nextLabel||next.short)}</span></button>`:'<span></span>'}</nav>`);
  for(const b of document.querySelectorAll('#detail-content [data-goto-station]'))b.onclick=()=>openStation(b.dataset.gotoStation);
  for(const b of document.querySelectorAll('#detail-content [data-path]'))b.onclick=()=>openStation('fork',{path:b.dataset.path});
- world?.stationSelect(id);world?.climb(id==='bridge');world?.focusStation(id,insets());cardTourUI(id);$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
+ world?.stationSelect(id);world?.climb(id==='bridge');if(extra.camera!==false)world?.focusStation(id,insets());cardTourUI(id);$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
 $('#avatar-button').onclick=()=>{if(castCard==='avatar')closeDetail();else openAvatar();};
 // Keep live text on the open character card current while people walk.
 setInterval(()=>{if(!castCard||!world)return;const b=$('#cast-follow');if(b){b.textContent=followLabel();b.setAttribute('aria-pressed',world.following());}if(castCard==='guide'&&$('#guide-where'))$('#guide-where').textContent=guideWhere();if(castCard!=='avatar')$('#avatar-button').setAttribute('aria-expanded','false');},400);
@@ -310,6 +318,8 @@ try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelat
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});
 const indexSheet=bindSheet($('#index-panel'),$('#index-handle'),$('#index-size'),{peekable:true,onChange:()=>{syncListToggle();requestAnimationFrame(refitView);}});
+// Phones open on the map, full screen (as Puma does): the question list waits as a slim bar at the bottom; 「清單」 opens it.
+if(isPhone())indexSheet.set('peek');
 bindSheet($('#detail'),$('#detail-handle'),$('#detail-size'),{onChange:()=>requestAnimationFrame(refitView),onClose:()=>closeDetail()});
 for(const el of [$('#detail'),$('#index-panel')])el.addEventListener('transitionend',e=>{if(['height','transform'].includes(e.propertyName))refitView();});
 new ResizeObserver(()=>requestAnimationFrame(refitView)).observe($('#map'));

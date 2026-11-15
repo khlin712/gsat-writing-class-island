@@ -41,13 +41,13 @@ export function createSky(scene,{reduced}){
  // Wisps just under the island rims, so clouds show even when looking straight down at the map.
  const r4=random(23),wispClumps=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2+r4()*.4,d=8+r4()*6;wispClumps.push([Math.cos(a)*d,-2.6-r4()*1.4,Math.sin(a)*d*.85,.8+r4()*.8]);}
  const wisps=layer(wispClumps.length*4,(o,i)=>{const [x,y,z,s]=wispClumps[Math.floor(i/4)],k=i%4;o.position.set(x+(k-1.5)*s*.75,y+(k%2)*s*.2,z+(r4()-.5)*s*.5);const size=s*(.6+r4()*.4);o.scale.set(size*1.4,size*.45,size);});
- const r3=random(3),stars=new Float32Array(500*3);for(let i=0;i<500;i++){const u=r3()*.95+.05,a=r3()*Math.PI*2,rad=Math.sqrt(1-u*u)*85;stars.set([Math.cos(a)*rad,u*85,Math.sin(a)*rad],i*3);}
+ const r3=random(3),stars=new Float32Array(500*3);for(let i=0;i<500;i++){const u=r3()*2-1,a=r3()*Math.PI*2,rad=Math.sqrt(1-u*u)*85;stars.set([Math.cos(a)*rad,u*85,Math.sin(a)*rad],i*3);}
  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(stars,3));
  const starMat=new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false,transparent:true,opacity:1});
  const starField=new THREE.Points(starGeometry,starMat);starField.visible=false;dome.add(starField);
  // The moon: a pale disc with a soft halo, up behind the islands, out at night only.
  const moonMat=new THREE.MeshBasicMaterial({color:'#f6f2df',fog:false,transparent:true,opacity:0,depthWrite:false}),haloMat=new THREE.MeshBasicMaterial({color:'#cfdcff',fog:false,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
- const moon=new THREE.Group();moon.position.set(-30,46,-62);const disc=new THREE.Mesh(new THREE.SphereGeometry(3.2,24,16),moonMat),halo=new THREE.Mesh(new THREE.SphereGeometry(7,24,16),haloMat);moon.add(halo,disc);moon.visible=false;dome.add(moon);
+ const moon=new THREE.Group();moon.name='moon';moon.position.set(-30,46,-62);const disc=new THREE.Mesh(new THREE.SphereGeometry(1.9,24,16),moonMat),halo=new THREE.Mesh(new THREE.SphereGeometry(4,24,16),haloMat);moon.add(halo,disc);moon.visible=false;dome.add(moon);
 
  function theme(name){const t=TIMES[name]||DAY,night=name==='night';paint(t);scene.fog.color.set(t.fog);cloudMaterial.color.set(t.cloud);cloudMaterial.emissive.set(t.cloud);cloudMaterial.emissiveIntensity=t.glow;starField.visible=night;}
  theme('day');
@@ -59,6 +59,8 @@ export function createSky(scene,{reduced}){
   starField.visible=stars>.02;starMat.opacity=stars*(1-grey);moon.visible=stars>.02;moonMat.opacity=stars*(1-grey*.7);haloMat.opacity=stars*.18*(1-grey);}
  return {
   time:theme,blend,
-  update(elapsed,camera){dome.position.copy(camera.position);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
+  update(elapsed,camera){dome.position.copy(camera.position);
+   // Keep the illustrated moon in the visible sky even when the map camera points down at the islands.
+   moon.position.set(-.22,.18,-1).normalize().multiplyScalar(75).applyQuaternion(camera.quaternion);if(reduced.matches)return;below.rotation.y=elapsed*.006;ring.rotation.y=-elapsed*.012;wisps.rotation.y=elapsed*.009;}
  };
 }

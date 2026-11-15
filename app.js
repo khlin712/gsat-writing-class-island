@@ -182,7 +182,7 @@ function openCastCard(kind,crumb,html){const opener=document.activeElement;
  detailOpener=opener?.isConnected&&opener!==document.body&&!$('#detail').contains(opener)?opener:$('#avatar-button');updateMap();renderList();$('#detail').scrollTop=0;}
 const followLabel=()=>world?.following()?'鏡頭跟隨中 · 按下停止':'讓鏡頭跟隨';
 function bindFollow(w){const b=$('#cast-follow');if(!b)return;b.onclick=()=>{if(world?.following())world.stopFollow();else world?.walkerFocus(castCard==='avatar'?world.me():w,insets());b.textContent=followLabel();b.setAttribute('aria-pressed',!!world?.following());};}
-function onWalker(w){if(w.kind==='messenger'){openRelation(w.key);world?.walkerSelect(w);toast('這位學生帶著兩座島之間的關聯問題');return;}if(w.kind==='avatar'){openAvatar();return;}if(w.kind==='guide'){openGuide();return;}openResident(w);}
+function onWalker(w){if(w.kind==='lecturer'||w.seated){openStation('signup');world?.walkerSelect(w);return;}if(w.kind==='messenger'){openRelation(w.key);world?.walkerSelect(w);toast('這位學生帶著兩座島之間的關聯問題');return;}if(w.kind==='avatar'){openAvatar();return;}if(w.kind==='guide'){openGuide();return;}openResident(w);}
 function openResident(w){const t=topicOf(w.island);if(!t)return;const parent=w.kind==='parent';
  const doing=parent?`在「${t.title}」散步`:w.up?'正走向大學（爬上階梯、經過獎盃，走進大學門口）':w.target&&topicOf(w.target)?`正從「${t.title}」走向「${topicOf(w.target).title}」`:`在「${t.title}」走走看看`;
  const note=parent?'家長是地圖角色，不代表任何真實家長。':`地圖上共有 ${STUDENTS} 位學生，對應老師目前的教學人數。每一位都是地圖角色，不代表特定學生或案例。`;
@@ -305,7 +305,7 @@ function tickClock(){const now=performance.now();if(!document.body.classList.con
  const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；打開網頁 1 秒＝島上 3 分鐘），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
 setInterval(tickClock,250);
 $('#day').onclick=()=>{const m=islandMinutes(),[t,nm]=nextJump(m),d=((m%1440)+1440)%1440;islandOffset+=t-d;tickClock();$('#map-message').textContent=`島上時間跳到${nm}`;};
-window.__islandClock=()=>({minutes:Math.round(islandMinutes()),time:hhmm(islandMinutes()),phase:world?.phase(),weather:world?.weather()});window.__islandRain=on=>world?.rain(on);
+window.__islandClock=()=>({minutes:Math.round(islandMinutes()),time:hhmm(islandMinutes()),phase:world?.phase(),weather:world?.weather()});window.__islandRain=on=>world?.rain(on);window.__islandHazards=()=>world?.hazards();
 function setBird(on){$('#bird').setAttribute('aria-pressed',on);$('#bird').setAttribute('aria-label',on?'回到一般視角':'鳥瞰全島');}
 $('#bird').onclick=()=>{const on=$('#bird').getAttribute('aria-pressed')!=='true';if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home({...insets(),bird:on});setBird(on);$('#map-message').textContent=on?'鳥瞰 · 從正上方看整座島':'點一座島，開始你的寫作旅程';};
 $('#tools-toggle').onclick=()=>{const open=document.body.classList.toggle('tools-open');$('#tools-toggle').setAttribute('aria-expanded',open);requestAnimationFrame(refitView);};

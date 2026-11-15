@@ -13,7 +13,6 @@ export function createArchitecture({box,mesh,tree}){
  const signMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});
  if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=512;c.height=300;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,512,300);x.fillStyle='#c4612f';x.font='bold 40px "Noto Sans TC",sans-serif';x.textAlign='center';x.fillText('起點',256,64);
   x.fillStyle='#2f3b33';x.font='bold 46px "Noto Sans TC",sans-serif';x.fillText('為什麼要學國寫？',256,150);x.fillText('為什麼選這堂課？',256,230);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;signMat.map=tex;signMat.color.set('#ffffff');}
- const screenMat=new THREE.MeshStandardMaterial({color:'#f6f1e3',emissive:'#ffffff',emissiveIntensity:.25,roughness:.9});
  const pond=new THREE.MeshStandardMaterial({color:'#8fc7de',roughness:.15,metalness:.1,emissive:'#5fa8c8',emissiveIntensity:.15});
  const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
@@ -56,6 +55,10 @@ export function createArchitecture({box,mesh,tree}){
    golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.05,0,.16,.1,.16));golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.24,0,.06,.32,.06));golden(mesh(cupG,geo.dome,'#e0b13f',0,.35,0,.11,.08,.11));
    const c=golden(mesh(cupG,cup,'#e0b13f',0,.39,0));c.material=gold;gold.side=THREE.DoubleSide;
    for(const side of [-1,1]){const h=golden(mesh(cupG,handle,'#e0b13f',side*.32,.74,0));h.rotation.z=-side*Math.PI/2;}
+   // A pair of original feathered wings: aspiration, not a promised score or admission.
+   const outline=new THREE.Shape();outline.moveTo(.24,.62);for(const [x,y] of [[.39,.76],[.67,1.08],[.7,.94],[.59,.81],[.66,.85],[.63,.72],[.51,.65],[.58,.68],[.52,.57],[.38,.53],[.27,.55]])outline.lineTo(x,y);outline.closePath();
+   const wingGeometry=new THREE.ExtrudeGeometry(outline,{depth:.035,bevelEnabled:false});
+   for(const side of [-1,1]){const wing=new THREE.Mesh(wingGeometry,gold);wing.name=side<0?'trophy-wing-left':'trophy-wing-right';wing.scale.x=side;wing.position.z=-.08;wing.castShadow=true;cupG.add(wing);}
    golden(mesh(cupG,geo.dome,'#e0b13f',0,.99,0,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
   }else if(t.kind==='university'){
    // A symbol of going on to university: a symmetrical brick-and-stone library with a tall arched portico, colonnaded wings and hipped tile roofs.
@@ -101,10 +104,13 @@ export function createArchitecture({box,mesh,tree}){
    base(g,1,.62);hall(g,0,-.12,.86,.5,.5,'#eee5d2','#6d7f9a');box(g,0,.36,.3,.86,.6,.05,'#8a6a48');box(g,0,.42,.33,.78,.5,.02,'#fffaf0');box(g,0,.84,.335,.78,.1,.02,'#d0695a');
    for(let r=0;r<3;r++)for(let c=0;c<6;c++)box(g,-.3+c*.12,.5+r*.11,.345,.08,.07,.006,(r===1&&c===3)?'#f2c14e':'#e6dccb');
   }else if(t.kind==='signup'){
-   // ⑥ Trial class & sign-up: an open-air cinema — a big screen on posts, a projector, and rows of seats on the lawn.
-   for(const x of [-.5,.5])box(g,x,.25,-.42,.06,1.05,.06,'#5b4a3c');box(g,0,.55,-.43,1.06,.66,.04,'#3f3a36');const scr=box(g,0,.6,-.405,.96,.56,.01,'#f6f1e3');scr.material=screenMat;scr.castShadow=false;
-   box(g,0,1.24,-.43,1.14,.06,.08,'#c4612f');for(let r=0;r<3;r++)for(let c=0;c<4;c++){const x=-.36+c*.24,z=.08+r*.24;box(g,x,.25,z,.18,.08,.14,['#e07a5f','#f2c14e','#5f8fb4'][r]);box(g,x,.33,z+.06,.18,.12,.03,['#e07a5f','#f2c14e','#5f8fb4'][r]);}
-   box(g,.62,.25,.62,.08,.3,.08,'#38424f');box(g,.62,.55,.62,.16,.12,.2,'#38424f');mesh(g,geo.cylinder,'#cfe8ff',.62,.55,.51,.035,.03,.035).rotation.x=Math.PI/2;lamp(g,-.66,.55);
+   // ⑥ Open-air lecture hall: a chalkboard and lectern, with tiered wooden benches (people are supplied by walkers.js).
+   box(g,0,.25,-.42,1.12,.09,.68,'#bd9b70');
+   for(const x of [-.48,.48])box(g,x,.34,-.68,.04,.82,.04,'#795d43');box(g,0,.66,-.68,1.06,.52,.05,'#795d43');box(g,0,.69,-.645,.96,.44,.015,'#33584d');
+   for(const [x,w,y]of [[-.23,.38,.98],[-.1,.56,.88],[-.2,.32,.78]])box(g,x,y,-.632,w,.012,.008,'#e9e5cd');
+   box(g,.3,.34,-.37,.12,.25,.12,'#8a6a48');box(g,.3,.59,-.37,.35,.04,.25,'#c9b38a');
+   for(let r=0;r<2;r++){const z=.16+r*.36;box(g,0,.25,z,.98,.08+r*.035,.24,'#aa8760');box(g,0,.33+r*.035,z+.1,.98,.16,.035,'#c9b38a');}
+   lamp(g,-.68,.45);planter(g,.69,-.18);
   }else if(t.kind==='contact'){
    // ⑦ Service desk: a counter under a striped awning with an "i" sign, a bell and a stand of leaflets.
    base(g,.96,.62);box(g,0,.33,-.12,.86,.38,.36,'#f1e7d4');box(g,0,.71,-.12,.9,.04,.4,'#c9b38a');box(g,0,.33,.07,.86,.38,.02,'#4f7d74');

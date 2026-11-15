@@ -39,7 +39,7 @@ export function makeFigure(look={}){
  const hips=new THREE.Group();hips.position.y=.17;fig.add(hips);
  const legs=[-1,1].map(side=>piece(hips,[[G.leg,pants],[G.shoe,shoes]],side*.04));
  const torso=new THREE.Group();torso.position.y=.17;fig.add(torso);
- const H=.33,parts=[[G.body,shirt,[0,.085,0]],[G.head,skin,[0,H,0]]];
+ const H=.255,parts=[[G.body,shirt,[0,.085,0]],[G.head,skin,[0,H,0]]];
  for(const side of [-1,1])parts.push([G.eye,EYE,[side*.032,H+.01,.08]],[G.ball,'#f0a59a',[side*.054,H-.02,.07],[.016,.01,.008]]);
  // The hair cap tilts back so the face stays visible from the usual camera angle.
  parts.push([G.hair,hairStyle==='cap'?accent:hair,[0,H+.005,-.008],[1,1,1],[-.32,0,0]]);
@@ -69,4 +69,4 @@ export function makeRoute(pts){const cum=[0];for(let i=1;i<pts.length;i++)cum.pu
 // Where a walker is after covering distance s, which way it faces, and whether it is on the slide.
 export function along(route,s){const {pts,cum,total}=route;if(pts.length===1||total===0)return {...pts[pts.length-1],heading:null,slide:false};const d=Math.max(0,Math.min(total,s));let i=1;while(i<pts.length-1&&cum[i]<d)i++;
  const a=pts[i-1],b=pts[i],t=(d-cum[i-1])/((cum[i]-cum[i-1])||1);
- return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,slide:!!(a.slide&&b.slide),climb:a.path==='climb'&&b.path==='climb',trail:a.path==='trail'&&b.path==='trail'};}
+ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,heading:Math.hypot(b.x-a.x,b.z-a.z)>1e-6?Math.atan2(b.x-a.x,b.z-a.z):null,island:a.island===b.island?a.island:null,slide:!!(a.slide&&b.slide),climb:a.path==='climb'&&b.path==='climb',trail:a.path==='trail'&&b.path==='trail',trailId:a.trailId===b.trailId?a.trailId:null,trailU:a.trailU+(b.trailU-a.trailU)*t};}

@@ -31,7 +31,7 @@ export const STATIONS=[
   lead:'不同年級各自安排。有開班的年級可以接著報名；年紀還小的，可以先預先登記。',
   next:'signup',nextLabel:'前往試聽＆報名'},
  {id:'signup',n:'⑥',title:'試聽＆報名',short:'試聽＆報名',
-  lead:'在露天影院先看看線上教學的樣子；準備好了，就從這裡報名。',
+  lead:'在露天講堂認識課堂；準備好了，就從這裡了解試聽與報名。',
   next:'contact',nextLabel:'到服務台'},
  {id:'contact',n:'⑦',title:'服務台',short:'服務台',
   lead:'有問題就到服務台：用你習慣的方式找到我。',

@@ -20,3 +20,10 @@ export function mapInsets(map,rects=[]){
  inset.top=Math.min(inset.top,map.height*.6);inset.bottom=Math.min(inset.bottom,map.height*.6);
  return inset;
 }
+// One step of a two-finger gesture: how far the fingers spread (zoom), how much they twisted (rotate) and how far their midpoint moved (pan).
+export function pinchStep(a0,b0,a1,b1){
+ const d0=Math.hypot(b0.x-a0.x,b0.y-a0.y),d1=Math.hypot(b1.x-a1.x,b1.y-a1.y);
+ let angle=Math.atan2(b1.y-a1.y,b1.x-a1.x)-Math.atan2(b0.y-a0.y,b0.x-a0.x);
+ if(angle>Math.PI)angle-=2*Math.PI;else if(angle<=-Math.PI)angle+=2*Math.PI;
+ return {scale:d0>0&&d1>0?d1/d0:1,angle,dx:(a1.x+b1.x-a0.x-b0.x)/2,dy:(a1.y+b1.y-a0.y-b0.y)/2};
+}

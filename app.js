@@ -127,7 +127,7 @@ function selectStep(id,k){const t=topicOf(id);if(!t)return;const items=stepItems
  hotStep=-1;world?.pinState({sel:k});renderList();$('#map-message').textContent=`正在看 ${t.title} · 重點 ${k+1}`;
  world?.focusStep(id,k,items.length,insets());$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
 // ---- The way to the results summit: silver then gold stairs from 03, the trophy, then on to the university. ----
-function routeSection(){return `<section class="card-section stairs-section"><h3>從起點走到大學</h3><p class="stairs-note">旅程從「① 為什麼高中一定要學國寫？」出發。在「② 入口指引牌」照著指引「③ 走上橋」，就能順順走到獎盃；走錯路的話，岩漿洞和懸崖會掉下去，陡峭山壁雖然爬得到獎盃，但很慢、還可能掉下來。點獎盃或橋，橋會由下而上一階一階亮起。走過獎盃到「④ 學生回饋」的大學建築後，有的學生走進門裡消失，再從「${escape(placeOf(SPAWN_FROM)?.title||'')}」重新出發；有的不進門，繼續往行事曆、報名、聯繫走。獎盃是「成果」的象徵；大學建築只象徵升學目標，不代表任何得獎或錄取紀錄，也沒有與任何學校合作。</p><button class="text-button" id="to-journey">從起點走一次旅程 ↗</button></section>`;}
+function routeSection(){return `<section class="card-section stairs-section"><h3>從起點走到大學</h3><p class="stairs-note">旅程從「① 起點」的兩個問題出發：為什麼高中一定要學國寫？為什麼要選擇這堂課？在「② 入口指引牌」照著指引「③ 走上橋」，就能順順走到獎盃；走錯路的話，岩漿洞和懸崖會掉下去，陡峭山壁雖然爬得到獎盃，但很慢、還可能掉下來。點獎盃或橋，橋會由下而上一階一階亮起。走過獎盃到「④ 學生回饋」的大學建築後，有的學生走進門裡消失，再從「${escape(placeOf(SPAWN_FROM)?.title||'')}」重新出發；有的不進門，繼續往行事曆、報名、聯繫走。獎盃是「成果」的象徵；大學建築只象徵升學目標，不代表任何得獎或錄取紀錄，也沒有與任何學校合作。</p><button class="text-button" id="to-journey">從起點走一次旅程 ↗</button></section>`;}
 function closeDetail({restoreFocus=true}={}){const id=selected,relationId=activeRelation;activeRelation=null;castCard=null;world?.walkerSelect(null);world?.stopFollow();world?.stationSelect(null);if(placingAvatar)setPlacing(false);$('#avatar-button').setAttribute('aria-expanded','false');$('#detail').hidden=true;document.body.classList.remove('detail-open');selected=null;selectedConcern=null;selectedStep=null;world?.pins(null);world?.climb(false);
  if(isPhone()&&indexBeforeDetail)indexSheet.set(indexBeforeDetail);indexBeforeDetail=null;
  updateMap();renderList();renderConcerns();renderRelations();refitView();$('#map-message').textContent='點一座島，開始你的寫作旅程';
@@ -193,7 +193,7 @@ function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t
 const guideTour={active:false,index:0,walking:false};
 const stopName=id=>placeOf(id)?.title||'';
 function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
- return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">跟著導覽員走到下一站：${escape(stopName(next))} →</button>`}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
+ return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到起點，結束導覽</button>':`<button class="ask-topic" id="tour-next">看完了，繼續前進 →<small>下一站：${escape(stopName(next))}</small></button>`}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
 function bindTourBar(){$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
 // Open the card for the stop the guide has reached, with the tour bar on top.
 function showTourStop(id){if(topicOf(id))selectTopic(id);else openStation(id);}
@@ -252,7 +252,7 @@ const pending=what=>`<p class="pending-note">${what}待老師提供。</p>`;
 const linkButton=(url,label,cls='ask-topic')=>isLink(url)?`<a class="${cls} station-link" href="${escape(url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`:`<button class="${cls} station-link" disabled aria-disabled="true">${label}（連結待老師提供）</button>`;
 function stationBody(st,extra={}){
  if(st.id==='bridge')return `${st.note?`<p class="stairs-note">${escape(st.note)}</p>`:''}`+(st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>老師想對你說</h3>${pending('說明')}</section>`);
- if(st.id==='start')return st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>${st.id==='start'?'老師的回答':'老師想對你說'}</h3>${pending('說明')}</section>`;
+ if(st.id==='start')return st.themes.map(t=>`<section class="card-section start-theme"><p class="eyebrow">${escape(t.label)}</p><h3>${escape(t.q)}</h3>${t.body?`<p>${escape(t.body)}</p>`:pending('老師的回答')}</section>`).join('');
  if(st.id==='fork')return `<section class="card-section"><h3>照著指引的路</h3><button class="path-row right" data-goto-station="bridge"><b>${st.right.name}</b><span>${escape(st.right.caption)}</span><small>${st.right.ends} ↗</small></button></section><section class="card-section"><h3>走錯的三條路 · 點一條看看</h3><ol class="path-rows">${st.paths.map(p=>`<li><button class="path-row ${p.id}${extra.path===p.id?' current':''}" data-path="${p.id}" aria-current="${extra.path===p.id}"><b>${p.name}</b><span>${escape(p.caption)}</span><small>${p.ends}</small></button></li>`).join('')}</ol><p class="helper">三條路是比喻，說的是練習的方式，不是指任何老師或補習班。</p></section>`;
  if(st.id==='university')return `<section class="card-section"><h3>學生的回饋</h3>${FEEDBACK.length?`<ul class="feedback-list">${FEEDBACK.map(f=>`<li><p>${escape(f.text)}</p>${f.who?`<small>— ${escape(f.who)}</small>`:''}</li>`).join('')}</ul>`:pending('學生回饋（會先取得學生同意再放上）')}<p class="helper">大學建築只象徵升學目標，不代表錄取紀錄，也沒有與任何學校合作。</p></section>`;
  if(st.id==='calendar'){const open=CLASSES.filter(c=>c.status==='open'),pre=CLASSES.filter(c=>c.status==='preregister');
@@ -280,9 +280,20 @@ $('#connection').onclick=()=>{showConnections=!showConnections;$('#connection').
 $('#names').onclick=()=>{const on=$('#names').getAttribute('aria-pressed')!=='true';$('#names').setAttribute('aria-pressed',on);$('#names').setAttribute('aria-label',on?'隱藏島名':'顯示島名');world?.names(on);};
 function setPaused(paused){document.body.classList.toggle('paused',paused);$('#pause').setAttribute('aria-pressed',paused);$('#pause').innerHTML=paused?'<i>▷</i><span>播放</span>':'<i>Ⅱ</i><span>暫停</span>';$('#pause').setAttribute('aria-label',paused?'播放動畫':'暫停動畫');$('#pause').title=paused?'播放動畫':'暫停動畫';world?.pause(paused);}
 $('#pause').onclick=()=>setPaused(!document.body.classList.contains('paused'));
-const TIMES=['day','dusk','night','dawn'],TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};let timeOfDay='day';
-function setTime(name){timeOfDay=name;const next=TIMES[(TIMES.indexOf(name)+1)%TIMES.length];document.body.classList.toggle('night',name==='night');document.body.dataset.time=name;$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${TIME_NAMES[name]}</span>`;$('#day').setAttribute('aria-label',`時段：${TIME_NAMES[name]}，按下切換到${TIME_NAMES[next]}`);$('#day').title=`切換到${TIME_NAMES[next]}`;world?.time(name);}
-$('#day').onclick=()=>setTime(TIMES[(TIMES.indexOf(timeOfDay)+1)%TIMES.length]);
+// ---- The island clock: it starts at 08:00 when the page opens and runs at 3 island-minutes per real second
+// (a full day and night in 8 minutes), so the light goes from day to night and back while you look around. ----
+const ISLAND_START=8*60,MIN_PER_SEC=3,TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};
+const JUMPS=[[6*60,'清晨'],[12*60,'白天'],[18*60,'黃昏'],[21*60,'夜晚']];
+let islandSeconds=0,islandOffset=0,clockLast=performance.now(),shownClock='';
+const islandMinutes=()=>ISLAND_START+islandSeconds*MIN_PER_SEC+islandOffset;
+const hhmm=m=>{const d=((Math.floor(m)%1440)+1440)%1440;return `${String(Math.floor(d/60)).padStart(2,'0')}:${String(d%60).padStart(2,'0')}`;};
+function nextJump(m){const d=((m%1440)+1440)%1440;return JUMPS.find(([t])=>t>d+1)||[JUMPS[0][0]+1440,JUMPS[0][1]];}
+function tickClock(){const now=performance.now();if(!document.body.classList.contains('paused'))islandSeconds+=(now-clockLast)/1000;clockLast=now;const m=islandMinutes();world?.setHour(m/60);
+ const ph=world?.phase();const name=ph?.name||'day';document.body.classList.toggle('night',(ph?.stars||0)>.5);document.body.dataset.time=name;
+ const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；打開網頁 1 秒＝島上 3 分鐘），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
+setInterval(tickClock,250);
+$('#day').onclick=()=>{const m=islandMinutes(),[t,nm]=nextJump(m),d=((m%1440)+1440)%1440;islandOffset+=t-d;tickClock();$('#map-message').textContent=`島上時間跳到${nm}`;};
+window.__islandClock=()=>({minutes:Math.round(islandMinutes()),time:hhmm(islandMinutes()),phase:world?.phase(),weather:world?.weather()});window.__islandRain=on=>world?.rain(on);
 function setBird(on){$('#bird').setAttribute('aria-pressed',on);$('#bird').setAttribute('aria-label',on?'回到一般視角':'鳥瞰全島');}
 $('#bird').onclick=()=>{const on=$('#bird').getAttribute('aria-pressed')!=='true';if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home({...insets(),bird:on});setBird(on);$('#map-message').textContent=on?'鳥瞰 · 從正上方看整座島':'點一座島，開始你的寫作旅程';};
 $('#tools-toggle').onclick=()=>{const open=document.body.classList.toggle('tools-open');$('#tools-toggle').setAttribute('aria-expanded',open);requestAnimationFrame(refitView);};

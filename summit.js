@@ -46,7 +46,8 @@ function alongArc(from,to,y,spacing,rimA=1.15,rimB=1.15,out=0,side=0){const ra=a
 export function bridgePath(fork=STOPS.fork,summit=SUMMIT_AT,spacing=.17){const y0=(fork.y||0)+TOP,y1=summit.y+TOP;return alongArc(fork,summit,f=>y0+(y1-y0)*f,spacing,.45,1.15,-.2,-.42).map(p=>({...p,path:'bridge'}));}
 // The long rough trail from the trailhead, further out round the back, to the foot of the steep wall.
 export function trailPath(fork=STOPS.fork,foot=STOPS.wallfoot,spacing=.2){const y=TOP;return alongArc(fork,foot,()=>y,spacing,.45,.62,1.25,.42).map(p=>({...p,path:'trail'}));}
-// The way down after the university: plain stone stairs to the calendar island.
+// The way down after the university: a slide, much quicker than stairs, landing on the calendar island.
+export function slidePath(uni=UNIVERSITY_AT,cal=STOPS.calendar,spacing=.12){const y0=uni.y+TOP,y1=(cal.y||0)+TOP;return alongArc(uni,cal,f=>y1+(y0-y1)*(1-smooth(f)),spacing,1.15,1.15,.55).map(p=>({...p,path:'slide',slide:true}));}
 export function descentPath(uni=UNIVERSITY_AT,cal=STOPS.calendar,spacing=.17){const y0=uni.y+TOP,y1=(cal.y||0)+TOP;return alongArc(uni,cal,f=>y0+(y1-y0)*f,spacing).map(p=>({...p,path:'descent'}));}
 // ② The steep wall: from the ledge at its foot straight up the trophy island's rock face to its rim.
 export function climbPath(foot=STOPS.wallfoot,summit=SUMMIT_AT){const a=angle(summit,foot),x=summit.x+Math.cos(a)*1.36,z=summit.z+Math.sin(a)*1.36,y0=(foot.y||0)+TOP,y1=summit.y+TOP;
@@ -64,8 +65,8 @@ export function buildGraph(centers){
  if(G&&F)add('fork','wallfoot','trail',trailPath(G,F));
  // The wall only goes up (nobody climbs down it), and it is slow.
  if(F&&S){const pts=[ringAt(F,angle(F,S)),...climbPath(F,S)];edges.push({from:'wallfoot',to:SUMMIT,kind:'climb',exit:angle(F,S),entry:angle(S,pts.at(-1)),pts});}
- // The stairs after the university only go down: the one way up is the steep wall.
- if(U&&K){const pts=descentPath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'descent',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
+ // The slide after the university only goes down: the ways up are the bridge and the steep wall.
+ if(U&&K){const pts=slidePath(U,K);edges.push({from:UNIVERSITY,to:'calendar',kind:'slide',exit:angle(U,pts[0]),entry:angle(K,pts.at(-1)),pts});}
  return {centers,edges};}
 export function shortest(graph,from,to){if(from===to)return [];const dist=new Map([[from,0]]),prev=new Map(),todo=new Set([from]);
  while(todo.size){let u=null;for(const n of todo)if(u===null||dist.get(n)<dist.get(u))u=n;todo.delete(u);if(u===to)break;

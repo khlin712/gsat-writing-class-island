@@ -7,16 +7,20 @@ const up=new THREE.Vector3(0,1,0);
 function frames(pts){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const t=new THREE.Vector3(b.x-a.x,0,b.z-a.z).normalize();const side=new THREE.Vector3().crossVectors(t,up).normalize();return {p:new THREE.Vector3(p.x,p.y,p.z),t,side,yaw:Math.atan2(t.x,t.z)};});}
 function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length)),o=new THREE.Object3D();list.forEach((x,i)=>{o.position.copy(x.p);o.rotation.set(x.rx||0,x.yaw||0,0);o.scale.copy(x.s||new THREE.Vector3(1,1,1));o.updateMatrix();m.setMatrixAt(i,o.matrix);});m.count=list.length;m.castShadow=m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;m.computeBoundingSphere();return m;}
 
-export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],climb=[],trail=[],trophyAt,reduced}){
+export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
  // ---- Plank walkways between islands, with low rails. ----
  const wood=new THREE.MeshStandardMaterial({color:'#c9a77a',roughness:.9}),railMat=new THREE.MeshStandardMaterial({color:'#efe3c6',roughness:.8});
  const decks=[],rails=[],posts=[];
- for(const [a,b]of walkways){const A=centers.get(a),B=centers.get(b);if(!A||!B)continue;const y=(A.y||0)+.2,dx=B.x-A.x,dz=B.z-A.z,len=Math.hypot(dx,dz),yaw=Math.atan2(dx,dz),mid=new THREE.Vector3((A.x+B.x)/2,y,(A.z+B.z)/2),side=new THREE.Vector3(dz,0,-dx).normalize();
-  decks.push({p:mid,yaw,s:new THREE.Vector3(.36,.08,len-1.6)});
-  for(const k of [-1,1]){rails.push({p:mid.clone().addScaledVector(side,k*.19).setY(y+.16),yaw,s:new THREE.Vector3(.025,.025,len-1.7)});
-   for(let i=0;i<=4;i++){const f=-.5+i/4,q=mid.clone().addScaledVector(new THREE.Vector3(dx,0,dz).normalize(),f*(len-1.8)).addScaledVector(side,k*.19);posts.push({p:q.setY(y+.08),s:new THREE.Vector3(.016,.16,.016)});}}}
+ // Each deck runs from just inside one rim to just inside the other (small ledges have a smaller rim), and its top sits a hair
+ // below the island surface, so the plank tucks under the rim instead of flickering against it or stopping short of it.
+ const rim=c=>c.ring?.56:1.08;
+ for(const [a,b]of walkways){const A=centers.get(a),B=centers.get(b);if(!A||!B)continue;const y=(A.y||0)+.192,dx=B.x-A.x,dz=B.z-A.z,len=Math.hypot(dx,dz),dir=new THREE.Vector3(dx/len,0,dz/len),yaw=Math.atan2(dx,dz),side=new THREE.Vector3(dz,0,-dx).normalize();
+  const ra=rim(A),rb=rim(B),span=len-ra-rb,mid=new THREE.Vector3(A.x,y,A.z).addScaledVector(dir,ra+span/2);
+  decks.push({p:mid,yaw,s:new THREE.Vector3(.36,.08,span)});
+  for(const k of [-1,1]){rails.push({p:mid.clone().addScaledVector(side,k*.19).setY(y+.16),yaw,s:new THREE.Vector3(.025,.025,Math.max(.1,span-.3))});
+   for(let i=0;i<=4;i++){const f=-.5+i/4,q=mid.clone().addScaledVector(dir,f*Math.max(.1,span-.4)).addScaledVector(side,k*.19);posts.push({p:q.setY(y+.08),s:new THREE.Vector3(.016,.16,.016)});}}}
  group.add(instanced(unit,wood,decks),instanced(unit,railMat,rails),instanced(post,railMat,posts));
  // ---- ③ The bridge: silver on the first half, gold after a landing. When chosen it lights up step by step from the bottom up. ----
  const silver=new THREE.MeshStandardMaterial({color:'#b9c2cc',roughness:.28,metalness:.55,emissive:'#9cc3f5',emissiveIntensity:0});
@@ -35,12 +39,16 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],cli
  stairGroup.add(instanced(unit,riser,risers),instanced(post,railMat,stakes),instanced(post,new THREE.MeshStandardMaterial({color:'#5e6a6e',roughness:.6}),lampPosts),instanced(ball,lampGlow,lamps));
  for(const side of rail){const curve=new THREE.CatmullRomCurve3(side);const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,side.length*2),.018,6,false),new THREE.MeshStandardMaterial({color:'#f6efe0',roughness:.4,metalness:.2}));tube.castShadow=true;stairGroup.add(tube);}
  // A round landing where silver hands over to gold.
- const land=new THREE.Mesh(new THREE.CylinderGeometry(.42,.38,.1,6),steps[half].m);land.position.copy(f[half].p).setY(f[half].p.y-.05);land.castShadow=land.receiveShadow=true;stairGroup.add(land);
+ // A landing where silver hands over to gold: a wider step lined up with the bridge, sitting a touch above its neighbours.
+ const land=new THREE.Mesh(unit,steps[half].m);land.position.copy(f[half].p).setY(f[half].p.y-.02);land.rotation.y=f[half].yaw;land.scale.set(.66,.07,gap*3.2);land.castShadow=land.receiveShadow=true;stairGroup.add(land);
  group.add(stairGroup);
  // ---- Stone stairs down from the university, and holds up the steep wall (never lit). ----
  const stone=new THREE.MeshStandardMaterial({color:'#cfc3ab',roughness:.95});const df=frames(descent),dg=df.length>1?df[0].p.distanceTo(df[1].p):.17;
  if(df.length){const dRails=[[],[]];group.add(instanced(unit,stone,df.map(x=>({p:x.p.clone().setY(x.p.y-.05),yaw:x.yaw,s:new THREE.Vector3(.44,.1,dg*1.05)}))),instanced(unit,riser,df.map(x=>({p:x.p.clone().setY(x.p.y-.17),yaw:x.yaw,s:new THREE.Vector3(.4,.16,dg*1.05)}))));
   df.forEach(x=>{for(const k of [-1,1]){const q=x.p.clone().addScaledVector(x.side,k*.24);dRails[k<0?0:1].push(q.setY(q.y+.3));}});for(const side of dRails){const t=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(side),side.length*2,.014,5,false),railMat);group.add(t);}}
+ // The slide from the university down to the calendar island: a bright U-shaped chute on slim supports.
+ if(slide.length){const chute=new THREE.Mesh(trough(slide,.21),new THREE.MeshStandardMaterial({color:'#e8704f',roughness:.4,side:THREE.DoubleSide}));chute.castShadow=chute.receiveShadow=true;chute.name='slide';group.add(chute);
+  const sf=frames(slide);group.add(instanced(post,new THREE.MeshStandardMaterial({color:'#f2c14e',roughness:.5}),sf.filter((_,i)=>i%9===4&&i<sf.length-6).map(x=>({p:new THREE.Vector3(x.p.x,(x.p.y-.6)/2,x.p.z),s:new THREE.Vector3(.04,Math.max(.1,x.p.y+.6),.04)}))));}
  // The long rough trail to the foot of the steep wall: weathered planks on rope posts.
  if(trail.length){const tf=frames(trail),tg=tf.length>1?tf[0].p.distanceTo(tf[1].p):.2;group.add(instanced(unit,new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),tf.map((x,i)=>({p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,s:new THREE.Vector3(.36,.06,tg*.9)}))),
   instanced(post,new THREE.MeshStandardMaterial({color:'#7d6a52',roughness:1}),tf.filter((_,i)=>i%6===0).flatMap(x=>[-1,1].map(k=>({p:x.p.clone().addScaledVector(x.side,k*.2).setY(x.p.y+.08),s:new THREE.Vector3(.014,.22,.014)})))));}
@@ -57,7 +65,12 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],cli
   update(dt,elapsed){const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
    steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.m.emissiveIntensity=s.lit*s.glow;sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=.2+lit*1.4;
    const show=lit>.3&&!reduced?.matches;moteMat.opacity=Math.min(.9,lit);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
-  points(){return [...stairs,...descent,...trail];},
+  points(){return [...stairs,...descent,...slide,...trail];},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}
  };
 }
+// A U-shaped chute along a path: the bottom of the U sits on the path, so riders' feet are on it.
+function trough(pts,r){const fr=frames(pts),seg=10,pos=[],idx=[];
+ fr.forEach(x=>{for(let j=0;j<=seg;j++){const a=Math.PI*j/seg,v=x.p.clone().addScaledVector(x.side,Math.cos(a)*r).add(new THREE.Vector3(0,r-Math.sin(a)*r-.01,0));pos.push(v.x,v.y,v.z);}});
+ for(let i=0;i<fr.length-1;i++)for(let j=0;j<seg;j++){const a=i*(seg+1)+j,b=a+seg+1;idx.push(a,b,a+1,a+1,b,b+1);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}

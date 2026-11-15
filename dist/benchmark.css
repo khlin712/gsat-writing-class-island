@@ -43,7 +43,8 @@
    under the brand and step away while a card is open, so the card always starts just under the brand. */
 :root{--card-top:101px}
 @media(min-width:721px){.shell .map-tools{top:86px}.detail-open .map-tools{display:none}}
-@media(min-width:1400px){
+/* The tools sit beside the brand only when the top row has room for them and the actions (角色、清單…) too. */
+@media(min-width:1700px){
  .shell .map-tools{top:20px;left:276px}
  .detail-open .map-tools{display:flex;left:276px}
 }

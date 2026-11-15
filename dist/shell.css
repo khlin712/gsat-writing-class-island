@@ -201,3 +201,38 @@ body.shell{height:100dvh;overflow:hidden}
 /* Over moving clouds and the night sky, the caption and legend sit on the same frosted glass as the toolbar. */
 .shell .map-caption{right:auto;width:fit-content;max-width:calc(100% - 48px);border:1px solid #ffffff99;border-radius:999px;padding:7px 14px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 16px #2a4a6a1f}
 .shell .legend{border:1px solid #ffffff99;border-radius:999px;padding:5px 14px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+/* ---- Key points: pins on the island, rows in the card and in the index work as one set. ---- */
+.step-pin{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:#fffdf8;border:1.5px solid var(--accent);box-shadow:0 3px 10px #2a3a3030;font:600 12.5px/1.2 inherit;color:var(--ink);white-space:nowrap;cursor:pointer;transition:transform .15s,background .15s,color .15s}
+.step-pin b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:800}
+.step-pin:hover,.step-pin.hot,.step-pin:focus-visible{transform:scale(1.12);background:var(--ink);color:#fffaf2;border-color:var(--ink);z-index:5}
+.step-pin.sel{background:var(--ink);color:#fffaf2;border-color:var(--ink);box-shadow:0 0 0 3px #fffdf8cc,0 4px 14px #1f2a2440;z-index:6}
+.step-pin.sel b{background:var(--accent);color:#fff}
+#map.labels-off .step-pin{visibility:visible}
+.island-3d-label.dim{opacity:.72;filter:saturate(.55)}
+.island-3d-label.dim:hover{opacity:1;filter:none}
+.step-rows{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.step-row{width:100%;display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fffdf8;color:var(--ink);cursor:pointer;font:inherit;transition:background .15s,border-color .15s}
+.step-row b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:13px}
+.step-row strong{display:block;font-size:15px}
+.step-row small{display:block;margin-top:2px;color:var(--muted);font-size:13px;line-height:1.5}
+.step-row i{font-style:normal;color:var(--accent);align-self:center}
+.step-row:hover,.step-row.hot,.step-row:focus-visible{background:var(--accent-soft);border-color:#e3c3a8}
+.step-row:hover b,.step-row.hot b{background:var(--accent);color:#fff}
+.topic-steps li::before{content:none}
+.step-link{display:flex;align-items:center;gap:10px;width:100%;padding:4px 8px;margin-left:-8px;border:0;border-radius:10px;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.step-link .pin-no{display:grid;place-content:center;flex-shrink:0;width:22px;height:22px;border:1px solid #d8b79a;border-radius:50%;font-size:12px;color:var(--accent)}
+.step-link:hover,.step-link.hot,.step-link:focus-visible{background:var(--accent-soft);color:var(--ink)}
+.step-link.hot .pin-no,.step-link.current .pin-no{background:var(--accent);border-color:var(--accent);color:#fff}
+.step-link.current{color:var(--ink);font-weight:600}
+.step-mark{color:var(--accent);margin-right:6px}
+.pending-note{margin:0;padding:10px 12px;border:1px dashed #d8c3ae;border-radius:12px;background:#fffaf3;color:var(--muted);font-size:14px;line-height:1.6}
+.step-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.step-nav button{display:grid;gap:2px;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:#fffdf8;font:inherit;color:var(--ink);cursor:pointer}
+.step-nav button.next{text-align:right}
+.step-nav small{color:var(--muted);font-size:12px}
+.step-nav button:hover,.step-nav button.hot{background:var(--accent-soft)}
+@media(max-width:720px){.step-pin{font-size:11.5px;padding:2px 8px 2px 2px}.step-pin b{width:20px;height:20px;font-size:12px}}
+/* Phones: nine map tools must stay clear of the right-hand action column. */
+@media(max-width:720px){.shell .map-tools button{min-width:32px}.shell .map-tools button i{width:28px;height:28px}}
+/* Phones: the island is small, so pins show only their number; the card lists the names. */
+@media(max-width:720px){.step-pin{padding:2px;gap:0}.step-pin span{display:none}.step-pin b{width:24px;height:24px;font-size:13px}}

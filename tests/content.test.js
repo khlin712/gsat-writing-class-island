@@ -23,3 +23,9 @@ assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:0,bottom:96},{left:20,rig
 assert.deepEqual(mapInsets(map,[{left:0,right:390,top:900,bottom:1500}]),zero);
 assert.deepEqual(mapInsets(map,[{left:0,right:1000,top:80,bottom:800}]),zero);
 assert.deepEqual(mapInsets({width:0,height:0},[{left:0,right:1,top:0,bottom:1}]),zero);});
+test('手機雙指：張開放大、扭轉旋轉、同向滑動平移',async()=>{const {pinchStep}=await import('../dist/motion.js');const close=(a,b)=>Math.abs(a-b)<1e-9;
+let s=pinchStep({x:100,y:100},{x:200,y:100},{x:50,y:100},{x:250,y:100});assert.ok(close(s.scale,2));assert.ok(close(s.angle,0));assert.ok(close(s.dx,0)&&close(s.dy,0));
+s=pinchStep({x:100,y:100},{x:200,y:100},{x:150,y:50},{x:150,y:150});assert.ok(close(s.scale,1));assert.ok(close(s.angle,Math.PI/2));
+s=pinchStep({x:100,y:100},{x:200,y:100},{x:130,y:80},{x:230,y:80});assert.ok(close(s.scale,1)&&close(s.angle,0));assert.ok(close(s.dx,30)&&close(s.dy,-20));
+s=pinchStep({x:0,y:0},{x:-100,y:-1},{x:0,y:0},{x:-100,y:1});assert.ok(Math.abs(s.angle)<.03,'跨越 ±180° 時不跳一整圈');
+assert.equal(pinchStep({x:5,y:5},{x:5,y:5},{x:5,y:5},{x:9,y:9}).scale,1);});

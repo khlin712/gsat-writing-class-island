@@ -5,8 +5,10 @@ import * as THREE from './vendor/three.module.min.js';
 // Repeated parts are instanced, so the whole route costs a handful of draws.
 const up=new THREE.Vector3(0,1,0);
 function frames(pts){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const t=new THREE.Vector3(b.x-a.x,0,b.z-a.z).normalize();const side=new THREE.Vector3().crossVectors(t,up).normalize();return {p:new THREE.Vector3(p.x,p.y,p.z),t,side,yaw:Math.atan2(t.x,t.z)};});}
-function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length)),o=new THREE.Object3D();list.forEach((x,i)=>{o.position.copy(x.p);o.rotation.set(x.rx||0,x.yaw||0,0);o.scale.copy(x.s||new THREE.Vector3(1,1,1));o.updateMatrix();m.setMatrixAt(i,o.matrix);});m.count=list.length;m.castShadow=m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;m.computeBoundingSphere();return m;}
+function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length)),o=new THREE.Object3D();o.rotation.order='YXZ';list.forEach((x,i)=>{o.position.copy(x.p);o.rotation.set(x.rx||0,x.yaw||0,0);o.scale.copy(x.s||new THREE.Vector3(1,1,1));o.updateMatrix();m.setMatrixAt(i,o.matrix);});m.count=list.length;m.castShadow=m.receiveShadow=true;m.instanceMatrix.needsUpdate=true;m.computeBoundingSphere();return m;}
 
+// Where the ropes hang, side by side along the rim (offsets along the rim from the climb line). Climbers pick one.
+export const ROPES=[-.48,-.16,.16,.48];
 export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
@@ -35,7 +37,7 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
   if(i%10===5){const k=i%20===5?1:-1,q=x.p.clone().addScaledVector(x.side,k*.33);lampPosts.push({p:q.clone().setY(q.y+.3),s:new THREE.Vector3(.018,.6,.018)});lamps.push({p:q.clone().setY(q.y+.63),s:new THREE.Vector3(.055,.055,.055)});}});
  const stairGroup=new THREE.Group();stairGroup.name='golden-bridge';
  // Each step has its own material so the light can climb the bridge one step at a time.
- f.forEach((x,i)=>{const m=(i<half?silver:gold).clone(),t=new THREE.Mesh(unit,m);t.position.copy(x.p).setY(x.p.y-.025);t.rotation.y=x.yaw;t.scale.set(.5,.05,gap*1.04);t.castShadow=t.receiveShadow=true;stairGroup.add(t);steps.push({m,glow:i<half?.55:.7,lit:0});});
+ f.forEach((x,i)=>{const m=(i<half?silver:gold).clone(),t=new THREE.Mesh(unit,m);t.userData.step=i;t.position.copy(x.p).setY(x.p.y-.025);t.rotation.y=x.yaw;t.scale.set(.5,.05,gap*1.04);t.castShadow=t.receiveShadow=true;stairGroup.add(t);steps.push({m,glow:i<half?.55:.7,lit:0,foot:0,p:x.p});});
  stairGroup.add(instanced(unit,riser,risers),instanced(post,railMat,stakes),instanced(post,new THREE.MeshStandardMaterial({color:'#5e6a6e',roughness:.6}),lampPosts),instanced(ball,lampGlow,lamps));
  for(const side of rail){const curve=new THREE.CatmullRomCurve3(side);const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,side.length*2),.018,6,false),new THREE.MeshStandardMaterial({color:'#f6efe0',roughness:.4,metalness:.2}));tube.castShadow=true;stairGroup.add(tube);}
  // A round landing where silver hands over to gold.
@@ -46,14 +48,32 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
  const stone=new THREE.MeshStandardMaterial({color:'#cfc3ab',roughness:.95});const df=frames(descent),dg=df.length>1?df[0].p.distanceTo(df[1].p):.17;
  if(df.length){const dRails=[[],[]];group.add(instanced(unit,stone,df.map(x=>({p:x.p.clone().setY(x.p.y-.05),yaw:x.yaw,s:new THREE.Vector3(.44,.1,dg*1.05)}))),instanced(unit,riser,df.map(x=>({p:x.p.clone().setY(x.p.y-.17),yaw:x.yaw,s:new THREE.Vector3(.4,.16,dg*1.05)}))));
   df.forEach(x=>{for(const k of [-1,1]){const q=x.p.clone().addScaledVector(x.side,k*.24);dRails[k<0?0:1].push(q.setY(q.y+.3));}});for(const side of dRails){const t=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(side),side.length*2,.014,5,false),railMat);group.add(t);}}
- // The slide from the university down to the calendar island: a bright U-shaped chute on slim supports.
- if(slide.length){const chute=new THREE.Mesh(trough(slide,.21),new THREE.MeshStandardMaterial({color:'#e8704f',roughness:.4,side:THREE.DoubleSide}));chute.castShadow=chute.receiveShadow=true;chute.name='slide';group.add(chute);
-  const sf=frames(slide);group.add(instanced(post,new THREE.MeshStandardMaterial({color:'#f2c14e',roughness:.5}),sf.filter((_,i)=>i%9===4&&i<sf.length-6).map(x=>({p:new THREE.Vector3(x.p.x,(x.p.y-.6)/2,x.p.z),s:new THREE.Vector3(.04,Math.max(.1,x.p.y+.6),.04)}))));}
- // The long rough trail to the foot of the steep wall: weathered planks on rope posts.
- if(trail.length){const tf=frames(trail),tg=tf.length>1?tf[0].p.distanceTo(tf[1].p):.2;group.add(instanced(unit,new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),tf.map((x,i)=>({p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,s:new THREE.Vector3(.36,.06,tg*.9)}))),
-  instanced(post,new THREE.MeshStandardMaterial({color:'#7d6a52',roughness:1}),tf.filter((_,i)=>i%6===0).flatMap(x=>[-1,1].map(k=>({p:x.p.clone().addScaledVector(x.side,k*.2).setY(x.p.y+.08),s:new THREE.Vector3(.014,.22,.014)})))));}
- if(climb.length){const holds=[],rope=[];climb.forEach((p,i)=>{rope.push(new THREE.Vector3(p.x,p.y+.3,p.z));if(i%2===0)for(const k of [-.13,.13])holds.push({p:new THREE.Vector3(p.x+k*(i%4?1:-1)*.6,p.y+.05,p.z+k*.6),s:new THREE.Vector3(.07,.05,.07)});});
-  group.add(instanced(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({color:'#e2793f',roughness:.7}),holds));const r=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rope),24,.012,5,false),new THREE.MeshStandardMaterial({color:'#d8b679',roughness:.8}));group.add(r);}
+ // The down escalator from the university to the calendar island: steps that keep sliding downhill between glass side panels with
+ // dark handrails, on slim yellow columns. Riders just stand on it.
+ const esc={steps:null,pts:slide,cum:[0],total:0,gap:.22,count:0};
+ if(slide.length>1){for(let i=1;i<slide.length;i++)esc.cum.push(esc.cum[i-1]+Math.hypot(slide[i].x-slide[i-1].x,slide[i].y-slide[i-1].y,slide[i].z-slide[i-1].z));esc.total=esc.cum.at(-1);esc.count=Math.floor(esc.total/esc.gap);
+  esc.steps=new THREE.InstancedMesh(unit,new THREE.MeshStandardMaterial({color:'#9aa3ab',roughness:.4,metalness:.5}),esc.count);esc.steps.castShadow=esc.steps.receiveShadow=true;esc.steps.frustumCulled=false;esc.steps.name='escalator';group.add(esc.steps);
+  const sf=frames(slide),glass=new THREE.MeshStandardMaterial({color:'#bfe3f0',roughness:.1,metalness:.1,transparent:true,opacity:.42,depthWrite:false}),dark=new THREE.MeshStandardMaterial({color:'#2f3b33',roughness:.5});
+  const panels=[];sf.forEach((x,i)=>{if(i===sf.length-1)return;const n=sf[i+1],run=x.p.distanceTo(n.p),mid=x.p.clone().lerp(n.p,.5),rx=-Math.atan2(n.p.y-x.p.y,Math.hypot(n.p.x-x.p.x,n.p.z-x.p.z));for(const k of [-1,1])panels.push({p:mid.clone().addScaledVector(x.side,k*.3).setY(mid.y+.18),yaw:x.yaw,rx,s:new THREE.Vector3(.02,.3,run*1.02)});});
+  group.add(instanced(unit,glass,panels));
+  for(const k of [-1,1]){const pts=sf.map(x=>x.p.clone().addScaledVector(x.side,k*.3).setY(x.p.y+.36));group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),pts.length*2,.022,6,false),dark));}
+  group.add(instanced(post,new THREE.MeshStandardMaterial({color:'#f2c14e',roughness:.5}),sf.filter((_,i)=>i%9===4&&i<sf.length-6).map(x=>({p:new THREE.Vector3(x.p.x,(x.p.y-.6)/2,x.p.z),s:new THREE.Vector3(.05,Math.max(.1,x.p.y+.6),.05)}))));
+  const side=new THREE.Mesh(trough(slide,.26),new THREE.MeshStandardMaterial({color:'#d8dde2',roughness:.5,metalness:.3,side:THREE.DoubleSide}));side.position.y=-.06;side.name='escalator-body';group.add(side);}
+ const escAt=(d)=>{let i=1;while(i<esc.cum.length-1&&esc.cum[i]<d)i++;const a=esc.pts[i-1],b=esc.pts[i],t=(d-esc.cum[i-1])/((esc.cum[i]-esc.cum[i-1])||1);return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,yaw:Math.atan2(b.x-a.x,b.z-a.z)};};
+ const eo=new THREE.Object3D();eo.rotation.order='YXZ';
+ function moveEscalator(elapsed){if(!esc.steps)return;const shift=reduced?.matches?0:(elapsed*.45)%esc.gap;for(let i=0;i<esc.count;i++){const p=escAt(Math.min(esc.total,i*esc.gap+shift));eo.position.set(p.x,p.y-.03,p.z);eo.rotation.set(0,p.yaw,0);eo.scale.set(.5,.06,esc.gap*.92);eo.updateMatrix();esc.steps.setMatrixAt(i,eo.matrix);}esc.steps.instanceMatrix.needsUpdate=true;}
+ // The rough way: weathered planks that pitch up and down over the humps, with sagging rope rails — slow, hard going.
+ const plank=new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),ropeMat=new THREE.MeshStandardMaterial({color:'#c9a874',roughness:.9});
+ for(const seg of trail){if(seg.length<2)continue;const tf=frames(seg);const list=tf.map((x,i)=>{const a=seg[Math.max(0,i-1)],b=seg[Math.min(seg.length-1,i+1)],run=Math.hypot(b.x-a.x,b.z-a.z)||1;return {p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,rx:-Math.atan2(b.y-a.y,run),s:new THREE.Vector3(.38,.05,Math.hypot(run,b.y-a.y)/((i>0&&i<seg.length-1)?2:1)*.95)};});
+  group.add(instanced(unit,plank,list));
+  for(const k of [-1,1]){const pts=tf.map(x=>x.p.clone().addScaledVector(x.side,k*.22).setY(x.p.y+.3));const t=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),pts.length*2,.012,5,false),ropeMat);group.add(t);}
+  group.add(instanced(post,new THREE.MeshStandardMaterial({color:'#7d6a52',roughness:1}),tf.filter((_,i)=>i%5===0).flatMap(x=>[-1,1].map(k=>({p:x.p.clone().addScaledVector(x.side,k*.22).setY(x.p.y+.13),s:new THREE.Vector3(.016,.3,.016)})))));}
+ // ② The steep wall: several knotted ropes hanging from the trophy island's rim down to the ledge; climbers go up them hand over hand.
+ if(climb.length){const top=climb.at(-1),bottom=climb[0],dir=new THREE.Vector3(bottom.x-trophyAt.x,0,bottom.z-trophyAt.z).normalize(),tan=new THREE.Vector3(-dir.z,0,dir.x),knots=[];
+  for(const off of ROPES){const x=top.x+tan.x*off,z=top.z+tan.z*off,pts=[new THREE.Vector3(x,top.y+.08,z),new THREE.Vector3(x+dir.x*.03,(top.y+bottom.y)/2,z+dir.z*.03),new THREE.Vector3(x,bottom.y-.1,z)];
+   group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),20,.016,6,false),ropeMat));for(let y=bottom.y+.15;y<top.y;y+=.28)knots.push({p:new THREE.Vector3(x,y,z),s:new THREE.Vector3(.03,.03,.03)});
+   const peg=new THREE.Mesh(post,new THREE.MeshStandardMaterial({color:'#6b5a45',roughness:.9}));peg.scale.set(.03,.14,.03);peg.position.set(x-dir.x*.05,top.y+.05,z-dir.z*.05);group.add(peg);}
+  group.add(instanced(ball,ropeMat,knots));}
  // Light motes drifting along the golden bridge once it is lit.
  const motes=[],moteMat=new THREE.MeshBasicMaterial({color:'#fff3cf',transparent:true,opacity:0,depthWrite:false});
  for(let i=0;i<16;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),moteMat);m.raycast=()=>{};m.visible=false;group.add(m);motes.push({m,phase:i/16,lift:.14+(i%3)*.07});}
@@ -62,10 +82,11 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
   pickables:[stairGroup],
   light(on){if(on&&!want)since=performance.now();want=on?1:0;},
   lit:()=>Math.round(lit*100)/100,
-  update(dt,elapsed){const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
-   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.m.emissiveIntensity=s.lit*s.glow;sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=.2+lit*1.4;
+  // feet: where people are standing right now; any step under a foot lights up and fades after they pass.
+  update(dt,elapsed,feet=[]){moveEscalator(elapsed);for(const q of feet){if(q.y<.3)continue;for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24)st.foot=1;}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
+   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.foot=Math.max(0,s.foot-dt*1.6);s.m.emissiveIntensity=Math.min(1.3,s.lit*s.glow+s.foot*1.1);sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=.2+lit*1.4;
    const show=lit>.3&&!reduced?.matches;moteMat.opacity=Math.min(.9,lit);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
-  points(){return [...stairs,...descent,...slide,...trail];},
+  points(){return [...stairs,...descent,...slide,...trail.flat()];},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}
  };
 }

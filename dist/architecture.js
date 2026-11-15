@@ -76,6 +76,10 @@ export function createArchitecture({box,mesh,tree}){
    bench(g,-.35,.55);bench(g,.38,.55);tree(g,-.62,-.5,.7);tree(g,.66,-.42,.62);tree(g,-.2,-.72,.5);lamp(g,.22,.58);
    for(const x of [.3,.62])box(g,x,.25,-.68,.04,.62,.04,'#8a6a48');box(g,.46,.62,-.66,.42,.3,.04,'#fff4d6');box(g,.46,.62,-.685,.48,.36,.02,'#8a6a48');
    mesh(g,new THREE.TorusGeometry(.07,.02,8,16,Math.PI*1.4),'#c4612f',.46,.67,-.635).rotation.z=-.5;box(g,.47,.55,-.635,.03,.04,.01,'#c4612f');
+  }else if(t.kind==='fork'){
+   // ② The trailhead: room to gather in front of the notice board, with rocks, pines and a bench round the edge.
+   for(const [x,z,r]of [[-.62,-.45,.13],[.66,-.35,.1],[-.7,.15,.08],[.55,.5,.09]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#9b8a6c',x,.3,z,r,r*.8,r);
+   tree(g,-.55,-.62,.62);tree(g,.62,-.6,.55);bench(g,-.5,.45);lamp(g,.62,.18);
   }else if(t.kind==='lava'){
    // A lava cave: a dark rock mound with a glowing pool at its mouth. Walk in and you do not come out.
    const rock='#5b4a42';for(const [x,z,r,h]of [[0,-.2,.55,.75],[-.42,-.05,.35,.5],[.42,-.1,.38,.55],[.15,-.45,.4,.6]])mesh(g,new THREE.DodecahedronGeometry(1,0),rock,x,.25+h*.45,z,r,h,r);
@@ -117,5 +121,5 @@ export function createArchitecture({box,mesh,tree}){
   }
   return g;
  }
- return {build,shine(v){gold.emissiveIntensity=v*.6;},time(name){glass.color.set(name==='night'?'#f6d39a':'#638d97');glass.emissiveIntensity=name==='night'?.65:name==='dusk'?.2:0;}};
+ return {build,shine(v){gold.emissiveIntensity=v*.6;},time(name){glass.color.set(name==='night'?'#ffd99a':'#638d97');glass.emissiveIntensity=name==='night'?1.35:name==='dusk'?.35:0;}};
 }

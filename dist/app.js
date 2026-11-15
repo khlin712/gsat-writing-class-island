@@ -301,17 +301,16 @@ $('#connection').onclick=()=>{showConnections=!showConnections;$('#connection').
 $('#names').onclick=()=>{const on=$('#names').getAttribute('aria-pressed')!=='true';$('#names').setAttribute('aria-pressed',on);$('#names').setAttribute('aria-label',on?'隱藏島名':'顯示島名');world?.names(on);};
 function setPaused(paused){document.body.classList.toggle('paused',paused);$('#pause').setAttribute('aria-pressed',paused);$('#pause').innerHTML=paused?'<i>▷</i><span>播放</span>':'<i>Ⅱ</i><span>暫停</span>';$('#pause').setAttribute('aria-label',paused?'播放動畫':'暫停動畫');$('#pause').title=paused?'播放動畫':'暫停動畫';world?.pause(paused);}
 $('#pause').onclick=()=>setPaused(!document.body.classList.contains('paused'));
-// ---- The island clock: it starts at 08:00 when the page opens and runs at 10 island-minutes per real second
-// (a full day and night in 2 minutes 24 seconds), so the light goes from day to night and back while you look around. ----
-const ISLAND_START=8*60,MIN_PER_SEC=10,TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};
+// Hold 15:20 for the first five real seconds, then advance five island minutes per second.
+const ISLAND_START=15*60+20,MIN_PER_SEC=5,TIME_NAMES={dawn:'清晨',day:'白天',dusk:'黃昏',night:'夜晚'},TIME_ICONS={dawn:'◒',day:'☀',dusk:'◓',night:'☾'};
 const JUMPS=[[6*60,'清晨'],[12*60,'白天'],[18*60,'黃昏'],[21*60,'夜晚']];
-let islandSeconds=0,islandOffset=0,clockLast=performance.now(),shownClock='';
+let islandSeconds=0,islandOffset=0,clockLast=performance.now(),clockHoldUntil=clockLast+5000,shownClock='';
 const islandMinutes=()=>ISLAND_START+islandSeconds*MIN_PER_SEC+islandOffset;
 const hhmm=m=>{const d=((Math.floor(m)%1440)+1440)%1440;return `${String(Math.floor(d/60)).padStart(2,'0')}:${String(d%60).padStart(2,'0')}`;};
 function nextJump(m){const d=((m%1440)+1440)%1440;return JUMPS.find(([t])=>t>d+1)||[JUMPS[0][0]+1440,JUMPS[0][1]];}
-function tickClock(){const now=performance.now();if(!document.body.classList.contains('paused'))islandSeconds+=(now-clockLast)/1000;clockLast=now;const m=islandMinutes();world?.setHour(m/60);
+function tickClock(){const now=performance.now();if(!document.body.classList.contains('paused'))islandSeconds+=Math.max(0,now-Math.max(clockLast,clockHoldUntil))/1000;clockLast=now;const m=islandMinutes();world?.setHour(m/60);
  const ph=world?.phase();const name=ph?.name||'day';document.body.classList.toggle('night',(ph?.stars||0)>.5);document.body.dataset.time=name;
- const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；打開網頁 1 秒＝島上 10 分鐘），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
+ const label=`${TIME_ICONS[name]} ${hhmm(m)}`;if(label!==shownClock){shownClock=label;const [,nextName]=nextJump(m);$('#day').innerHTML=`<i>${TIME_ICONS[name]}</i><span>${hhmm(m)}</span>`;$('#day').setAttribute('aria-label',`島上時間 ${hhmm(m)}（${TIME_NAMES[name]}；開啟後先停留 5 秒，再以現實 1 秒＝島上 5 分鐘前進），按下跳到${nextName}`);$('#day').title=`島上時間 ${hhmm(m)} · 按下跳到${nextName}`;}}
 setInterval(tickClock,250);
 $('#day').onclick=()=>{const m=islandMinutes(),[t,nm]=nextJump(m),d=((m%1440)+1440)%1440;islandOffset+=t-d;tickClock();$('#map-message').textContent=`島上時間跳到${nm}`;};
 window.__islandClock=()=>({minutes:Math.round(islandMinutes()),time:hhmm(islandMinutes()),phase:world?.phase(),weather:world?.weather()});window.__islandRain=on=>world?.rain(on);window.__islandHazards=()=>world?.hazards();
@@ -324,6 +323,7 @@ function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.cont
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
 try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+clockLast=performance.now();clockHoldUntil=clockLast+5000;tickClock();
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});
 const indexSheet=bindSheet($('#index-panel'),$('#index-handle'),$('#index-size'),{peekable:true,onChange:()=>{syncListToggle();requestAnimationFrame(refitView);}});

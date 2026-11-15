@@ -3,10 +3,10 @@ import {makeFigure,pose,applyPose,makeRoute,along,islandTop,FIGURE_SCALE,FRONT_Z
 import {walkRoute as findRoute,STAIRS_FROM,UNIVERSITY,SUMMIT,SPAWN_FROM} from './summit.js';
 
 // Who walks on the map:
-// - residents stroll back and forth on the front path of each island;
-// - a relation walker carries a notebook back and forth on each relation that has a real walkway;
-// - students come out of the main building on SPAWN_FROM, climb the stairs past the trophy and disappear into the university
-//   (going on to university); a little later they come out of the main building again, so the island never empties;
+// - one parent per island strolls back and forth on its front path;
+// - STUDENTS students in all (the teacher's current number of students): some carry a notebook back and forth on each relation
+//   that has a real walkway, the rest wander from island to island; now and then one climbs the stairs past the trophy and
+//   disappears into the university (going on to university), then comes out of the main building on SPAWN_FROM again, so the count holds;
 // - the guide visits the islands in order 01 → 09 and stops at each one;
 // - "my character" is the visitor's own figure, which walks wherever they send it.
 // Everyone walks on walkways and stairs, never through the air. All of them are decorative map characters, not real people.
@@ -18,6 +18,11 @@ const RESIDENTS=[
  {shirt:'#a688bd',hair:'#6b4a33',hairStyle:'short',skin:'#e4b994',pants:'#3f4a5a'},
  {shirt:'#e9e1d0',hair:'#2f2a28',hairStyle:'long',skin:'#f5dcc4',pants:'#5d7186',prop:'backpack',accent:'#d0695a'}
 ];
+// The teacher's current number of students (given by the teacher). Change it here when the class size changes.
+export const STUDENTS=47;
+const PARENTS=[{shirt:'#7d8a96',pants:'#3f4652',hair:'#2f2a28',hairStyle:'short',skin:'#e9c3a0',prop:'bag',accent:'#8a5a3b'},{shirt:'#b07d6a',pants:'#4a4040',hair:'#4a3a30',hairStyle:'long',skin:'#f1cfae',prop:'bag',accent:'#5b6f60'},{shirt:'#6e8a74',pants:'#3a4250',hair:'#3a3330',hairStyle:'bun',skin:'#d9a983'}];
+const STUDENT_SHIRTS=['#e07a5f','#5f8fb4','#7aa66b','#e2b84c','#9a7bb8','#4f7d74','#f0f0ea','#d98fa0'],STUDENT_HAIR=['short','long','bun','cap','short','long'];
+const studentLook=i=>({shirt:STUDENT_SHIRTS[i%STUDENT_SHIRTS.length],hairStyle:STUDENT_HAIR[(i*5)%STUDENT_HAIR.length],hair:['#2a2622','#3a2e28','#5a3d2b'][i%3],skin:['#efcaa6','#e4b994','#f5dcc4','#d9a983'][(i*3)%4],pants:['#3f4f63','#4e5d6c','#5d5248'][i%3],prop:i%3?'backpack':'book',accent:['#d0695a','#5f8fb4','#e2b84c','#7aa66b','#fff3cf'][i%5]});
 export const SHIRTS=['#e07a5f','#5f8fb4','#7aa66b','#e2b84c','#9a7bb8','#4f7d74'];
 export const AVATAR_ROLES={學生:'backpack',家長:'bag',其他:null};
 export const AVATAR_KEY='writing-island-avatar';
@@ -31,21 +36,23 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const walkers=[],byId=id=>topics.find(t=>t.id===id),order=topics.map(t=>t.id);
  const ring=new THREE.Mesh(new THREE.RingGeometry(.15,.2,28).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:'#e2793f',transparent:true,opacity:.9,depthWrite:false}));ring.position.y=.008;ring.raycast=()=>{};ring.visible=false;
  function tag(w,text,className){const el=document.createElement('button');el.type='button';el.className='walker-tag '+className;el.innerHTML=text;el.tabIndex=-1;el.onclick=e=>{e.stopPropagation();onClickAll(w);};const o=new CSS2DObject(el);o.position.set(0,.82,0);w.fig.add(o);w.tag={el,o};}
- function spawn(kind,look,props){const fig=makeFigure(look);fig.scale.setScalar(FIGURE_SCALE);group.add(fig);
-  const w={kind,fig,route:null,s:0,dir:1,speed:.3,wait:0,phase:Math.random()*6,heading:0,walking:0,sliding:0,...props};fig.userData.walker=w;walkers.push(w);return w;}
+ function spawn(kind,look,props){const fig=makeFigure(look);const size=FIGURE_SCALE*(props?.grown||1);fig.scale.setScalar(size);group.add(fig);
+  const w={kind,fig,size,route:null,s:0,dir:1,speed:.3,wait:0,phase:Math.random()*6,heading:0,walking:0,sliding:0,...props};fig.userData.walker=w;walkers.push(w);return w;}
  const place=(w,p,heading=0)=>{w.fig.position.set(p.x,p.y,p.z);w.heading=heading;w.fig.rotation.y=heading;};
 
- // Residents: two per island, on the paved path along the front edge.
- topics.forEach((t,i)=>{const p=positions.get(t.id);for(let k=0;k<2;k++){const x=k?.42:-.44,w=spawn('resident',RESIDENTS[(i*2+k)%RESIDENTS.length],{island:t.id,speed:.13+.04*k,wait:1+k*1.5});place(w,{x:p.x+x,y:islandTop(p),z:p.z+FRONT_Z});}});
+ // Parents: one per island, a little taller, on the paved path along the front edge.
+ topics.forEach((t,i)=>{const p=positions.get(t.id),x=i%2?.4:-.42,w=spawn('parent',PARENTS[i%PARENTS.length],{island:t.id,grown:1.14,speed:.13+.02*(i%3),wait:1+i%3});place(w,{x:p.x+x,y:islandTop(p),z:p.z+FRONT_Z});});
  // Relation walkers: back and forth along the walkway of each relation that has one, notebook in hand.
- links.map(l=>({...l,edge:graph.edges.find(e=>e.kind==='bridge'&&e.from===l.a&&e.to===l.b)})).filter(l=>l.edge).forEach((l,i)=>{const route=makeRoute(l.edge.pts);const w=spawn('messenger',{...RESIDENTS[(i+3)%RESIDENTS.length],prop:'book',accent:'#fff3cf'},{key:l.key,a:l.a,b:l.b,route,speed:.36,s:route.total*((i*.37)%1),dir:i%2?1:-1});
-  const A=byId(l.a),B=byId(l.b);tag(w,`<b>${A.n}↔${B.n}</b><span>帶著關聯問題</span>`,'bubble');w.tag.el.setAttribute('aria-label',`關聯行人：${A.title} 與 ${B.title}`);place(w,along(route,w.s));});
+ links.map(l=>({...l,edge:graph.edges.find(e=>e.kind==='bridge'&&e.from===l.a&&e.to===l.b)})).filter(l=>l.edge).forEach((l,i)=>{const route=makeRoute(l.edge.pts);const w=spawn('messenger',{...studentLook(i*7+2),prop:'book',accent:'#fff3cf'},{key:l.key,a:l.a,b:l.b,route,speed:.36,s:route.total*((i*.37)%1),dir:i%2?1:-1});
+  const A=byId(l.a),B=byId(l.b);tag(w,`<b>${A.n}↔${B.n}</b><span>學生 · 帶著關聯問題</span>`,'bubble');w.tag.el.setAttribute('aria-label',`學生（關聯步道）：${A.title} 與 ${B.title}`);place(w,along(route,w.s));});
  // The guide: island 01 to 09 in order, a short stop at each.
  const guide=spawn('guide',{shirt:'#2f6f73',pants:'#38424f',hair:'#2a2622',hairStyle:'cap',accent:'#f2c14e',prop:'flag',skin:'#e7bf98'},{island:order[0],next:null,speed:.48,wait:2});
  {const p=positions.get(order[0]);place(guide,{x:p.x+GUIDE_SPOT.x,y:islandTop(p),z:p.z+GUIDE_SPOT.z});}
  tag(guide,'<i>⚑</i><span>導覽員</span>','guide-tag');guide.tag.el.setAttribute('aria-label','導覽員');
- // Students on their way to university: up the stairs, past the trophy, in through the university's door.
- const climbers=[0,1,2,3].map(k=>{const w=spawn('climber',{...RESIDENTS[(k*2+1)%RESIDENTS.length],prop:'backpack',accent:['#d0695a','#5f8fb4','#e2b84c','#7aa66b'][k]},{island:SPAWN_FROM,speed:.42});w.gone=5-k*8;w.fig.userData.hidden=true;w.fig.scale.setScalar(0);return w;});
+ // The other students wander from island to island; a few at a time head up the stairs to the university.
+ const ground=order.filter(id=>id!==SUMMIT),messengerCount=walkers.filter(w=>w.kind==='messenger').length;
+ const spotOn=()=>{if(Math.random()<.5)return {x:-.62+Math.random()*1.24,z:.58+Math.random()*.12};const a=Math.random()*Math.PI*2;return {x:Math.cos(a)*.95,z:Math.sin(a)*.95};};
+ const students=Array.from({length:Math.max(0,STUDENTS-messengerCount)},(_,k)=>{const w=spawn('student',studentLook(k),{island:ground[k%ground.length],speed:.3+(k%5)*.035,wait:Math.random()*6});teleport(w,w.island,spotOn());w.heading=Math.random()*6;return w;});
  // My character.
  let look=readAvatar(JSON.stringify(initial||{})),onClickAll=()=>{},frozen=false;
  let me=null;
@@ -76,14 +83,17 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   if(w.route){if(walkRoute(w,dt)){const t=arrive(w);w.wait=4.5;onLog(`導覽員抵達 ${t.n} ${t.title}`,{kind:'guide',id:t.id});}return;}
   if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
   const next=order[(order.indexOf(w.island)+1)%order.length];goTo(w,next,GUIDE_SPOT);}
- function updateClimber(w,dt){
+ const MAX_UP=4;
+ function updateStudent(w,dt){
   // Gone through the university door: shrink away, wait, then step out of the main building on SPAWN_FROM.
-  if(w.gone!==undefined){w.gone+=dt;if(w.gone>=0&&w.gone<.6){w.fig.scale.setScalar(FIGURE_SCALE*Math.max(0,1-w.gone/.6));return;}w.fig.userData.hidden=true;
-   if(w.gone>5){w.gone=undefined;w.born=0;w.fig.userData.hidden=false;teleport(w,SPAWN_FROM,EXIT);w.heading=0;w.wait=.8;}return;}
-  if(w.born!==undefined){w.born+=dt;w.fig.scale.setScalar(FIGURE_SCALE*Math.min(1,w.born/.6));if(w.born>=.6)w.born=undefined;}
-  if(w.route){if(walkRoute(w,dt)){arrive(w);w.gone=0;}return;}
-  if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
-  if(!goTo(w,UNIVERSITY,DOOR))w.wait=5;}
+  if(w.gone!==undefined){w.gone+=dt;if(w.gone<.6){w.fig.scale.setScalar(w.size*Math.max(0,1-w.gone/.6));return;}w.fig.userData.hidden=true;
+   if(w.gone>5){w.gone=undefined;w.born=0;w.up=false;w.fig.userData.hidden=false;teleport(w,SPAWN_FROM,EXIT);w.heading=0;w.wait=1;}return;}
+  if(w.born!==undefined){w.born+=dt;w.fig.scale.setScalar(w.size*Math.min(1,w.born/.6));if(w.born>=.6)w.born=undefined;}
+  if(w.route){if(walkRoute(w,dt)){const up=w.up;arrive(w);if(up)w.gone=0;else w.wait=2+Math.random()*6;}return;}
+  if(w.wait>0){w.wait-=dt;stand(w,dt,w.heading);return;}
+  // Mostly a walk to another island; sometimes, while few are on the way up, the climb to university.
+  if(students.filter(x=>x.up).length<MAX_UP&&Math.random()<.22){w.up=true;if(goTo(w,UNIVERSITY,DOOR))return;w.up=false;}
+  const next=Math.random()<.3?w.island:ground[Math.floor(Math.random()*ground.length)];if(!goTo(w,next,spotOn()))w.wait=3;}
  function updateMe(w,dt){
   if(w.route){if(walkRoute(w,dt)){const quiet=w.quiet,id=w.target,t=arrive(w);w.quiet=false;w.wait=w.mode==='auto'?3:1.5;if(quiet)return;onArrive(id,{kind:'avatar'});onLog(`${look.name||'我的角色'}抵達 ${t.n} ${t.title}`,{kind:'avatar',id});}return;}
   if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}
@@ -96,7 +106,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
    if(w.kind==='avatar')on=true;
    else if(!shown)on=false;
    else if(w.kind==='messenger')on=connections&&filterIds.has(w.a)&&filterIds.has(w.b)&&(!selectedIsland||selectedIsland===w.a||selectedIsland===w.b||w.key===activeRelation);
-   else if(w.kind==='climber')on=!w.fig.userData.hidden&&filterIds.has(SUMMIT)&&filterIds.has(STAIRS_FROM)&&filterIds.has(SPAWN_FROM);
+   else if(w.kind==='student')on=!w.fig.userData.hidden&&(filterIds.has(w.island)||!!w.route);
    else on=filterIds.has(w.island)||w.kind==='guide';
    w.fig.visible=on;
    if(w.kind==='messenger'){const loud=on&&(w.key===activeRelation||w===hoverWalker||w===selectedWalker);w.tag.o.visible=loud;w.tag.el.classList.toggle('active',w.key===activeRelation||w===selectedWalker);}
@@ -105,9 +115,9 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
 
  function select(w){selectedWalker=w;if(w){w.fig.add(ring);ring.visible=true;}else{ring.removeFromParent();ring.visible=false;}for(const x of walkers)x.tag?.el.classList.toggle('selected',x===w);sync();}
  function update(dt,still){frozen=still;ring.material.opacity=.65+Math.sin(performance.now()/260)*.25;if(still)return;
-  for(const w of walkers){if(!w.fig.visible&&w.kind!=='guide'&&w.kind!=='avatar'&&w.kind!=='climber')continue;
-   if(w.kind==='resident')updateResident(w,dt);
-   else if(w.kind==='climber'){const was=w.fig.userData.hidden;updateClimber(w,dt);if(was!==w.fig.userData.hidden)sync();}
+  for(const w of walkers){if(!w.fig.visible&&w.kind!=='guide'&&w.kind!=='avatar'&&w.kind!=='student')continue;
+   if(w.kind==='parent')updateResident(w,dt);
+   else if(w.kind==='student'){const was=w.fig.userData.hidden,on=!!w.route;updateStudent(w,dt);if(was!==w.fig.userData.hidden||on!==!!w.route)sync();}
    else if(w.kind==='messenger')updateMessenger(w,dt);
    else if(w.kind==='guide')updateGuide(w,dt);
    else updateMe(w,dt);
@@ -122,7 +132,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   sync(state){({shown=shown,filterIds=filterIds,connections=connections,selectedIsland=selectedIsland,activeRelation=activeRelation}=state);if(state.filterIds)filterIds=new Set(state.filterIds);sync();},
   onClick(fn){onClickAll=fn;},
   guide:()=>guide,me:()=>me,
-  // kind is resident / messenger / guide / avatar, or a relation key for that relation's walker.
+  // kind is parent / student / messenger / guide / avatar, or a relation key for that relation's walker.
   find:(kind,i=0)=>kind.includes(':')?walkers.find(w=>w.key===kind)||null:walkers.filter(w=>w.kind===kind)[i]||null,
   // Where a walker stands right now, in world space.
   where:w=>w.fig.position.clone(),
@@ -135,7 +145,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
     const p=positions.get(me.island),z=me.fig.position.z-p.z;if(m==='stroll'&&Math.abs(z-AVATAR_SPOT.z)>.08){if(reducedNow()||frozen)teleport(me,me.island,AVATAR_SPOT);else{goTo(me,me.island,AVATAR_SPOT);me.quiet=true;}}},
    state:()=>({...describe(me),look})
   },
-  state:()=>({count:walkers.length,visible:walkers.filter(w=>w.fig.visible).length,walking:walkers.filter(w=>w.walking>.5).length,guide:describe(guide),me:describe(me),selected:selectedWalker?describe(selectedWalker):null,messengers:walkers.filter(w=>w.kind==='messenger').map(describe),climbers:climbers.map(describe)})
+  state:()=>({count:walkers.length,visible:walkers.filter(w=>w.fig.visible).length,walking:walkers.filter(w=>w.walking>.5).length,guide:describe(guide),me:describe(me),selected:selectedWalker?describe(selectedWalker):null,messengers:walkers.filter(w=>w.kind==='messenger').map(describe),students:students.map(describe),studentCount:students.length+messengerCount,parents:walkers.filter(w=>w.kind==='parent').length})
  };
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}

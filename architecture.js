@@ -44,10 +44,12 @@ export function createArchitecture({box,mesh,tree}){
    box(g,0,.4,.31,.2,.38,.05,'#8d6f51');for(const x of [-.42,.42])box(g,x,.4,.48,.035,.43,.035,'#e8d9b8');box(g,0,.84,.42,1.08,.07,.32,'#9eb09a');steps(g,0,.65,.48);bench(g,.63,.38);planter(g,-.65,.48);
   }else if(t.kind==='trophy'){
    base(g,.98,.86);box(g,0,.4,-.05,.7,.24,.62,'#e9dfc8');box(g,0,.64,-.05,.54,.14,.48,'#d1c5a8');box(g,0,.46,.265,.36,.11,.02,'#9c7f4f');
-   golden(mesh(g,geo.cylinder,'#e0b13f',0,.83,-.05,.16,.1,.16));golden(mesh(g,geo.cylinder,'#e0b13f',0,1.02,-.05,.06,.32,.06));golden(mesh(g,geo.dome,'#e0b13f',0,1.13,-.05,.11,.08,.11));
-   const c=golden(mesh(g,cup,'#e0b13f',0,1.17,-.05));c.material=gold;gold.side=THREE.DoubleSide;
-   for(const side of [-1,1]){const h=golden(mesh(g,handle,'#e0b13f',side*.32,1.52,-.05));h.rotation.z=-side*Math.PI/2;}
-   golden(mesh(g,geo.dome,'#e0b13f',0,1.77,-.05,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
+   // The cup is drawn large so it reads as the landmark of the whole map.
+   const cupG=new THREE.Group();cupG.name='trophy-cup';cupG.position.set(0,.78,-.05);cupG.scale.setScalar(1.55);g.add(cupG);
+   golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.05,0,.16,.1,.16));golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.24,0,.06,.32,.06));golden(mesh(cupG,geo.dome,'#e0b13f',0,.35,0,.11,.08,.11));
+   const c=golden(mesh(cupG,cup,'#e0b13f',0,.39,0));c.material=gold;gold.side=THREE.DoubleSide;
+   for(const side of [-1,1]){const h=golden(mesh(cupG,handle,'#e0b13f',side*.32,.74,0));h.rotation.z=-side*Math.PI/2;}
+   golden(mesh(cupG,geo.dome,'#e0b13f',0,.99,0,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
   }else if(t.kind==='university'){
    // A symbol of going on to university: a symmetrical brick-and-stone library with a tall arched portico, colonnaded wings and hipped tile roofs.
    // It only echoes a well-known university library's look; there is no name, crest or mark on it.

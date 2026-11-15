@@ -1,3 +1,4 @@
+import {acrossIsland,clearWalkSegment} from './navigation.js';
 // The seven-station journey that wraps round the nine topic islands, as seen from the usual camera:
 // ① the start island (front middle) → ② the trailhead sign. Following the sign means ③ the golden bridge, which climbs smoothly
 // from the trailhead to the trophy (results summit, top middle): the right way, the course. The wrong way is the rough road: two
@@ -45,13 +46,13 @@ function even(curve,spacing,y){const N=600,pts=[curve(0)],cum=[0];for(let i=1;i<
 const arcAngle=p=>Math.atan2(p.z-C.z,p.x-C.x),arcRadius=p=>Math.hypot(p.x-C.x,p.z-C.z);
 // Along the arc from rim to rim of two islands; y(f) gives the height.
 function alongArc(from,to,y,spacing,rimA=1.15,rimB=1.15,out=0,side=0){const ra=arcRadius(from)+side,rb=arcRadius(to);let a0=arcAngle(from),a1=arcAngle(to);while(a1-a0>Math.PI)a1-=2*Math.PI;while(a0-a1>Math.PI)a1+=2*Math.PI;const s=Math.sign(a1-a0);a0+=s*rimA/ra;a1-=s*rimB/rb;
- return even(u=>{const a=a0+(a1-a0)*u,r=ra+(rb-ra)*smooth(u)+out*Math.min(1,smooth(Math.min(1,u/.14)),smooth(Math.min(1,(1-u)/.14)));return {x:C.x+Math.cos(a)*r,z:C.z+Math.sin(a)*r};},spacing,y);}
+ return even(u=>{const a=a0+(a1-a0)*u,r=ra+(rb-ra)*smooth(u)+out*Math.sin(Math.PI*u)**2;return {x:C.x+Math.cos(a)*r,z:C.z+Math.sin(a)*r};},spacing,y);}
 // ③ The golden bridge: from the trailhead round behind the islands and up to the trophy's rim, rising evenly — the smooth way.
 export function bridgePath(fork=STOPS.fork,summit=SUMMIT_AT,spacing=.17){const y0=(fork.y||0)+TOP,y1=summit.y+TOP;return alongArc(fork,summit,f=>y0+(y1-y0)*f,spacing,.9,1.15,-.2,-.45).map(p=>({...p,path:'bridge'}));}
 // The long rough trail from the trailhead, further out round the back, to the foot of the steep wall.
 // A stretch of the rough way between two stops: up and down over humps, never level for long — the hard road.
 export function trailPath(from=STOPS.fork,to=STOPS.pass1,spacing=.2,out){const y0=(from.y||0)+TOP,y1=(to.y||0)+TOP,rimA=from.ring?.45:.9,rimB=to.ring?.45:.9,side=from.ring?0:.45;
- return alongArc(from,to,f=>y0+(y1-y0)*f+.55*Math.sin(Math.PI*f)+.22*Math.sin(3*Math.PI*f)*Math.sin(Math.PI*f),spacing,rimA,rimB,out??(from.ring?0:.35),side).map(p=>({...p,path:'trail'}));}
+ return alongArc(from,to,f=>y0+(y1-y0)*f+.32*Math.sin(Math.PI*f)+.06*Math.sin(2*Math.PI*f),spacing,rimA,rimB,out??(from.ring?0:.35),side).map((p,i,pts)=>({...p,path:'trail',trailId:TRAIL.findIndex(([a,b])=>STOPS[a]===from&&STOPS[b]===to||STOPS[a]?.x===from.x&&STOPS[b]?.x===to.x),trailU:i/(pts.length-1)}));}
 // The last stretch keeps well outside the golden bridge before dropping in to the foot of the wall.
 export const TRAIL=[['fork','pass1'],['pass1','pass2'],['pass2','wallfoot',2.2]];
 // The way down after the university: a slide, much quicker than stairs, landing on the calendar island.
@@ -87,7 +88,17 @@ const length=pts=>pts.reduce((s,p,i)=>i?s+Math.hypot(p.x-pts[i-1].x,p.y-pts[i-1]
 export function ringArc(c,a0,a1){let d=a1-a0;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;const n=Math.max(1,Math.ceil(Math.abs(d)*ringR(c)/.23));return Array.from({length:n+1},(_,i)=>ringAt(c,a0+d*i/n));}
 // From where a walker stands on island `from` to a spot (local x,z) on island `to`, by walkways, the wall, the bridge and stairs.
 export function walkRoute(graph,start,from,to,spot){const C0=graph.centers.get(from),hops=shortest(graph,from,to);if(!C0||!hops)return null;
- const pts=[{x:start.x,y:start.y,z:start.z}];let here=C0,at=Math.atan2(start.z-C0.z,start.x-C0.x);
- for(const e of hops){pts.push(...ringArc(here,at,e.exit));pts.push(...e.pts);here=graph.centers.get(e.to);at=e.entry;}
- const T=graph.centers.get(to);pts.push(...ringArc(T,at,Math.atan2(spot.z,spot.x)));pts.push({x:T.x+spot.x,y:(T.y||0)+TOP,z:T.z+spot.z});
- return {pts,hops:hops.map(e=>e.kind)};}
+ const pts=[{x:start.x,y:start.y,z:start.z}];let here=C0,hereId=from;
+ const cross=target=>{const current=pts.at(-1),a={x:current.x-here.x,z:current.z-here.z},b={x:target.x-here.x,z:target.z-here.z},r=here.ring||RING;
+  const inside=p=>{const d=Math.hypot(p.x,p.z);return d>r?{x:p.x*(r-.01)/d,z:p.z*(r-.01)/d}:p;};
+  const entry=inside(a),exit=inside(b),wide={...here,ring:here.ring?.7:1.5};
+  const connector=(p,q)=>clearWalkSegment(wide,p,q);
+  if(!connector(a,entry)||!connector(exit,b))return false;
+  const path=acrossIsland(here,entry,exit);if(!path.length)return false;
+  if(a!==entry)pts.push({x:here.x+entry.x,y:(here.y||0)+TOP,z:here.z+entry.z,path:'landing'});
+  pts.push(...path.map(p=>({x:here.x+p.x,y:(here.y||0)+TOP,z:here.z+p.z,island:hereId})));
+  if(b!==exit)pts.push({x:target.x,y:(here.y||0)+TOP,z:target.z,path:'landing'});return true;};
+ for(const e of hops){if(!cross(e.pts[0]))return null;pts.push(...e.pts);here=graph.centers.get(e.to);hereId=e.to;}
+ const T=graph.centers.get(to);if(!cross({x:T.x+spot.x,z:T.z+spot.z}))return null;
+ return {pts,hops:hops.map(e=>e.kind)};
+}

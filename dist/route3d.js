@@ -1,3 +1,4 @@
+import {TRAIL_WIDTH} from './hazards.js';
 import * as THREE from './vendor/three.module.min.js';
 
 // Draws the walkways between islands, ③ the silver-and-gold bridge from the top of the steep wall to the trophy,
@@ -11,7 +12,7 @@ function instanced(geo,mat,list){const m=new THREE.InstancedMesh(geo,mat,Math.ma
 // How long the light takes to climb the whole bridge, bottom to top.
 export const SWEEP_MS=2600;
 export const ROPES=[-.48,-.16,.16,.48];
-export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced}){
+export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],slide=[],climb=[],trail=[],trophyAt,reduced,hazards}){
  const group=new THREE.Group();group.name='summit-route';scene.add(group);
  const unit=new THREE.BoxGeometry(1,1,1),post=new THREE.CylinderGeometry(1,1,1,8),ball=new THREE.SphereGeometry(1,12,8);
  // ---- Plank walkways between islands, with low rails. ----
@@ -63,10 +64,12 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
  const eo=new THREE.Object3D();eo.rotation.order='YXZ';
  function moveEscalator(elapsed){if(!esc.steps)return;const shift=reduced?.matches?0:(elapsed*.45)%esc.gap;for(let i=0;i<esc.count;i++){const p=escAt(Math.min(esc.total,i*esc.gap+shift));eo.position.set(p.x,p.y-.03,p.z);eo.rotation.set(0,p.yaw,0);eo.scale.set(.5,.06,esc.gap*.92);eo.updateMatrix();esc.steps.setMatrixAt(i,eo.matrix);}esc.steps.instanceMatrix.needsUpdate=true;}
  // The rough way: weathered planks that pitch up and down over the humps, with nothing to hold on to — slow, hard going.
+ const roughDecks=[];
  const plank=new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),ropeMat=new THREE.MeshStandardMaterial({color:'#c9a874',roughness:.9});
- for(const seg of trail){if(seg.length<2)continue;const tf=frames(seg);const list=tf.map((x,i)=>{const a=seg[Math.max(0,i-1)],b=seg[Math.min(seg.length-1,i+1)],run=Math.hypot(b.x-a.x,b.z-a.z)||1;return {p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,rx:-Math.atan2(b.y-a.y,run),s:new THREE.Vector3(.38,.05,Math.hypot(run,b.y-a.y)/((i>0&&i<seg.length-1)?2:1)*.95)};});
-  group.add(instanced(unit,plank,list));
-  /* The wrong way has no railings. */}
+ for(const [segment,seg] of trail.entries()){if(seg.length<2)continue;const tf=frames(seg);const list=tf.map((x,i)=>{const a=seg[Math.max(0,i-1)],b=seg[Math.min(seg.length-1,i+1)],run=Math.hypot(b.x-a.x,b.z-a.z)||1;return {p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,rx:-Math.atan2(b.y-a.y,run),s:new THREE.Vector3(TRAIL_WIDTH,.05,Math.hypot(run,b.y-a.y)/((i>0&&i<seg.length-1)?2:1)*.95)};});
+  const deck=instanced(unit,plank,list);deck.name='wrong-route-deck';deck.frustumCulled=false;group.add(deck);roughDecks.push({deck,list,segment});
+  // Sagging support ropes beneath both sides, without adding protective handrails.
+  for(const k of [-1,1]){const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tf.map(x=>x.p.clone().addScaledVector(x.side,k*TRAIL_WIDTH/2).setY(x.p.y-.13))),tf.length*2,.012,5,false),ropeMat);group.add(rope);roughDecks.at(-1).ropes??=[];roughDecks.at(-1).ropes.push(rope);}}
  // ② The steep wall: several knotted ropes hanging from the trophy island's rim down to the ledge; climbers go up them hand over hand.
  if(climb.length){const top=climb.at(-1),bottom=climb[0],dir=new THREE.Vector3(bottom.x-trophyAt.x,0,bottom.z-trophyAt.z).normalize(),tan=new THREE.Vector3(-dir.z,0,dir.x),knots=[];
   for(const off of ROPES){const x=top.x+tan.x*off,z=top.z+tan.z*off,pts=[new THREE.Vector3(x,top.y+.08,z),new THREE.Vector3(x+dir.x*.03,(top.y+bottom.y)/2,z+dir.z*.03),new THREE.Vector3(x,bottom.y-.1,z)];
@@ -82,9 +85,17 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
   light(on,delay=0){if(on&&!want)since=performance.now()+delay;want=on?1:0;},
   lit:()=>Math.round(lit*100)/100,
   // feet: where people are standing right now; any step under a foot lights up and fades after they pass.
-  update(dt,elapsed,feet=[]){moveEscalator(elapsed);for(const q of feet){if(q.y<.3)continue;for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24)st.foot=1;}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
-   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.foot=Math.max(0,s.foot-dt*1.6);s.m.emissiveIntensity=Math.min(1.3,s.lit*s.glow+s.foot*1.1);sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=1.1+lit*.9;
-   const show=lit>.3&&!reduced?.matches;moteMat.opacity=Math.min(.9,lit);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
+  update(dt,elapsed,feet=[]){moveEscalator(elapsed);
+   for(const {deck,list,segment,ropes} of roughDecks){const h=hazards?.span(segment),broken=h?.phase==='broken'||h?.phase==='repair';
+    for(const r of ropes)r.visible=!broken;
+    list.forEach((x,i)=>{const u=i/(list.length-1),gap=hazards?.gap(segment,u),warning=h?.phase==='warning'&&Math.abs(u-h.center)<.09;
+     eo.position.copy(x.p);eo.rotation.set(x.rx||0,x.yaw,0);eo.scale.copy(x.s);
+     if(gap){const k=h.phase==='repair'?Math.min(1,h.left/1.5):Math.min(1,h.age*2);eo.position.y-=k*2;eo.rotation.x+=k*(i%2?1:-1);eo.scale.y*=Math.max(.01,1-k);}
+     else if(warning)eo.rotation.z=Math.sin(elapsed*18+i)*.06;
+     eo.updateMatrix();deck.setMatrixAt(i,eo.matrix);});deck.instanceMatrix.needsUpdate=true;}
+for(const q of feet){for(const st of steps)if(Math.abs(st.p.y-q.y)<.3&&Math.hypot(st.p.x-q.x,st.p.z-q.z)<.24)st.foot=1;}const k=reduced?.matches?1:Math.min(1,dt*10),front=reduced?.matches?Infinity:(performance.now()-since)/SWEEP*steps.length;let sum=0;
+   steps.forEach((s,i)=>{const w=want&&i<=front?1:0;s.lit+=(w-s.lit)*k;if(Math.abs(w-s.lit)<.002)s.lit=w;s.foot=Math.max(0,s.foot-dt*1.6);s.m.emissiveIntensity=Math.min(1.8,s.glow+s.lit*.18+s.foot*.95);sum+=s.lit;});lit=sum/steps.length;lampGlow.emissiveIntensity=1.1+lit*.9;
+   const show=!reduced?.matches;moteMat.opacity=.4+Math.min(.5,lit*.5);for(const p of motes){p.m.visible=show;if(!show)continue;const t=((elapsed*.07+p.phase)%1)*(f.length-1),i=Math.floor(t),a=f[i].p,b=f[Math.min(i+1,f.length-1)].p,u=t-i;p.m.position.set(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u+p.lift+Math.sin(elapsed*2+p.phase*9)*.03,a.z+(b.z-a.z)*u);}},
   points(){return [...stairs,...descent,...slide,...trail.flat()];},
   stairPoint(t){return f[Math.round(Math.max(0,Math.min(1,t))*(f.length-1))].p.clone();}
  };

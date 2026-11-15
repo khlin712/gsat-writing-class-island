@@ -7,11 +7,13 @@ import {relationKey} from './relations.js';
 import {mapGestures} from './gestures.js';
 import {createSky,random,dayPhase} from './sky.js';
 import {createWeather} from './weather.js';
+import {walkingObstacles} from './navigation.js';
 import {createDecor} from './decor.js';
 import {placeLabels,fitDistance,pinSpots} from './layout.js';
 import {SUMMIT,UNIVERSITY,SUMMIT_AT,UNIVERSITY_AT,RISE,WALKWAYS,STOPS,bridgePath,trailPath,TRAIL,descentPath,climbPath,buildGraph} from './summit.js';
 import {STATIONS} from './journey.js';
 import {createRoute,SWEEP_MS} from './route3d.js';
+import {createTrailHazards} from './hazards.js';
 import {createWalkers} from './walkers.js';
 
 export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()=>{},onWalker=()=>{},onArrive=()=>{},onLog=()=>{},onPlace=()=>{},onGuide=()=>{},avatar=null}={}){
@@ -22,6 +24,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  renderer.domElement.setAttribute('aria-label','3D 作文學習島。拖曳平移、右鍵旋轉、滾輪縮放，也可使用工具列與主題清單。');renderer.domElement.setAttribute('role','img');host.append(renderer.domElement);
  const labels=new CSS2DRenderer();labels.domElement.className='world-labels';host.append(labels.domElement);
  const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.09;controls.minDistance=3;controls.maxDistance=44;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2.12;controls.screenSpacePanning=true;controls.enableZoom=false;controls.maxTargetRadius=16;controls.mouseButtons={LEFT:null,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE};controls.touches={ONE:null,TWO:null};
+ // Custom gestures own left/touch capture; OrbitControls must not retain those pointers and block a later right drag.
+ const orbitDown=controls._onPointerDown;renderer.domElement.removeEventListener('pointerdown',orbitDown);renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch'&&e.button===2)orbitDown(e);});
  const ambient=new THREE.HemisphereLight('#f6f9ff','#cbbd9c',2.8);scene.add(ambient);
  const sun=new THREE.DirectionalLight('#fff3d5',3.2);sun.position.set(-7,14,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=12;sun.shadow.camera.bottom=-12;sun.shadow.normalBias=.04;sun.shadow.bias=-.0001;scene.add(sun);
  const materialCache=new Map();function material(color){if(!materialCache.has(color))materialCache.set(color,new THREE.MeshStandardMaterial({color,roughness:1}));return materialCache.get(color);}
@@ -85,14 +89,17 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  const bridge=bridgePath(centers.get('fork'),positions.get(SUMMIT)),graph=buildGraph(centers);
  // ② The steep wall: a sheer rock face on the trophy island's outer side, rising from the ledge at its foot.
  // (The climb itself is a set of ropes hanging from the trophy island's rim — see route3d.js.)
- createDecor({scene,centers,graph,skip:id=>!!STOPS[id]?.ledge});
- const route=createRoute({scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
+ // Only low solid parts block feet; roofs and ground slabs leave walking space open.
+ for(const [id,g] of [...groups,[UNIVERSITY,uniGroup],...stopGroups]){const c=centers.get(id);if(c)c.obstacles=walkingObstacles(g,c.y||0);}
+ createDecor({scene,centers,graph});
+ const hazards=createTrailHazards(TRAIL.length,{reduced});
+ const route=createRoute({hazards,scene,centers,walkways:WALKWAYS,bridge,descent:descentPath(),climb:climbPath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:positions.get(SUMMIT),reduced});
  {const m=bridge[Math.floor(bridge.length/2)];stationLabel('bridge',`<b>${st('bridge').n}</b><span>${st('bridge').short}</span>`,new THREE.Vector3(m.x,m.y+.75,m.z),'','bridge');}
  // Choosing the summit (trophy or bridge) lights the bridge step by step from the bottom up; the trophy itself always shines.
  let trophyLit=0,summitOn=false;
  function climb(on){summitOn=!!on&&on!==-1;route.light(summitOn);}
  // The trophy always shines gold; choosing it (or the bridge) lights the bridge step by step from the bottom up.
- function updateStairs(now,delta){route.update(delta,elapsed,walkers.feet());trophyLit=1;architecture.shine(1);}
+ function updateStairs(now,delta){route.update(paused?0:delta,elapsed,walkers.feet());trophyLit=1;architecture.shine(1);}
  const routePoints=[...route.points().filter((_,i)=>i%6===0),...Object.values(STOPS).flatMap(s=>[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:s.x+x*1.3,y:s.y+(s.ledge?.6:1.3),z:s.z+z*1.2}))),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,z])=>({x:UNIVERSITY_AT.x+x*1.3,y:UNIVERSITY_AT.y+1.7,z:UNIVERSITY_AT.z+z*1.2}))];
  function stairBox(){const box=new THREE.Box3();for(const id of [SUMMIT]){const p=positions.get(id);box.expandByPoint(p.clone().add(new THREE.Vector3(-1.3,0,-1.2)));box.expandByPoint(p.clone().add(new THREE.Vector3(1.3,id===SUMMIT?1.9:1.1,1.2)));}for(const p of routePoints)box.expandByPoint(new THREE.Vector3(p.x,p.y,p.z));return box;}
  // Choosing the trophy: the camera rides along the bridge with the light as it climbs, then closes in on the trophy.
@@ -140,7 +147,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  const flows=[],seen=new Set();
  for(const t of topics)for(const id of t.links){const key=relationKey(t.id,id);if(seen.has(key))continue;seen.add(key);const a=positions.get(t.id).clone(),b=positions.get(id).clone();a.y+=.3;b.y+=.3;const mid=a.clone().lerp(b,.5);mid.y=Math.max(a.y,b.y)+.17;const curve=new THREE.QuadraticBezierCurve3(a,mid,b);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineDashedMaterial({color:'#fff0ba',dashSize:.12,gapSize:.12,transparent:true,opacity:.9}));line.computeLineDistances();scene.add(line);const dot=mesh(scene,new THREE.SphereGeometry(.035,6,4),'#fff4c5',0,.3,0);dot.castShadow=false;line.userData.relation=key;flows.push({key,line,dot,curve,a:t.id,b:id});}
  // People walking on the map (see walkers.js); the visitor's own character is one of them.
- const walkers=createWalkers({scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide});walkers.onClick(w=>onWalker(w));
+ const walkers=createWalkers({hazards,rain:()=>weather.rain(),scene,topics,positions:centers,graph,links:flows.map(f=>({key:f.key,a:f.a,b:f.b})),CSS2DObject,reduced,avatar,onArrive,onLog,onGuide});walkers.onClick(w=>onWalker(w));
  let follow=null,followLast=null,placing=false,peopleOn=true;
  let selected=null,selectedRelation=null,hoveredRelation=null,connections=true,paused=false,frame=0,elapsed=0,lastTime=0,fly=null,framing=null,lastLayout=-Infinity;
  function redrawSelection(){const pair=(hoveredRelation||selectedRelation)?.split(':')||[];
@@ -207,12 +214,12 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
 
  function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.fov=camera.aspect<.8?50:38;camera.updateProjectionMatrix();renderer.setSize(w,h);labels.setSize(w,h);lastLayout=-Infinity;}
  const observer=new ResizeObserver(resize);observer.observe(host);resize();home({instant:true});
- function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);labels.render(scene,camera);if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
+ function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;hazards.update(paused?0:delta);walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);labels.render(scene,camera);if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
  frame=requestAnimationFrame(animate);
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();host.querySelector('.webgl-message')?.remove();const message=document.createElement('p');message.className='webgl-message';message.textContent='3D 畫面暫時中斷。你仍可用主題清單探索；請重新整理恢復地圖。';host.append(message);});
  return {
   people(on){peopleOn=on;redrawSelection();},
-  setHour(h){hour=h;},hour:()=>hour,phase:()=>phase,weather:()=>weather.state(),rain(on){weather.setRain(on);},guideTo(id){return walkers.guideTo(id);},guideAppear(id){return walkers.guideAppear(id);},
+  setHour(h){hour=h;},hour:()=>hour,phase:()=>phase,weather:()=>weather.state(),hazards:()=>hazards.state(),rain(on){weather.setRain(on);},guideTo(id){return walkers.guideTo(id);},guideAppear(id){return walkers.guideAppear(id);},
   focusStation(id,inset){focusStation(id,inset);},stationSelect(id){for(const [k,v]of stationLabels)v.el.classList.toggle('selected',k===id||(id==='fork'&&k.startsWith('path-')));},
   stationPoint(id){const l=stationLabels.get(id);if(!l)return null;const v=l.o.position.clone().project(camera),r=renderer.domElement.getBoundingClientRect();return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height};},stopFollow(){follow=null;if(framing?.kind==='walker')framing=null;},
   walkerSelect(w){walkers.select(w);},walkerFocus(w,inset){focusWalker(w,inset);},following:()=>!!follow,guide:()=>walkers.guide(),me:()=>walkers.me(),

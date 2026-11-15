@@ -27,14 +27,16 @@
     ]
   },
   "security_review": {
-    "status": "not_applicable",
-    "reason": "僅橋面動畫與計時，無資料或權限變更",
-    "evidence": []
+    "status": "pass",
+    "evidence": [
+      "review.md"
+    ]
   },
   "data_safety": {
-    "status": "not_applicable",
-    "reason": "僅橋面動畫與計時，無資料或權限變更",
-    "evidence": []
+    "status": "pass",
+    "evidence": [
+      "review.md"
+    ]
   },
   "findings": {
     "unresolved_p0": 0,

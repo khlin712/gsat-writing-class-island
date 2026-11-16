@@ -19,7 +19,7 @@ export function mapGestures({host,canvas,camera,controls,onStart,ground=.3}){
  function startPan(p){anchor=groundAt(p.x,p.y);samples=[];travel={x:0,z:0};}
  function begin(){fling=null;wheel=null;onStart();}
  const panning=e=>e.pointerType==='touch'||e.button===0;
- host.addEventListener('pointerdown',e=>{if(!panning(e))return;begin();if(!pointers.size)moved=false;else moved=true;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
+ host.addEventListener('pointerdown',e=>{if(!controls.enabled||!panning(e))return;begin();if(!pointers.size)moved=false;else moved=true;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
   if(pointers.size===1){if(!rotateMode)startPan(pointers.get(e.pointerId));}else{anchor=null;pair={mode:null,dy:[0,0],dx:[0,0],scale:1,angle:0};}},true);
  host.addEventListener('pointermove',e=>{const p=pointers.get(e.pointerId);if(!p)return;const px=p.x,py=p.y;p.x=e.clientX;p.y=e.clientY;
   if(!moved&&Math.hypot(p.x-p.sx,p.y-p.sy)>5){moved=true;try{host.setPointerCapture(e.pointerId);}catch{}}
@@ -42,7 +42,7 @@ export function mapGestures({host,canvas,camera,controls,onStart,ground=.3}){
  host.addEventListener('pointerup',end,true);host.addEventListener('pointercancel',end,true);
  // A drag that starts on an island name must not also open that island when the finger lifts.
  host.addEventListener('click',e=>{if(performance.now()-swallow<400){e.preventDefault();e.stopPropagation();}swallow=0;},true);
- host.addEventListener('wheel',e=>{e.preventDefault();begin();const unit=e.deltaMode===1?16:e.deltaMode===2?(canvas.clientHeight||800):1;wheel={log:(wheel?.log||0)+Math.max(-.4,Math.min(.4,e.deltaY*unit*.0018)),x:e.clientX,y:e.clientY};},{passive:false});
+ host.addEventListener('wheel',e=>{e.preventDefault();if(!controls.enabled)return;begin();const unit=e.deltaMode===1?16:e.deltaMode===2?(canvas.clientHeight||800):1;wheel={log:(wheel?.log||0)+Math.max(-.4,Math.min(.4,e.deltaY*unit*.0018)),x:e.clientX,y:e.clientY};},{passive:false});
  return {
   rotate(value){rotateMode=value;},
   stop(){fling=null;wheel=null;},

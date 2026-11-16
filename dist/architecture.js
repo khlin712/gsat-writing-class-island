@@ -7,7 +7,10 @@ export function createArchitecture({box,mesh,tree}){
  // The summit trophy is a symbol of results, not a record of any award.
  const gold=new THREE.MeshStandardMaterial({color:'#e0b13f',roughness:.32,metalness:.55,emissive:'#ffb52e',emissiveIntensity:0});
  const cup=new THREE.LatheGeometry([[0,0],[.07,0],[.17,.06],[.27,.24],[.32,.46],[.33,.6],[.3,.6]].map(([x,y])=>new THREE.Vector2(x,y)),24);
- const handle=new THREE.TorusGeometry(.13,.028,8,16,Math.PI);
+ // Trophy handles: an ear-shaped scroll. It leaves the cup just under the rim, curls up and out into a small scroll, sweeps
+ // down along the outside of the bowl and tucks back in under its waist. (Right-hand side; the left is its mirror image.)
+ const handlePath=new THREE.CatmullRomCurve3([[.29,.93],[.37,1.0],[.47,1.0],[.5,.92],[.44,.88],[.48,.8],[.5,.7],[.43,.6],[.32,.54],[.22,.52]].map(([x,y])=>new THREE.Vector3(x,y,0)));
+ const handle=new THREE.TubeGeometry(handlePath,48,.026,8,false);
  function golden(m){m.material=gold;return m;}
  // A painted board with the start's two questions (canvas text; plain colour where there is no canvas, e.g. in tests).
  const signMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});
@@ -68,11 +71,9 @@ export function createArchitecture({box,mesh,tree}){
    const cupG=new THREE.Group();cupG.name='trophy-cup';cupG.position.set(0,.78,-.05);cupG.scale.setScalar(1.55);g.add(cupG);
    golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.05,0,.16,.1,.16));golden(mesh(cupG,geo.cylinder,'#e0b13f',0,.24,0,.06,.32,.06));golden(mesh(cupG,geo.dome,'#e0b13f',0,.35,0,.11,.08,.11));
    const c=golden(mesh(cupG,cup,'#e0b13f',0,.39,0));c.material=gold;gold.side=THREE.DoubleSide;
-   for(const side of [-1,1]){const h=golden(mesh(cupG,handle,'#e0b13f',side*.32,.74,0));h.rotation.z=-side*Math.PI/2;}
-   // A pair of original feathered wings: aspiration, not a promised score or admission.
-   const outline=new THREE.Shape();outline.moveTo(.24,.62);for(const [x,y] of [[.39,.76],[.67,1.08],[.7,.94],[.59,.81],[.66,.85],[.63,.72],[.51,.65],[.58,.68],[.52,.57],[.38,.53],[.27,.55]])outline.lineTo(x,y);outline.closePath();
-   const wingGeometry=new THREE.ExtrudeGeometry(outline,{depth:.035,bevelEnabled:false});
-   for(const side of [-1,1]){const wing=new THREE.Mesh(wingGeometry,gold);wing.name=side<0?'trophy-wing-left':'trophy-wing-right';wing.scale.x=side;wing.position.z=-.08;wing.castShadow=true;cupG.add(wing);}
+   // Handles on both sides: an ear-shaped scroll each, with a small gold bead at both ends.
+   for(const side of [-1,1]){const h=golden(mesh(cupG,handle,'#e0b13f',0,0,0));h.name=side<0?'trophy-handle-left':'trophy-handle-right';h.scale.x=side;
+    for(const [x,y] of [[.47,.92],[.22,.52]])golden(mesh(cupG,geo.ball,'#e0b13f',side*x,y,0,.042,.042,.042));}
    golden(mesh(cupG,geo.dome,'#e0b13f',0,.99,0,.08,.1,.08));steps(g,0,.6,.5);lamp(g,-.6,.4);lamp(g,.6,.4);bench(g,-.62,-.5);
   }else if(t.kind==='university'){
    // A symbol of going on to university: a symmetrical brick-and-stone library with a tall arched portico, colonnaded wings and hipped tile roofs.

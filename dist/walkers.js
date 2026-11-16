@@ -38,6 +38,9 @@ export function readAvatar(raw){let v={};try{v=JSON.parse(raw)||{};}catch{}
 const avatarLook=a=>({shirt:a.shirt,hairStyle:a.hairStyle,hair:'#3a2e28',skin:'#efcaa6',pants:'#3f4f63',prop:AVATAR_ROLES[a.role],accent:a.role==='家長'?'#8a5a3b':'#f2c14e'});
 // Of those heading for the steep wall, this share stop at the first cliff, think again and go back to take the bridge.
 export const TURN_BACK=.25;
+// At the trailhead, the share who follow the sign onto the bridge. Tuned so that, at any moment, the people on the bridge and
+// on the rough way are about 1 : 7 (the rough way is slower, so more of its walkers are on it at once).
+export const RIGHT_WAY=.045;
 // How quickly a drifting walker's sideways speed can change (per second²).
 export const DRIFT_ACCEL=.35;
 // How fast a walker eases sideways back into its lane (or onto a rope) — slower than walking, so it never looks like a shove.
@@ -68,8 +71,8 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
  const ground=[...order.filter(id=>id!==SUMMIT),'start','calendar','signup','contact'],messengerCount=walkers.filter(w=>w.kind==='messenger').length;
  const spotOn=id=>{let p;for(let i=0;i<24;i++){p=walkSpot(positions.get(id));const c=positions.get(id);if(walkers.every(w=>w.island!==id||Math.hypot(w.fig.position.x-c.x-p.x,w.fig.position.z-c.z-p.z)>.22))break;}return p;};
  const students=Array.from({length:Math.max(0,STUDENTS-messengerCount)},(_,k)=>{const w=spawn('student',studentLook(k),{island:ground[k%ground.length],speed:.22+(k%7)*.055,wait:Math.random()*6});teleport(w,w.island,spotOn(w.island));w.heading=Math.random()*6;return w;});
- // Start with people already on both routes (one right-way walker for four wrong-way walkers), not an empty bridge.
- students.slice(0,20).forEach((w,k)=>{const good=k%5===0,edge=good?graph.edges.find(e=>e.kind==='span'&&e.from==='fork'):graph.edges.find(e=>e.kind==='trail'&&e.from===TRAIL[k%TRAIL.length][0]&&e.to===TRAIL[k%TRAIL.length][1]);if(!edge)return;
+ // Start with people already on both routes (one on the bridge for seven on the rough way), not an empty bridge.
+ students.slice(0,16).forEach((w,k)=>{const good=k%8===0,edge=good?graph.edges.find(e=>e.kind==='span'&&e.from==='fork'):graph.edges.find(e=>e.kind==='trail'&&e.from===TRAIL[k%TRAIL.length][0]&&e.to===TRAIL[k%TRAIL.length][1]);if(!edge)return;
   w.island=edge.from;w.target=edge.to;w.route=makeRoute(edge.pts);w.s=w.route.total*(.12+(k*.173)% .76);w.dir=1;w.up=true;w.wait=0;w.fallAt=good?null:edge.to==='wallfoot'?null:edge.to;
   const at=along(w.route,w.s);place(w,at,at.heading||0);if(at.trail){w.sideX=Math.cos(w.heading)*w.lane;w.sideZ=-Math.sin(w.heading)*w.lane;w.fig.position.x+=w.sideX;w.fig.position.z+=w.sideZ;}});
  // Eight of the existing 47 students sit in the open-air lecture hall; the teacher is a separate fictional NPC.
@@ -209,7 +212,7 @@ export function createWalkers({scene,topics,positions,graph,links,CSS2DObject,re
   const next=Math.random()<.3?w.island:ground[Math.floor(Math.random()*ground.length)];if(!goTo(w,next,spotOn(next)))w.wait=3;}
  // At the trailhead: one in five follows the sign onto the bridge (the right way, the course); four in five take the rough road,
  // where some fall off one of the cliff tops and the rest reach the steep wall, climb slowly and may still fall.
- function pickPath(w){const r=Math.random();const cliff=CLIFFS[Math.floor(Math.random()*CLIFFS.length)];const ok=r<.2?goTo(w,UNIVERSITY,DOOR):r<.55?(w.fallAt=cliff,goTo(w,cliff,cliffEdge(cliff))):Math.random()<TURN_BACK?(w.turnBack=true,goTo(w,'pass1',{x:0,z:0})):goTo(w,'wallfoot',{x:0,z:0});if(!ok){w.up=false;w.wait=2;}}
+ function pickPath(w){const r=Math.random();const cliff=CLIFFS[Math.floor(Math.random()*CLIFFS.length)];const u=(r-RIGHT_WAY)/(1-RIGHT_WAY),ok=r<RIGHT_WAY?goTo(w,UNIVERSITY,DOOR):u<.4375?(w.fallAt=cliff,goTo(w,cliff,cliffEdge(cliff))):Math.random()<TURN_BACK?(w.turnBack=true,goTo(w,'pass1',{x:0,z:0})):goTo(w,'wallfoot',{x:0,z:0});if(!ok){w.up=false;w.wait=2;}}
  function updateMe(w,dt){
   if(w.route){if(walkRoute(w,dt)){const quiet=w.quiet,from=w.island,id=w.target,t=arrive(w);w.quiet=false;w.wait=w.mode==='auto'?3:1.5;if(quiet||w.mode==='stroll'&&id===from)return;onArrive(id,{kind:'avatar',automatic:w.mode!=='goto'});onLog(`${look.name||'我的角色'}抵達 ${t.n} ${t.title}`,{kind:'avatar',id});}return;}
   if(w.wait>0){w.wait-=dt;stand(w,dt,0);return;}

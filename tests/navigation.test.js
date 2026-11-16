@@ -34,7 +34,7 @@ test('真實建築下，全部169組跨島路線可走，非法起點不穿牆�
  }
  const c=centers.get('teacher');assert.equal(acrossIsland(c,{x:0,z:0},{x:0,z:.95}).length,0,'拒絕建築內的起點');
 });
-test('獎盃有一對對稱展翼，留在島面邊界內',async()=>{const {arch}=await import('./fixtures/island-models.js');const g=arch.build(new THREE.Group(),{kind:'trophy'}),left=g.getObjectByName('trophy-wing-left'),right=g.getObjectByName('trophy-wing-right');assert.ok(left&&right);g.updateMatrixWorld(true);const a=new THREE.Box3().setFromObject(left),b=new THREE.Box3().setFromObject(right);assert.ok(Math.abs(a.min.x+b.max.x)<1e-6);assert.ok(Math.max(Math.abs(a.min.x),b.max.x)<1.2);});
+test('獎盃兩側是重新設計的耳形捲把手，左右對稱，沒有翅膀',async()=>{const {arch}=await import('./fixtures/island-models.js');const g=arch.build(new THREE.Group(),{kind:'trophy'}),left=g.getObjectByName('trophy-handle-left'),right=g.getObjectByName('trophy-handle-right');assert.ok(left&&right);assert.equal(left.geometry.type,'TubeGeometry','沿曲線的捲形把手');g.updateMatrixWorld(true);const a=new THREE.Box3().setFromObject(left),b=new THREE.Box3().setFromObject(right);assert.ok(Math.abs(a.min.x+b.max.x)<1e-6);assert.ok(!g.getObjectByName('trophy-wing-left')&&!g.getObjectByName('trophy-wing-right'),'沒有翅膀');});
 
 test('斷裂橋板持續下墜並離場，修復時不會從下方浮回',()=>{
  const centers=nodes(topics),h=createTrailHazards(3,{rnd:()=>0}),r=createRoute({scene:new THREE.Scene(),centers,walkways:[],bridge:bridgePath(),trail:TRAIL.map(([a,b,o])=>trailPath(centers.get(a),centers.get(b),.2,o)),trophyAt:centers.get(SUMMIT),hazards:h,reduced:{matches:false}});
@@ -56,3 +56,4 @@ test('斷裂橋板持續下墜並離場，修復時不會從下方浮回',()=>{
  }
  h.update(.1);r.update(.1,4);assert.equal(h.span(0).phase,'safe');for(const i of indices){deck.getMatrixAt(i,m);assert.deepEqual(m.elements,base[i].elements);}
  });
+

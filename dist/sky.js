@@ -41,6 +41,9 @@ export function createSky(scene,{reduced}){
  // Wisps just under the island rims, so clouds show even when looking straight down at the map.
  const r4=random(23),wispClumps=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2+r4()*.4,d=8+r4()*6;wispClumps.push([Math.cos(a)*d,-2.6-r4()*1.4,Math.sin(a)*d*.85,.8+r4()*.8]);}
  const wisps=layer(wispClumps.length*4,(o,i)=>{const [x,y,z,s]=wispClumps[Math.floor(i/4)],k=i%4;o.position.set(x+(k-1.5)*s*.75,y+(k%2)*s*.2,z+(r4()-.5)*s*.5);const size=s*(.6+r4()*.4);o.scale.set(size*1.4,size*.45,size);});
+ // Sparse lower clouds support the inner islands; instancing keeps the extra layer to one draw call.
+ const innerClumps=[[2.3,-5.2,-1.5,1.1],[3.7,-5.7,-3.5,.95],[.5,-4.8,2.8,.85],[-.7,-5.6,-2.8,1.2]];
+ const inner=layer(innerClumps.length*4,(o,i)=>{const [x,y,z,s]=innerClumps[Math.floor(i/4)],k=i%4;o.position.set(x+(k-1.5)*s*.7,y+(k%2)*.15,z+(k%2-.5)*s*.6);o.scale.set(s,s*.32,s*.8);});inner.name='inner-clouds';
  const r3=random(3),stars=new Float32Array(500*3);for(let i=0;i<500;i++){const u=r3()*2-1,a=r3()*Math.PI*2,rad=Math.sqrt(1-u*u)*85;stars.set([Math.cos(a)*rad,u*85,Math.sin(a)*rad],i*3);}
  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(stars,3));
  const starMat=new THREE.PointsMaterial({color:'#fff6da',size:1.6,sizeAttenuation:false,fog:false,depthWrite:false,transparent:true,opacity:1});

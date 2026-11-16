@@ -40,7 +40,7 @@ test('開場兩條橋已有人，露天講堂有老師與八位坐姿學生，�
  const old=globalThis.document;globalThis.document={createElement:element};
  try{const positions=nodes(topics),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph:buildGraph(positions),links:[],CSS2DObject:Label,reduced:{matches:true}}),state=w.state();
   assert.equal(state.studentCount,47);assert.equal(state.students.filter(p=>p.seated&&p.island==='signup').length,8);assert.ok(w.find('lecturer'));assert.equal(w.find('lecturer').island,'signup');assert.equal(w.find('lecturer').tag,undefined,'授課老師不顯示特殊NPC標記');
-  const paths=Array.from({length:47},(_,i)=>w.find('student',i)).filter(p=>p.route).map(p=>p.route.pts[1].path);assert.equal(paths.filter(p=>p==='bridge').length,4);assert.equal(paths.filter(p=>p==='trail').length,16);
+  const paths=Array.from({length:47},(_,i)=>w.find('student',i)).filter(p=>p.route).map(p=>p.route.pts[1].path);assert.equal(paths.filter(p=>p==='bridge').length,2);assert.equal(paths.filter(p=>p==='trail').length,14,'開場兩條橋上 1:7');
   const seated=w.find('student',46);assert.equal(seated.fig.userData.rig.legs[0].rotation.x,-Math.PI/2);w.update(.05,true);assert.equal(seated.fig.userData.rig.legs[0].rotation.x,-Math.PI/2);
  }finally{globalThis.document=old;}
 });
@@ -75,10 +75,10 @@ test('導覽員重生後若無法規劃恢復路線，回報安全起點供介�
  }finally{globalThis.document=old;}
 });
 
-test('每次刷新建立的16位錯誤橋學生皆沿指引牌→懸崖→攀岩入口向前走',async()=>{
+test('每次刷新建立的14位錯誤橋學生皆沿指引牌→懸崖→攀岩入口向前走',async()=>{
  const {along}=await import('../dist/people.js');const old=globalThis.document;globalThis.document={createElement:element};
  try{for(let refresh=0;refresh<3;refresh++){const positions=nodes(topics),graph=buildGraph(positions),w=createWalkers({scene:new THREE.Scene(),topics,positions,graph,links:[],CSS2DObject:Label,reduced:{matches:false}}),initial=[];
-   for(let k=0;k<20;k++){if(k%5===0)continue;const student=w.find('student',k),[from,to]=TRAIL[k%TRAIL.length],forward=graph.edges.find(e=>e.kind==='trail'&&e.from===from&&e.to===to);
+   for(let k=0;k<16;k++){if(k%8===0)continue;const student=w.find('student',k),[from,to]=TRAIL[k%TRAIL.length],forward=graph.edges.find(e=>e.kind==='trail'&&e.from===from&&e.to===to);
     assert.equal(student.island,from);assert.equal(student.target,to,`${from}開場學生不應往${student.target}倒走`);assert.deepEqual(student.route.pts,forward.pts);assert.equal(student.dir,1);
     const at=along(student.route,student.s);assert.ok(Math.cos(student.heading-at.heading)>.99,'開場朝向與前進方向相同');initial.push({student,route:student.route,u:at.trailU});}
    for(let i=0;i<40;i++){w.update(.025,false);for(const p of initial){if(p.student.route!==p.route)continue;const u=along(p.route,p.student.s).trailU;assert.ok(u>=p.u-1e-9,'實際橋上位移不得倒退');p.u=u;}}
@@ -185,3 +185,5 @@ test('走偏時橫向速度逐漸加快、逐漸放慢，不會突然被往外�
   assert.ok(maxV<=.3,`${kind} 橫向速度不超過一般走路速度（${maxV.toFixed(2)}）`);}
  }finally{globalThis.document=old;}
 });
+
+test('在指引牌直接選橋的比例很低：兩條路上的人數要維持約 1:7',async()=>{const {RIGHT_WAY}=await import('../dist/walkers.js');assert.ok(RIGHT_WAY>0&&RIGHT_WAY<1/8);});

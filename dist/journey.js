@@ -78,3 +78,15 @@ export const DOCUMENTS={
 export function documentURLs(key){if(!Object.hasOwn(DOCUMENTS,key))return null;const d=DOCUMENTS[key];if(typeof d.driveId!=='string'||!/^[-\w]+$/.test(d.driveId))return null;const base='https://drive.google.com/file/d/'+d.driveId;return {view:base+'/view',preview:base+'/preview'};}
 
 export const isLink=s=>typeof s==='string'&&/^https:\/\//.test(s);
+
+// ⑥ In-site videos — only clips the teacher chooses to make public (e.g. a short look at a class). Fill one of:
+//   driveId: a Google Drive file id (the video plays in Drive's own player), or
+//   hd / sd: full https:// addresses of .mp4 files (sd is the lighter fallback when hd cannot play).
+// Leave everything empty and the card shows 「待老師提供」 instead.
+export const VIDEOS={
+ trial:{title:'課堂片段',driveId:'',hd:'',sd:''}
+};
+export function videoSource(key){if(!Object.hasOwn(VIDEOS,key))return null;const v=VIDEOS[key];
+ if(typeof v.driveId==='string'&&/^[-\w]{10,}$/.test(v.driveId))return {kind:'drive',title:v.title,preview:'https://drive.google.com/file/d/'+v.driveId+'/preview',view:'https://drive.google.com/file/d/'+v.driveId+'/view'};
+ const files=[v.hd,v.sd].filter(u=>isLink(u)&&/\.mp4(\?|#|$)/i.test(u));
+ return files.length?{kind:'file',title:v.title,files,view:files[0]}:null;}

@@ -121,3 +121,16 @@
 .step-pin.compact span{display:none}
 .step-pin.compact:hover,.step-pin.compact:focus-visible,.step-pin.compact.hot,.step-pin.compact.sel{padding:3px 10px 3px 3px;gap:6px;z-index:8}
 .step-pin.compact:hover span,.step-pin.compact:focus-visible span,.step-pin.compact.hot span,.step-pin.compact.sel span{display:inline}
+/* 「一分鐘看完旅程」: the auto-play tour's caption bar, over the map. Dark, solid background so the text never depends on the scene. */
+.autotour-bar{position:fixed;z-index:60;left:50%;bottom:24px;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));padding:14px 16px 12px;border-radius:16px;background:#23463f;color:#fffaf0;box-shadow:0 10px 30px #1f2a2440}
+.autotour-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.autotour-head b{font-size:17px;color:#ffe08a}.autotour-head span{font-variant-numeric:tabular-nums;font-size:13px;color:#d7e4dc}
+.autotour-bar p{margin:6px 0 10px;font-size:15px;line-height:1.7;color:#fffaf0}
+.autotour-progress{height:4px;border-radius:2px;background:#ffffff33;overflow:hidden;margin-bottom:10px}.autotour-progress span{display:block;height:100%;width:0;background:#ffe08a}
+.autotour-actions{display:flex;flex-wrap:wrap;gap:8px}.autotour-actions button{min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #ffffff55;background:#ffffff14;color:#fffaf0;font-size:15px}
+.autotour-actions button:first-child{background:#ffe08a;border-color:#ffe08a;color:#23463f;font-weight:600}
+.autotour-actions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+body.autotour .map-caption{display:none}
+@media(max-width:720px){.autotour-bar{bottom:max(12px,env(safe-area-inset-bottom));width:calc(100vw - 24px)}body.autotour #index-panel{display:none}.autotour-bar p{font-size:14px}}
+/* In-site video: same window as the PDFs; black behind the picture, a plain note if it cannot play. */
+.video-frame{background:#111;object-fit:contain}
+.pdf-viewer .video-msg{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#fff4d6;color:#5b3d12;font-size:14px}

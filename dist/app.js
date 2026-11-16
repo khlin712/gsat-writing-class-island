@@ -2,8 +2,9 @@ import {createWorld} from './world.js';
 import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY,stepParts,CIRCLED} from './content.js';
 import {buildRelations,findRelations} from './relations.js';
 import {SUMMIT,SPAWN_FROM} from './summit.js';
-import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,PRICING,isLink,DOCUMENTS,documentURLs} from './journey.js';
+import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,PRICING,isLink,DOCUMENTS,documentURLs,videoSource} from './journey.js';
 import {mapInsets} from './motion.js';
+import {tourCues,cueAt,clock} from './autotour.js';
 import {bindSheet} from './sheets.js';
 import {AVATAR_KEY,AVATAR_ROLES,SHIRTS,STUDENTS,GUIDE_ROUTE,readAvatar} from './walkers.js';
 import {HAIR_STYLES} from './people.js';
@@ -40,6 +41,7 @@ function insets(){
  if(top.length)rects.push({left:map.left,right:map.right,top:map.top,bottom:Math.max(...top)+8});
  const caption=$('.map-caption');if(visible(caption))rects.push({left:map.left,right:map.right,top:caption.getBoundingClientRect().top-8,bottom:map.bottom});
  if(!$('#detail').hidden)rects.push($('#detail').getBoundingClientRect());
+ const autoBar=$('#autotour-bar');if(visible(autoBar))rects.push({left:map.left,right:map.right,top:autoBar.getBoundingClientRect().top-8,bottom:map.bottom});
  const index=$('#index-panel');if(visible(index))rects.push(index.getBoundingClientRect());
  return mapInsets(map,rects);
 }
@@ -78,7 +80,7 @@ function openRelation(id){const r=relations.find(r=>r.id===id);if(!r)return;cast
 
 // ---- Detail card: floats on the left of the map on desktop, a bottom sheet on phones. ----
 const audienceLabel={parents:'對象：家長',students:'對象：學生',teacher:'認識老師'};
-function selectTopic(id,{focus=true,concern=null,camera=true}={}){
+function selectTopic(id,{focus=true,concern=null,camera=true}={}){autoTourStop({quiet:true});
  const t=topicOf(id);if(!t)return;activeRelation=null;if(castCard){castCard=null;world?.walkerSelect(null);if(placingAvatar)setPlacing(false);}
  if(!findTopics($('#search').value,category).some(t=>t.id===id)){$('#search').value='';category='全部';for(const b of document.querySelectorAll('[data-category]')){const active=b.dataset.category===category;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}}
  const moveCamera=id!==selected||$('#detail').hidden;if(focus&&!$('#detail').contains(document.activeElement))detailOpener=document.activeElement;selected=id;selectedConcern=concerns.find(c=>c.id===concern)||null;
@@ -144,7 +146,7 @@ $('#close-modal').onclick=()=>modal.close();
 // The PDF viewer also closes from its own 關閉 button and from a tap outside the window.
 modal.addEventListener('click',e=>{if(e.target.closest?.('[data-close-modal]')){modal.close();return;}if(e.target!==modal||!modal.classList.contains('pdf-viewer'))return;const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)modal.close();});
 addEventListener('popstate',()=>{if(!pdfHistory)return;pdfHistory=false;if(modal.open&&modal.classList.contains('pdf-viewer'))modal.close();});
-modal.addEventListener('close',()=>{if(modal.classList.contains('pdf-viewer')){modal.classList.remove('pdf-viewer');modal.removeAttribute('aria-labelledby');$('#modal-content').innerHTML='';if(pdfHistory){pdfHistory=false;try{history.back();}catch{}}}if(document.activeElement===document.body||modal.contains(document.activeElement))previousFocus?.focus();});
+modal.addEventListener('close',()=>{world?.hold(false);if(modal.classList.contains('pdf-viewer')){modal.classList.remove('pdf-viewer');modal.removeAttribute('aria-labelledby');$('#modal-content').innerHTML='';if(pdfHistory){pdfHistory=false;try{history.back();}catch{}}}if(document.activeElement===document.body||modal.contains(document.activeElement))previousFocus?.focus();});
 const stepper=current=>`<ol class="stepper" aria-label="整理提綱的步驟">${['挑問題','寫情況','帶提綱'].map((s,i)=>`<li${i===current?' aria-current="step"':''}><b>0${i+1}</b>${s}</li>`).join('')}</ol>`;
 function discussion(){showModal(`<p class="kicker">MY DISCUSSION LIST · 討論清單</p><h2>讓我們從問題開始。</h2>${stepper(consultQuestions.length||saved.size?1:0)}<p>不用先想好答案，帶著一個真實的困難就好。</p>
  <section class="consult-block"><h3>想帶進討論的問題 <span>${consultQuestions.length}</span></h3>${consultQuestions.length?`<div class="consult-context">${consultQuestions.map((q,i)=>`<div class="consult-question"><p>${escape(q)}</p><button data-remove-question="${i}" aria-label="移除問題：${escape(q)}">×</button></div>`).join('')}</div>`:'<p class="helper">在主題卡片按「就這件事問老師」，問題會出現在這裡。</p>'}</section>
@@ -160,6 +162,35 @@ $('#discuss').onclick=discussion;
 $('#about').onclick=()=>{showModal(`<p class="kicker">ABOUT · 關於作文學習島</p><h2>先認識教學，再開始對話。</h2><p>「萬能考場作文：理論與實作」希望讓對教學有興趣的學生與家長，透過探索與提問，更清楚了解課程，並與老師討論自己的學習需求。</p><p>地圖連起老師的經驗與理念、上課方式、學習收穫、學生案例、收費，以及家長與學生的顧慮。你可以從最關心的事開始。</p><p class="helper">這是可操作的教學展示提案。第 1 站與行事曆已有老師提供的課程文件，服務台可查看聯繫方式；教師介紹、費用與報名表單等仍待補充。介紹架構與提問範例不代表已確認的教學經歷、價格、服務或成效。</p><div class="modal-actions"><button class="primary" id="about-start">從認識老師開始 ↗</button></div>`);$('#about-start').onclick=()=>{modal.close();selectTopic('teacher');};};
 let tourIndex=0;const tour=topics.map(t=>t.id);
 function guide(){selectTopic(tour[tourIndex],{focus:false});const t=topicOf(tour[tourIndex]);showModal(`<p class="kicker">ISLAND TOUR · ${String(tourIndex+1).padStart(2,'0')} / ${String(tour.length).padStart(2,'0')}</p><h2>${t.title}</h2><p>${t.intro}</p><p>${t.body}</p><div class="progress"><span style="width:${(tourIndex+1)/tour.length*100}%"></span></div><div class="modal-actions">${tourIndex?'<button id="tour-prev">← 上一步</button>':''}<button class="primary" id="tour-next">${tourIndex===tour.length-1?'開始自由探索':'下一座島 →'}</button><button id="tour-exit">離開導覽</button></div>`);$('#tour-prev')?.addEventListener('click',()=>{tourIndex--;guide();});$('#tour-next').onclick=()=>{if(tourIndex===tour.length-1){modal.close();$('#close-detail').focus();}else{tourIndex++;guide();}};$('#tour-exit').onclick=()=>{modal.close();$('#close-detail').focus();};}
+// 「一分鐘看完旅程」: the camera flies round the seven stops by itself, each with its own lead as the caption (see autotour.js).
+// Dragging is switched off while it plays; opening any island or stop yourself ends it there.
+const AUTO=tourCues(STATIONS,{intro:`旅程一圈七站：從「① ${STATIONS[0].short}」出發，經過指引牌與橋，一路到服務台。`});
+let auto=null;
+function autoBarHTML(){return `<div class="autotour-head"><b id="at-title"></b><span id="at-time" aria-hidden="true"></span></div><p id="at-caption" aria-live="polite"></p><div class="autotour-progress" aria-hidden="true"><span id="at-progress"></span></div><div class="autotour-actions" id="at-actions"></div>`;}
+function autoActions(){const a=$('#at-actions');if(!a)return;
+ a.innerHTML=auto.done?'<button type="button" id="at-guide">跟著導覽員走一圈</button><button type="button" id="at-replay">重播</button><button type="button" id="at-exit">離開</button>'
+  :`<button type="button" id="at-pause" aria-pressed="${!auto.playing}">${auto.playing?'暫停':'播放'}</button><button type="button" id="at-replay">重播</button><button type="button" id="at-exit">離開</button>`;
+ $('#at-pause')?.addEventListener('click',autoToggle);$('#at-replay')?.addEventListener('click',autoTourStart);$('#at-exit')?.addEventListener('click',()=>autoTourStop());
+ $('#at-guide')?.addEventListener('click',()=>{autoTourStop({quiet:true});$('#guide').click();});}
+function autoTourStart(){if(guideTour.active)endTour(false);if(!$('#detail').hidden)closeDetail({restoreFocus:false});
+ auto={t:0,playing:true,cue:-1,last:performance.now(),done:false};document.body.classList.add('autotour');
+ let bar=$('#autotour-bar');if(!bar){bar=document.createElement('section');bar.id='autotour-bar';bar.className='autotour-bar';bar.setAttribute('aria-label','一分鐘看完旅程');document.body.append(bar);}
+ bar.innerHTML=autoBarHTML();autoActions();world?.lockControls(true);autoTick();$('#at-pause')?.focus({preventScroll:true});}
+function autoTourStop({quiet=false}={}){if(!auto)return;auto=null;document.body.classList.remove('autotour');$('#autotour-bar')?.remove();world?.lockControls(false);
+ if(!quiet){world?.stationSelect(null);world?.climb(false);$('#map-message').textContent='點一座島，開始你的寫作旅程';$('#autotour')?.focus({preventScroll:true});}}
+function autoToggle(){if(!auto||auto.done)return;auto.playing=!auto.playing;auto.last=performance.now();autoActions();$('#at-pause')?.focus({preventScroll:true});}
+function autoShow(k){const c=AUTO.cues[k];$('#at-title').textContent=c.title;$('#at-caption').textContent=c.caption;
+ if(c.id){world?.stationSelect(c.id);world?.climb(c.id==='bridge');world?.focusStation(c.id,insets());$('#map-message').textContent=`旅程 ${c.title}`;}
+ else{world?.stationSelect(null);world?.climb(false);world?.home(insets());$('#map-message').textContent='一分鐘看完旅程';}}
+function autoTick(){if(!auto)return;const now=performance.now();if(auto.playing&&!document.hidden)auto.t+=Math.min(.25,(now-auto.last)/1000);auto.last=now;
+ if(auto.t>=AUTO.total&&!auto.done){auto.done=true;auto.playing=false;auto.t=AUTO.total;autoActions();
+  $('#at-title').textContent='看完一圈了';$('#at-caption').textContent='想慢慢看，可以跟著導覽員走一圈，或直接點任何一站。';world?.stationSelect(null);world?.climb(false);world?.home(insets());$('#at-guide')?.focus({preventScroll:true});}
+ const k=cueAt(AUTO.cues,auto.t);if(!auto.done&&k!==auto.cue){auto.cue=k;autoShow(k);}
+ $('#at-time').textContent=`${clock(auto.t)} / ${clock(AUTO.total)}`;$('#at-progress').style.width=`${Math.min(100,auto.t/AUTO.total*100)}%`;
+ requestAnimationFrame(autoTick);}
+$('#autotour').onclick=autoTourStart;
+document.addEventListener('keydown',e=>{if(!auto)return;if(e.key==='Escape'){e.preventDefault();autoTourStop();}else if(e.key===' '&&!e.target.closest?.('input,textarea,select,button,a')){e.preventDefault();autoToggle();}});
+window.__autoTour=()=>auto&&{t:Math.round(auto.t*10)/10,cue:auto.cue,id:AUTO.cues[auto.cue]?.id??null,playing:auto.playing,done:auto.done,total:AUTO.total};
 // 「第一次來？」: the guide leads the way from ① start.
 $('#guide').onclick=()=>{openGuide();$('#guide-tour')?.click();};
 let quizIndex=0,quizAnswers=[];const questions=[{q:'你現在以什麼身分了解課程？',options:['我是學生，想判斷是否適合自己','我是家長，想了解孩子的學習安排']},{q:'目前最想先了解哪一部分？',options:['老師的經驗與教學理念','上課方式、收穫與學生成果','收費、安排與報名前的顧慮']},{q:'你希望接下來怎麼了解？',options:['先認識老師與課程','先看真實案例與成果的資訊','帶著自己的問題與老師討論']}];
@@ -177,7 +208,7 @@ function logEvent(text,{id=null}={}){const d=new Date(),pad=n=>String(n).padStar
 function renderLog(){$('#log-list').innerHTML=islandLog.length?islandLog.map((e,i)=>`<li><time>${e.time}</time><span>${escape(e.text)}</span>${e.id?`<button data-log="${i}">看這座島 ↗</button>`:''}</li>`).join(''):'<li class="empty">島上還很安靜。導覽員或你的角色抵達一座島時，會記在這裡。</li>';for(const b of $('#log-list').querySelectorAll('[data-log]'))b.onclick=()=>{modal.close();selectTopic(islandLog[+b.dataset.log].id);};}
 $('#log').onclick=()=>{showModal(`<p class="kicker">ISLAND LOG · 島上日誌</p><h2>島上剛剛發生的事</h2><p class="helper">記錄導覽員與你的角色抵達哪座島。只存在這次瀏覽，重新整理就會清空。</p><ol class="log-list" id="log-list"></ol>`);renderLog();};
 $('#people').onclick=()=>{const on=$('#people').getAttribute('aria-pressed')!=='true';$('#people').setAttribute('aria-pressed',on);$('#people').setAttribute('aria-label',on?'隱藏人物':'顯示人物');$('#people').title=$('#people').getAttribute('aria-label');world?.people(on);$('#map-message').textContent=on?'島上的人物出來走動了':'已隱藏人物（你的角色仍會留在島上）';};
-function openCastCard(kind,crumb,html){const opener=document.activeElement;
+function openCastCard(kind,crumb,html){autoTourStop({quiet:true});const opener=document.activeElement;
  // Station to station (上一站／下一站): swap the card's contents in place. Closing and reopening the card would relayout the page,
  // rebuild the index and interrupt the camera, which made stepping through the journey stutter.
  if(!$('#detail').hidden&&castCard==='station'&&kind==='station'){$('#detail-crumb').textContent=crumb;$('#detail-content').innerHTML=html;$('#detail').scrollTop=0;return;}
@@ -277,6 +308,18 @@ function openAvatar(){castTab=castTab||'look';
 const pending=what=>`<p class="pending-note">${what}待老師提供。</p>`;
 const linkButton=(url,label,cls='ask-topic')=>isLink(url)?`<a class="${cls} station-link" href="${escape(url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`:`<button class="${cls} station-link" disabled aria-disabled="true">${label}（連結待老師提供）</button>`;
 function documentCard(key){const doc=DOCUMENTS[key],urls=documentURLs(key);if(!doc||!urls)return '';return `<div class="course-document"><span class="eyebrow">老師提供的 PDF</span><h3>${escape(doc.title)}</h3><button class="ask-topic" data-document="${escape(key)}">在這裡閱讀 PDF</button><a href="${escape(urls.view)}" target="_blank" rel="noopener noreferrer">另開完整文件 ↗</a></div>`;}
+// A public class clip played inside the site, in the same window as the PDFs (fixed title and 關閉, closes by ×, outside tap or
+// the phone's back button). An .mp4 that cannot play falls back to the lighter file; if none can, a note points to opening it
+// elsewhere. The 3D scene stops drawing while the video is open, so phones spend their power on the video.
+function openVideo(key){const v=videoSource(key);if(v)openVideoSource(v);}
+function openVideoSource(v){world?.hold(true);
+ const frame=v.kind==='drive'?`<iframe class="document-frame" src="${escape(v.preview)}" title="${escape(v.title)} 影片" referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen></iframe>`:'<video class="document-frame video-frame" controls playsinline preload="metadata"></video>';
+ showModal(`<p class="kicker">課堂影片</p><h2 id="video-title">${escape(v.title)}</h2><div class="document-bar"><p class="document-fallback">若影片無法播放，<a href="${escape(v.view)}" target="_blank" rel="noopener noreferrer">另開影片 ↗</a>。</p><button type="button" class="document-close" data-close-modal>關閉</button></div><p class="video-msg" role="status" hidden></p><div class="document-frame-wrap">${frame}</div>`,{pdf:true});
+ modal.setAttribute('aria-labelledby','video-title');
+ const video=modal.querySelector('video');if(!video)return;let k=0;
+ video.addEventListener('error',()=>{k++;if(v.files[k]){video.src=v.files[k];video.play().catch(()=>{});}else{const m=modal.querySelector('.video-msg');m.hidden=false;m.textContent='影片暫時無法播放，可以改用「另開影片」觀看。';}});
+ video.src=v.files[0];video.play().catch(()=>{});}
+window.__videoTest=v=>openVideoSource(v);
 function openDocument(key){const doc=DOCUMENTS[key],urls=documentURLs(key);if(!doc||!urls)return;
  showModal(`<p class="kicker">課程文件 · PDF</p><h2 id="document-title">${escape(doc.title)}</h2><div class="document-bar"><p class="document-fallback">若預覽無法顯示，<a href="${escape(urls.view)}" target="_blank" rel="noopener noreferrer">另開完整 PDF ↗</a>。</p><button type="button" class="document-close" data-close-modal>關閉</button></div><div class="document-frame-wrap"><iframe class="document-frame" src="${escape(urls.preview)}" title="${escape(doc.title)} PDF 預覽" referrerpolicy="no-referrer" allowfullscreen></iframe></div>`,{pdf:true});modal.setAttribute('aria-labelledby','document-title');}
 function stationBody(st,extra={}){
@@ -288,13 +331,14 @@ function stationBody(st,extra={}){
   return `<section class="card-section">${documentCard(st.document)}</section><section class="card-section"><h3>有開班的年級</h3>${open.length?`<ul class="class-list">${open.map(c=>`<li><b>${escape(c.grade)}</b><span>${escape([c.schedule,c.start&&('開課 '+c.start),c.note].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul><button class="ask-topic" data-goto-station="signup">已開班，前往報名 ↗</button>`:pending('最新開班資訊')}</section>
   <section class="card-section"><h3>收費與安排</h3>${PRICING.facts.length?`<dl class="topic-facts">${PRICING.facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`:pending('正式收費與規則')}<p class="helper">報名前可以先確認：</p><ul class="class-list">${PRICING.questions.map(q=>`<li><span>${escape(q)}</span></li>`).join('')}</ul></section>
   <section class="card-section"><h3>年紀還小：預先登記</h3>${pre.length?`<ul class="class-list">${pre.map(c=>`<li><b>${escape(c.grade)}</b><span>${escape(c.note||'目前只開放預先登記')}</span></li>`).join('')}</ul>`:'<p class="helper">還沒開班的年級，可以先填預先登記表單。</p>'}${linkButton(LINKS.preregister,'預先登記表單','save-topic')}</section>`;}
- if(st.id==='signup')return `<section class="card-section"><div class="station-actions">${linkButton(LINKS.videoDM,'私訊索取線上教學視聽')}${linkButton(LINKS.signup,'填寫報名表單','save-topic')}</div><p class="helper">按下後會開啟外部頁面（訊息 App 或表單）；這個網站不會代你傳送訊息，也不會收集你的資料。</p></section>`;
+ if(st.id==='signup'){const v=videoSource('trial');return `<section class="card-section"><h3>課堂片段</h3>${v?`<div class="station-actions"><button class="ask-topic" data-video="trial">在這裡看${escape(v.title)} ▶</button><a href="${escape(v.view)}" target="_blank" rel="noopener noreferrer">另開影片 ↗</a></div>`:pending('可公開的課堂片段')}</section><section class="card-section"><div class="station-actions">${linkButton(LINKS.videoDM,'私訊索取線上教學視聽')}${linkButton(LINKS.signup,'填寫報名表單','save-topic')}</div><p class="helper">按下後會開啟外部頁面（訊息 App 或表單）；這個網站不會代你傳送訊息，也不會收集你的資料。</p></section>`;}
  if(st.id==='contact')return `<section class="card-section"><h3>聯繫方式</h3>${CONTACTS.length?`<ul class="contact-list">${CONTACTS.map(c=>`<li><b>${escape(c.label)}</b>${isLink(c.href)?`<a href="${escape(c.href)}" target="_blank" rel="noopener noreferrer">${escape(c.value||c.href)} ↗</a>`:`<span>${escape(c.value||'')}</span>`}${c.note?`<small>${escape(c.note)}</small>`:''}</li>`).join('')}</ul>`:pending('聯繫方式')}</section>`;
  return '';}
 function openStation(id,extra={}){const st=stationOf(id);if(!st)return;const k=STATIONS.indexOf(st),prev=STATIONS[k-1],next=st.next&&stationOf(st.next);
  openCastCard('station',`旅程 · ${st.n} ${st.short}`,`<div class="detail-head"><span class="detail-badge cast-badge station-badge" aria-hidden="true">${st.n}</span><div><p class="eyebrow">旅程第 ${k+1} / ${STATIONS.length} 站 · ${st.short}</p><h2 id="detail-title">${escape(st.title)}</h2></div></div>
  <div class="answer-first"><p class="lead">${escape(st.lead)}</p></div>${stationBody(st,extra)}
  <nav class="step-nav" aria-label="切換旅程站">${prev?`<button data-goto-station="${prev.id}"><small>上一站</small><span>${prev.n} ${prev.short}</span></button>`:'<span></span>'}${next?`<button data-goto-station="${next.id}" class="next"><small>下一站</small><span>${next.n} ${escape(st.nextLabel||next.short)}</span></button>`:'<span></span>'}</nav>`);
+ for(const b of document.querySelectorAll('#detail-content [data-video]'))b.onclick=()=>openVideo(b.dataset.video);
  for(const b of document.querySelectorAll('#detail-content [data-document]'))b.onclick=()=>openDocument(b.dataset.document);
  for(const b of document.querySelectorAll('#detail-content [data-goto-station]'))b.onclick=()=>openStation(b.dataset.gotoStation);
  for(const b of document.querySelectorAll('#detail-content [data-path]'))b.onclick=()=>openStation('fork',{path:b.dataset.path});
@@ -304,7 +348,7 @@ $('#avatar-button').onclick=()=>{if(castCard==='avatar')closeDetail();else openA
 setInterval(()=>{if(!castCard||!world)return;const b=$('#cast-follow');if(b){b.textContent=followLabel();b.setAttribute('aria-pressed',world.following());}if(castCard==='guide'&&$('#guide-where'))$('#guide-where').textContent=guideWhere();if(castCard!=='avatar')$('#avatar-button').setAttribute('aria-expanded','false');},400);
 
 // ---- Map tools and top actions. ----
-$('#reset').onclick=()=>{if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home(insets());setBird(false);};
+$('#reset').onclick=()=>{autoTourStop({quiet:true});if(!$('#detail').hidden)closeDetail({restoreFocus:false});world?.home(insets());setBird(false);};
 $('#zoom-in').onclick=()=>world?.zoom(.85);$('#zoom-out').onclick=()=>world?.zoom(1.15);
 $('#connection').onclick=()=>{showConnections=!showConnections;$('#connection').setAttribute('aria-pressed',showConnections);updateMap();};
 $('#names').onclick=()=>{const on=$('#names').getAttribute('aria-pressed')!=='true';$('#names').setAttribute('aria-pressed',on);$('#names').setAttribute('aria-label',on?'隱藏島名':'顯示島名');world?.names(on);};

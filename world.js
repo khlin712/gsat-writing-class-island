@@ -248,16 +248,15 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   const now=walkers.where(follow),d=now.clone().sub(followLast);followLast=now;if(d.lengthSq()===0)return;if(fly){fly.to.add(d);fly.target.add(d);}else{camera.position.add(d);controls.target.add(d);}}
  // Fly to one station of the journey; the trailhead shows all three paths at once, the bridge its whole length.
  // ② The trailhead: viewed from in front of the split, with the reference view’s left/right arrangement — the bridge on the left, the rough road on the
- // right — with the first stretch of each in view. What happens further along the rough road is a tour detour away.
+ // right. Frame the nearby sign for reading; distant cliffs are available through the tour detours.
  // Low enough that the sign's words face the camera and can be read; the two ways still part to left and right behind it.
  const FORK_DIR=new THREE.Vector3(-.18,.48,1).normalize();
- // Portrait framing keeps the first cliff in view without pulling the sign too far away.
- function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2),narrow=camera.aspect<.8;return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*(narrow?.16:.22))),...trail.slice(0,Math.round(trail.length*(narrow?.65:.95)))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
  function focusStation(id,{instant=false,...inset}={}){lastInset=inset;framing={kind:'station',id};let target,radius=1.7;
-  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?forkPoints():null;
-  if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;if(id==='fork'&&camera.aspect<.8){target.lerp(centers.get('fork').clone().setY(target.y),.65);radius*=.92;}}
+  const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):null;
+  if(id==='fork')target=centers.get('fork').clone().add(new THREE.Vector3(camera.aspect<.8?-.58:.15,.85,-.45));
+  else if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;}
   else{const c=centers.get(id==='university'?UNIVERSITY:id);target=new THREE.Vector3(c.x,c.y+.7,c.z);}
-  const [wf,hf]=fractions(inset);const distance=Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add((id==='fork'?FORK_DIR:new THREE.Vector3(1.2,4.4,8.3).normalize()).clone().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}
+  const [wf,hf]=fractions(inset);const distance=id==='fork'?(camera.aspect<.8?3.05:4.2):Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add((id==='fork'?FORK_DIR:new THREE.Vector3(1.2,4.4,8.3).normalize()).clone().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}
  function refit(inset=lastInset){if(framing?.kind==='relation')focusRelation(framing.key,{...inset,instant:true});else if(framing?.kind==='focus')focus(framing.id,{...inset,instant:true});else if(framing?.kind==='step')focusStep(framing.id,framing.k,framing.count,{...inset,instant:true});else if(framing?.kind==='climb')focusClimb(inset,true);else if(framing?.kind==='climb-done'){const e=trophyView(inset),q=e.target.clone().addScaledVector(RIDE_DIR,e.distance);flyTo(...shifted(q,e.target.clone(),e.distance,inset),true);framing={kind:'climb-done'};}else if(framing?.kind==='station')focusStation(framing.id,{...inset,instant:true});else if(framing?.kind==='walker')focusWalker(framing.w,{...inset,instant:true});else if(framing?.kind==='home')home({...inset,bird:framing.bird,instant:true});}
  function layoutLabels(){
   const bounds=host.getBoundingClientRect(),items=[],obstacles=[];

@@ -198,7 +198,7 @@ function guideWhere(){const g=world?.walkerState().guide;if(!g)return '';const t
 // ---- The guide waits at ① start; when asked, it leads the visitor round GUIDE_ROUTE one stop at a time, the camera following. ----
 const guideTour={active:false,index:0,walking:false};
 const SKIP_WALK='<button class="ask-topic" id="tour-skip">跳過走路，直接抵達 →</button>';
-function skipTourWalk(){if(!guideTour.active||!guideTour.walking)return;const id=guideTour.detour||GUIDE_ROUTE[guideTour.index];if(!world?.guideAppear(id,{instant:true}))return;world.stopFollow();onGuide(id);world.walkerFocus(world.guide(),{...insets(),instant:true});}
+function skipTourWalk(){if(!guideTour.active||!guideTour.walking)return;const id=guideTour.detour||GUIDE_ROUTE[guideTour.index];if(!world?.guideAppear(id,{instant:true}))return;world.stopFollow();const detour=guideTour.detour;onGuide(id);if(detour||!TOUR_VIEW.has(id))world.walkerFocus(world.guide(),{...insets(),instant:true});}
 const stopName=id=>placeOf(id)?.title||'';
 const DETOURS=[['pass1','cliff','帶我去看懸崖'],['wallfoot','wall','帶我去看陡峭山壁']];
 function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
@@ -207,7 +207,10 @@ function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k
  return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶路中</b> · 第 ${k+1} / ${GUIDE_ROUTE.length} 站</p><div class="tour-actions">${last?'<button class="ask-topic" id="tour-home">回到第 1 站，結束導覽</button>':`<button class="ask-topic" id="tour-next">看完了，繼續前進 →<small>下一站：${escape(stopName(next))}</small></button>`}${extra}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;}
 function bindTourBar(){$('#tour-skip')?.addEventListener('click',skipTourWalk);$('#tour-next')?.addEventListener('click',()=>tourStep(guideTour.index+1));$('#tour-back')?.addEventListener('click',()=>{guideTour.detour=null;tourStep(GUIDE_ROUTE.indexOf('fork'));});for(const b of document.querySelectorAll('#detail-content [data-detour]'))b.onclick=()=>tourDetour(b.dataset.detour);$('#tour-home')?.addEventListener('click',()=>endTour(true));$('#tour-stop')?.addEventListener('click',()=>endTour(true));}
 // Open the card for the stop the guide has reached, with the tour bar on top. The camera is already with the guide, so it stays put.
-function showTourStop(id){if(topicOf(id))selectTopic(id,{camera:false});else openStation(id,{camera:false});}
+// Arriving with the guide keeps the camera on the guide, except at ② the trailhead: there it turns to the stop's own view
+// (the sign facing you, the bridge to the left and the rough road to the right), the same as choosing the stop yourself.
+const TOUR_VIEW=new Set(['fork']);
+function showTourStop(id){if(topicOf(id))selectTopic(id,{camera:false});else openStation(id,{camera:TOUR_VIEW.has(id)?undefined:false});}
 // From the trailhead the guide can take the visitor to look at the wrong ways (a cliff top, the foot of the steep wall), then back.
 function tourDetour(stop){const d=DETOURS.find(x=>x[0]===stop);if(!d)return;guideTour.active=true;guideTour.detour=stop;guideTour.walking=true;
  const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你去看「${escape(d[2].replace('帶我去看',''))}」</b> · 跟著它走…</p><div class="tour-actions">${SKIP_WALK}</div>`;bindTourBar();

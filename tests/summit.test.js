@@ -33,5 +33,5 @@ test('學生人數就是老師目前的教學人數 47',async()=>{const {STUDENT
 test('老師提供的兩份PDF對應起點與行事曆，預覽與原檔使用相同Drive ID',()=>{
  assert.equal(STATIONS[0].themes[0].document,'writing');assert.equal(STATIONS.find(s=>s.id==='calendar').document,'calendar');
  for(const key of ['writing','calendar']){const urls=documentURLs(key);assert.equal(urls.preview,`https://drive.google.com/file/d/${DOCUMENTS[key].driveId}/preview`);assert.equal(urls.view,`https://drive.google.com/file/d/${DOCUMENTS[key].driveId}/view`);}assert.equal(documentURLs('unknown'),null);assert.equal(documentURLs('constructor'),null);
- assert.deepEqual(CONTACTS.map(c=>c.label),['LINE','Facebook','Threads','Instagram','Google Classroom']);assert.ok(CONTACTS.every(c=>isLink(c.href)));assert.match(CONTACTS.at(-1).note,/首頁/);
+ assert.deepEqual(CONTACTS.map(c=>c.label),['LINE','Facebook','Threads','Instagram','Google Classroom']);assert.ok(CONTACTS.every(c=>isLink(c.href)));assert.match(CONTACTS.at(-1).note,/邀請碼/);
 });

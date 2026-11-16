@@ -245,7 +245,7 @@ function showTourStop(id){if(topicOf(id))selectTopic(id,{camera:false});else ope
 // From the trailhead the guide can take the visitor to look at the wrong ways (a cliff top, the foot of the steep wall), then back.
 function tourDetour(stop){const d=DETOURS.find(x=>x[0]===stop);if(!d)return;guideTour.active=true;guideTour.detour=stop;guideTour.walking=true;
  const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你去看「${escape(d[2].replace('帶我去看',''))}」</b> · 跟著它走…</p><div class="tour-actions">${SKIP_WALK}</div>`;bindTourBar();
- if(!world?.guideTo(stop)){guideTour.walking=false;openStation('fork',{path:d[1],camera:false});return;}world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());}
+ if(!world?.guideTo(stop)){guideTour.walking=false;openStation('fork',{path:d[1],camera:false});return;}if(guideTour.walking){world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());}}
 // Every island and station card offers the tour: the tour bar when the guide has brought you here, otherwise a button that makes
 // the guide pop up on this island and lead on from here (a visitor who left the tour halfway need not go back to find the guide).
 function cardTourUI(id){$('.tour-bar,.tour-resume')?.remove();if(!world)return;
@@ -259,6 +259,7 @@ function resumeHere(id){const k=GUIDE_ROUTE.indexOf(id);world?.guideAppear(id);g
 function tourStep(k){const id=GUIDE_ROUTE[k];if(!id)return;guideTour.active=true;guideTour.index=k;guideTour.walking=true;guideTour.detour=null;
  const bar=$('.tour-bar');if(bar)bar.innerHTML=`<p><b>⚑ 導覽員帶你走向「${escape(stopName(id))}」</b> · 跟著它走…</p><div class="tour-actions">${SKIP_WALK}</div>`;bindTourBar();
  if(!world?.guideTo(id)){guideTour.walking=false;showTourStop(id);return;}
+ if(!guideTour.walking)return;
  world.walkerSelect(world.guide());world.walkerFocus(world.guide(),insets());$('#map-message').textContent=`導覽員帶你走向「${stopName(id)}」`;}
 // While the guide is leading, a stray swipe or scroll on the map would leave it behind: once the visitor lets go, the camera
 // catches up with the guide again by itself.

@@ -103,14 +103,14 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;m.map=tex;m.color.set('#ffffff');
   // A faint glow of its own, so the words stay readable at dusk and at night.
   m.emissive.set('#ffffff');m.emissiveMap=tex;m.emissiveIntensity=.32;return m;}
- {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',toStart=(()=>{const dx=STOPS.start.x-F.x,dz=STOPS.start.z-F.z,n=Math.hypot(dx,dz);return {x:dx/n,z:dz/n};})(),
-   // The board stands at the near edge (towards ①), so from the ② view both ways open up behind it rather than being covered.
-   bx=toStart.x*.55,bz=toStart.z*.55,board=new THREE.Group();board.position.set(bx,0,bz);
+ {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',
+   // Foreground left of the split: keep the entrances behind the sign unobstructed.
+   bx=-.65,bz=.48,board=new THREE.Group();board.position.set(bx,0,bz);
   // (see above: where the board stands and which way it faces)
-  // It faces halfway between the usual front view and the ② view, so its words can be read from both, and it is kept small.
-  {const front=Math.atan2(1.2,8.3),fromStart=Math.atan2(toStart.x,toStart.z);board.rotation.y=(front+fromStart)/2;}board.scale.setScalar(1.05);f.add(board);
+  // Face the dedicated second-stop view, slightly off axis; keep the fork and both entrances visible.
+  board.rotation.y=-.12;board.scale.setScalar(1.15);f.add(board);
   for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06,wood);box(board,0,.62,0,.74,.42,.05,wood);{const face=box(board,0,.63,.03,.66,.34,.01,'#fff4d6');face.name='fork-sign-face';face.material=forkSignMaterial();face.userData.textSign=true;}const roof=mesh(board,new THREE.BoxGeometry(1,1,1),'#5f5047',0,1.08,0,.84,.05,.2);roof.rotation.x=.18;
-  const post=new THREE.Group();post.position.set(bx+.45,0,bz+.2);f.add(post);box(post,0,.27,0,.05,.72,.05,wood);
+  const post=new THREE.Group();post.position.set(.1,0,.35);f.add(post);box(post,0,.27,0,.05,.72,.05,wood);
   [['bridge','#d9a521'],['pass1','#6b5a45']].forEach(([to,c],i)=>{const T=to==='bridge'?bridgePath()[6]:STOPS[to],a=Math.atan2(T.z-F.z-post.position.z,T.x-F.x-post.position.x),arm=new THREE.Group();arm.position.set(0,.84-i*.13,0);arm.rotation.y=-a;post.add(arm);box(arm,.17,0,0,.34,.1,.025,c).castShadow=true;});}
  {const w=stopGroups.get('wallfoot');for(let i=0;i<3;i++)mesh(w,new THREE.TorusGeometry(.12-i*.025,.018,6,16),'#d8b679',.15,.29+i*.02,-.1).rotation.x=Math.PI/2;}
  // Map labels for the stations (①–⑦) and the wrong ways on the rough road.
@@ -247,16 +247,15 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   if(followFalling){focusWalker(follow,lastInset);return;}
   const now=walkers.where(follow),d=now.clone().sub(followLast);followLast=now;if(d.lengthSq()===0)return;if(fly){fly.to.add(d);fly.target.add(d);}else{camera.position.add(d);controls.target.add(d);}}
  // Fly to one station of the journey; the trailhead shows all three paths at once, the bridge its whole length.
- // ② The trailhead: seen from the start side, standing where the two ways part — the bridge on the left, the rough road on the
+ // ② The trailhead: viewed from in front of the split, with the reference view’s left/right arrangement — the bridge on the left, the rough road on the
  // right — with the first stretch of each in view. What happens further along the rough road is a tour detour away.
  // Low enough that the sign's words face the camera and can be read; the two ways still part to left and right behind it.
- const FORK_TILT=.48;
- const FORK_DIR=(()=>{const a=STOPS.start,b=STOPS.fork,dx=a.x-b.x,dz=a.z-b.z,n=Math.hypot(dx,dz);return new THREE.Vector3(dx/n,FORK_TILT,dz/n).normalize();})();
- // On a narrow (portrait) screen only the very start of each way fits, so the sign stays large enough to read.
- function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2),narrow=camera.aspect<.8;return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*(narrow?.03:.07))),...trail.slice(0,Math.round(trail.length*(narrow?.08:.2)))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
+ const FORK_DIR=new THREE.Vector3(-.18,.48,1).normalize();
+ // Portrait framing keeps the first cliff in view without pulling the sign too far away.
+ function forkPoints(){const F=centers.get('fork'),trail=trailPath(F,centers.get('pass1'),.2),narrow=camera.aspect<.8;return [F.clone().setY(F.y+.9),...bridge.slice(0,Math.round(bridge.length*(narrow?.16:.22))),...trail.slice(0,Math.round(trail.length*(narrow?.65:.95)))].map(p=>new THREE.Vector3(p.x,p.y,p.z));}
  function focusStation(id,{instant=false,...inset}={}){lastInset=inset;framing={kind:'station',id};let target,radius=1.7;
   const pts=id==='bridge'?bridge.map(p=>new THREE.Vector3(p.x,p.y,p.z)):id==='fork'?forkPoints():null;
-  if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;}
+  if(pts){const sp=new THREE.Box3().setFromPoints(pts).getBoundingSphere(new THREE.Sphere());target=sp.center.setY(sp.center.y+.4);radius=sp.radius*.8+.6;if(id==='fork'&&camera.aspect<.8){target.lerp(centers.get('fork').clone().setY(target.y),.65);radius*=.92;}}
   else{const c=centers.get(id==='university'?UNIVERSITY:id);target=new THREE.Vector3(c.x,c.y+.7,c.z);}
   const [wf,hf]=fractions(inset);const distance=Math.max(4.6,fitDistance(radius,camera.fov,camera.aspect,wf,hf));const position=target.clone().add((id==='fork'?FORK_DIR:new THREE.Vector3(1.2,4.4,8.3).normalize()).clone().multiplyScalar(distance));flyTo(...shifted(position,target,distance,inset),instant);}
  function refit(inset=lastInset){if(framing?.kind==='relation')focusRelation(framing.key,{...inset,instant:true});else if(framing?.kind==='focus')focus(framing.id,{...inset,instant:true});else if(framing?.kind==='step')focusStep(framing.id,framing.k,framing.count,{...inset,instant:true});else if(framing?.kind==='climb')focusClimb(inset,true);else if(framing?.kind==='climb-done'){const e=trophyView(inset),q=e.target.clone().addScaledVector(RIDE_DIR,e.distance);flyTo(...shifted(q,e.target.clone(),e.distance,inset),true);framing={kind:'climb-done'};}else if(framing?.kind==='station')focusStation(framing.id,{...inset,instant:true});else if(framing?.kind==='walker')focusWalker(framing.w,{...inset,instant:true});else if(framing?.kind==='home')home({...inset,bird:framing.bird,instant:true});}

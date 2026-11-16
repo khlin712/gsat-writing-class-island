@@ -98,7 +98,7 @@ export function createArchitecture({box,mesh,tree}){
    box(g,-.6,.25,.28,.36,.05,.24,'#7a5a3c');box(g,.6,.25,.28,.36,.05,.24,'#7a5a3c');
    bench(g,-.35,.55);bench(g,.38,.55);tree(g,-.62,-.5,.7);tree(g,.66,-.42,.62);tree(g,-.2,-.72,.5);lamp(g,.22,.58);
    // The sign says what the start is about: the two questions.
-   for(const x of [.22,.7])box(g,x,.25,-.68,.04,.7,.04,'#8a6a48');box(g,.46,.7,-.69,.58,.36,.02,'#8a6a48');const sign=box(g,.46,.7,-.675,.52,.3,.01,'#fff4d6');sign.material=signMat;
+   for(const x of [.22,.7])box(g,x,.25,-.68,.04,.7,.04,'#8a6a48');box(g,.46,.7,-.69,.58,.36,.02,'#8a6a48');const sign=box(g,.46,.7,-.675,.52,.3,.01,'#fff4d6');sign.material=signMat;sign.userData.textSign=true;
   }else if(t.kind==='fork'){
    // ② The trailhead: room to gather in front of the notice board, with rocks, pines and a bench round the edge.
    for(const [x,z,r]of [[-.62,-.45,.13],[.66,-.35,.1],[-.7,.15,.08],[.55,.5,.09]])mesh(g,new THREE.DodecahedronGeometry(1,0),'#9b8a6c',x,.3,z,r,r*.8,r);

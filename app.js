@@ -400,5 +400,5 @@ for(const button of document.querySelectorAll('.map-tools button,.top-actions bu
 // Read-only camera state for manual QA of pan / rotate / zoom / fly (no effect on the page).
 window.__islandView=()=>world?.view();
 window.__stationPoint=id=>world?.stationPoint(id);window.__islandPeople=()=>world?.walkerState();window.__walkerPoint=(kind,i)=>world?.walkerPoint(kind,i);window.__islandPoint=(id,dx,dz)=>world?.islandPoint(id,dx,dz);
-window.__islandClimb=()=>({stairs:world?.stairsLit(),trophy:world?.trophy()});window.__stairPoint=t=>world?.stairPoint(t);
+window.__trailPoint=(seg,u)=>world?.trailPoint(seg,u);window.__islandClimb=()=>({stairs:world?.stairsLit(),trophy:world?.trophy()});window.__stairPoint=t=>world?.stairPoint(t);
 setInterval(()=>{if(world)$('#map').dataset.cameraView=JSON.stringify(world.view());},150);

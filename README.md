@@ -177,3 +177,5 @@ Three.js 0.180.0 與附屬模組隨站提供；第三方 MIT 授權位於 dist/v
 ## 獎盃
 
 - 獎盃兩側是重新設計的耳形捲把手：從杯口下方向外上捲成小渦，沿杯身外側往下彎，再收回杯腰；捲渦中心與收尾處各有一顆金色小圓珠。沒有翅膀。
+
+第二站鏡位：`world.js` 的 `FORK_DIR` 與 `forkPoints()` 決定左橋右棧道構圖；手機另將中心拉回分岔處。告示牌與箭頭柱異動須同步 `tests/fixtures/island-models.js`。導覽同步抵達後不可再次覆蓋站點鏡位，見 `tests/tour-camera.test.js`。驗證見 `research/evidence/fork-camera`。

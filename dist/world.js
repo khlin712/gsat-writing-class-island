@@ -104,8 +104,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   // A faint glow of its own, so the words stay readable at dusk and at night.
   m.emissive.set('#ffffff');m.emissiveMap=tex;m.emissiveIntensity=.32;return m;}
  {const f=stopGroups.get('fork'),F=STOPS.fork,wood='#8a6a48',
-   // Foreground left of the split: keep the entrances behind the sign unobstructed.
-   bx=-.65,bz=.48,board=new THREE.Group();board.position.set(bx,0,bz);
+   // Rear-left beside the golden bridge entrance, matching the marked island area.
+   bx=-.5,bz=-.62,board=new THREE.Group();board.position.set(bx,-.06,bz);
   // (see above: where the board stands and which way it faces)
   // Face the dedicated second-stop view, slightly off axis; keep the fork and both entrances visible.
   board.rotation.y=-.12;board.scale.setScalar(1.15);f.add(board);

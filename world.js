@@ -139,6 +139,19 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
    el.onclick=e=>{e.stopPropagation();onPick(k);};el.onpointerenter=e=>{if(e.pointerType==='mouse')onHover(k,true);};el.onpointerleave=e=>{if(e.pointerType==='mouse')onHover(k,false);};el.onfocus=()=>onHover(k,true);el.onblur=()=>onHover(k,false);
    const label=new CSS2DObject(el);label.position.copy(tip);pinGroup.add(line,label);pinViews.push({line,label,el});});
   lastLayout=-Infinity;}
+ // Key-point pins stand at fixed spots on the island, but on a narrow screen or from some angles two can land on top of each
+ // other. After each frame, overlapping pins are eased apart on screen (CSS `translate`, separate from the renderer's transform).
+ const PIN_GAP=4;
+ function declutterPins(){const live=pinViews.filter(v=>v.el.isConnected&&v.el.offsetWidth);if(live.length<2)return;
+  const box=live.map(v=>{const r=v.el.getBoundingClientRect(),ox=v.ax||0,oy=v.ay||0;return {v,x:r.left-ox,y:r.top-oy,w:r.width,h:r.height,tx:0,ty:0};});
+  for(let it=0;it<8;it++){let moved=false;for(let i=0;i<box.length;i++)for(let j=i+1;j<box.length;j++){const a=box[i],b=box[j];
+   const ax=a.x+a.tx,ay=a.y+a.ty,bx=b.x+b.tx,by=b.y+b.ty,dx=Math.min(ax+a.w,bx+b.w)-Math.max(ax,bx)+PIN_GAP,dy=Math.min(ay+a.h,by+b.h)-Math.max(ay,by)+PIN_GAP;
+   if(dx<=0||dy<=0)continue;moved=true;
+   // Push along the axis that needs the smaller move, half each way.
+   if(dx<dy){const s=(ax+a.w/2<=bx+b.w/2)?1:-1;a.tx-=s*dx/2;b.tx+=s*dx/2;}else{const s=(ay+a.h/2<=by+b.h/2)?1:-1;a.ty-=s*dy/2;b.ty+=s*dy/2;}}if(!moved)break;}
+  const k=reduced.matches?1:.35;for(const b of box){const v=b.v;v.ox=(v.ox||0)+(b.tx-(v.ox||0))*k;v.oy=(v.oy||0)+(b.ty-(v.oy||0))*k;if(Math.abs(v.ox)<.3&&Math.abs(v.oy)<.3){v.ox=v.oy=v.ax=v.ay=0;v.el.style.translate='';}
+   // Only move a pin when its offset has really changed (more than ¾ px), so it never flickers between two pixels.
+   else if(Math.abs(v.ox-(v.ax||0))>.75||Math.abs(v.oy-(v.ay||0))>.75){v.ax=Math.round(v.ox);v.ay=Math.round(v.oy);v.el.style.translate=`${v.ax}px ${v.ay}px`;}}}
  function pinState({hot=-1,sel=-1}={}){pinViews.forEach((v,k)=>{v.el.classList.toggle('hot',k===hot);v.el.classList.toggle('sel',k===sel);v.el.setAttribute('aria-pressed',k===sel);});}
  // Times of day: sky, haze and light change together.
  const LIGHT={dawn:{sun:'#ffd5b8',power:2.4,at:[12,6,7],sky:'#f4e7f0',ground:'#c8b6a6',ambient:2.4,clear:'#f7d6c8'},day:{sun:'#fff3d5',power:3.2,at:[-7,14,8],sky:'#f6f9ff',ground:'#cbbd9c',ambient:2.8,clear:'#dcebf4'},dusk:{sun:'#ffbe8c',power:2.8,at:[-11,8,6],sky:'#f6dcd2',ground:'#c2a598',ambient:2.7,clear:'#f3a87c'},night:{sun:'#c4d4ff',power:1.45,at:[-6,12,-8],sky:'#9fb2d8',ground:'#4a5068',ambient:1.2,clear:'#24365a'}};
@@ -237,7 +250,9 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
 
  function resize(){const w=host.clientWidth,h=host.clientHeight;camera.aspect=w/h;camera.fov=camera.aspect<.8?50:38;camera.updateProjectionMatrix();renderer.setSize(w,h);labels.setSize(w,h);lastLayout=-Infinity;}
  const observer=new ResizeObserver(resize);observer.observe(host);resize();home({instant:true});
- function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;hazards.update(paused?0:delta);walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);labels.render(scene,camera);if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
+ function animate(now){frame=requestAnimationFrame(animate);const delta=lastTime?Math.min((now-lastTime)/1000,.05):0;lastTime=now;if(!paused)elapsed+=delta;hazards.update(paused?0:delta);walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));renderer.render(scene,camera);// While the bridge lights up with the camera pulled back, the trophy is small on screen and its pins would pile up: they wait
+  // until the camera has finished closing in on the trophy.
+  pinGroup.visible=!(zoomAt&&framing?.kind==='climb'||framing?.kind==='climb-done'&&fly);labels.render(scene,camera);declutterPins();if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
  frame=requestAnimationFrame(animate);
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();host.querySelector('.webgl-message')?.remove();const message=document.createElement('p');message.className='webgl-message';message.textContent='3D 畫面暫時中斷。你仍可用主題清單探索；請重新整理恢復地圖。';host.append(message);});
  return {

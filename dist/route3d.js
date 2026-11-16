@@ -69,13 +69,16 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
  const roughDecks=[];
  const plank=new THREE.MeshStandardMaterial({color:'#a8916f',roughness:1}),ropeMat=new THREE.MeshStandardMaterial({color:'#c9a874',roughness:.9});
  for(const [segment,seg] of trail.entries()){if(seg.length<2)continue;const tf=frames(seg);const list=tf.map((x,i)=>{const a=seg[Math.max(0,i-1)],b=seg[Math.min(seg.length-1,i+1)],run=Math.hypot(b.x-a.x,b.z-a.z)||1;return {p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,rx:-Math.atan2(b.y-a.y,run),s:new THREE.Vector3(TRAIL_WIDTH,.05,Math.hypot(run,b.y-a.y)/((i>0&&i<seg.length-1)?2:1)*.95)};});
-  const deck=instanced(unit,plank,list);deck.name='wrong-route-deck';deck.frustumCulled=false;group.add(deck);roughDecks.push({deck,list,segment});
+  const deck=instanced(unit,plank,list);deck.name='wrong-route-deck';deck.frustumCulled=false;
+  // Tapping the rough way opens ② with the pitfall it leads to: the two cliff tops, or (the last stretch) the steep wall.
+  deck.userData.path=segment===trail.length-1?'wall':'cliff';group.add(deck);roughDecks.push({deck,list,segment});
   // Sagging support ropes beneath both sides, without adding protective handrails.
   for(const k of [-1,1]){const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tf.map(x=>x.p.clone().addScaledVector(x.side,k*TRAIL_WIDTH/2).setY(x.p.y-.13))),tf.length*2,.012,5,false),ropeMat);group.add(rope);roughDecks.at(-1).ropes??=[];roughDecks.at(-1).ropes.push(rope);}}
  // ② The steep wall: several knotted ropes hanging from the trophy island's rim down to the ledge; climbers go up them hand over hand.
+ const climbRopes=[];
  if(climb.length){const top=climb.at(-1),bottom=climb[0],dir=new THREE.Vector3(bottom.x-trophyAt.x,0,bottom.z-trophyAt.z).normalize(),tan=new THREE.Vector3(-dir.z,0,dir.x),knots=[];
   for(const off of ROPES){const x=top.x+tan.x*off,z=top.z+tan.z*off,pts=[new THREE.Vector3(x,top.y+.08,z),new THREE.Vector3(x+dir.x*.03,(top.y+bottom.y)/2,z+dir.z*.03),new THREE.Vector3(x,bottom.y-.1,z)];
-   group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),20,.016,6,false),ropeMat));for(let y=bottom.y+.15;y<top.y;y+=.28)knots.push({p:new THREE.Vector3(x,y,z),s:new THREE.Vector3(.03,.03,.03)});
+   {const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),20,.016,6,false),ropeMat);rope.userData.path='wall';group.add(rope);climbRopes.push(rope);}for(let y=bottom.y+.15;y<top.y;y+=.28)knots.push({p:new THREE.Vector3(x,y,z),s:new THREE.Vector3(.03,.03,.03)});
    const peg=new THREE.Mesh(post,new THREE.MeshStandardMaterial({color:'#6b5a45',roughness:.9}));peg.scale.set(.03,.14,.03);peg.position.set(x-dir.x*.05,top.y+.05,z-dir.z*.05);group.add(peg);}
   group.add(instanced(ball,ropeMat,knots));}
  // Light motes drifting along the golden bridge once it is lit.
@@ -83,7 +86,7 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
  for(let i=0;i<16;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),moteMat);m.raycast=()=>{};m.visible=false;group.add(m);motes.push({m,phase:i/16,lift:.14+(i%3)*.07});}
  let want=0,lit=0,since=0;const SWEEP=SWEEP_MS;
  return {group,stairGroup,
-  pickables:[stairGroup],
+  pickables:[stairGroup,...roughDecks.map(d=>d.deck),...climbRopes],
   light(on,delay=0){if(on&&!want)since=performance.now()+delay;want=on?1:0;},
   lit:()=>Math.round(lit*100)/100,
   // feet: where people are standing right now; any step under a foot lights up and fades after they pass.

@@ -10,3 +10,6 @@ test('順暢一段時間後才升回，不會忽高忽低',()=>{const r=createRe
 test('切到背景或卡住很久回來的那一幀不算慢',()=>{const r=createResolution({max:2});let now=0;for(let i=0;i<200;i++){now+=16.7;r.sample(now,16.7,false);}
  assert.equal(r.sample(now+5000,5000,false),null);assert.equal(r.sample(now+5100,40,true),null);assert.equal(r.ratio,2);});
 test('螢幕本來就是 1 倍時不會被調低到 1 以下',()=>{const r=createResolution({max:1});run(r,60,20,0);assert.equal(r.ratio,1);});
+test('看得到有字的告示牌時鎖定最高畫質，再慢也不降；離開後才恢復自動調整',()=>{const r=createResolution({max:2});run(r,40,10,0);assert.ok(r.ratio<2);
+ assert.equal(r.lock(true),2,'看到告示牌立刻回到最清楚');assert.equal(r.lock(true),null);const {changes}=run(r,60,20,20000);assert.deepEqual(changes,[]);assert.equal(r.ratio,2,'鎖定時不降畫質');
+ assert.equal(r.lock(false),null);run(r,60,20,60000);assert.ok(r.ratio<2,'離開後慢的話照常降');});

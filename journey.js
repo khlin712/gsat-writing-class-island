@@ -67,7 +67,7 @@ export const CONTACTS=[
  {label:'Facebook',value:'0kh127',href:'https://www.facebook.com/0kh127'},
  {label:'Threads',value:'@0kh127',href:'https://www.threads.com/@0kh127'},
  {label:'Instagram',value:'@0kh127',href:'https://www.instagram.com/0kh127'},
- {label:'Google Classroom',value:'第一手課程資訊與寫作學習文章',href:'https://classroom.google.com/',note:'需登入 Google；目前連到 Classroom 首頁，加入班級請向老師索取邀請。'}
+ {label:'Google Classroom',value:'第一手課程資訊與寫作學習文章',href:'https://classroom.google.com/',note:'加入班級需要邀請碼，可以先用 LINE 向老師索取。'}
 ];
 
 // Public source files stay on Drive; replacing the same file version keeps the embedded URL current.

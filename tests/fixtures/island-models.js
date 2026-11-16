@@ -10,7 +10,7 @@ const arch=createArchitecture({mesh,box,tree}),centers=nodes(topics),models=new 
 for(const [id,c] of centers){let g=new T.Group(),t=topics.find(t=>t.id===id)||{kind:id==='university'?'university':STOPS[id]?.kind};g.position.set(c.x,c.y||0,c.z);arch.build(g,t);models.set(id,g);g.updateMatrixWorld(true);c.obstacles=walkingObstacles(g,c.y||0);}
 
 // Include the fork's extra notice-board posts, which world.js adds outside createArchitecture.
-const fork=models.get('fork'),board=new T.Group();board.position.set(-.65,0,.48);board.rotation.y=-.12;board.scale.setScalar(1.15);fork.add(board);for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06);box(board,0,.62,0,.74,.42,.05);const post=new T.Group();post.position.set(.1,0,.35);fork.add(post);box(post,0,.27,0,.05,.72,.05);centers.get('fork').obstacles=walkingObstacles(fork,0);
+const fork=models.get('fork'),board=new T.Group();board.position.set(-.5,-.06,-.62);board.rotation.y=-.12;board.scale.setScalar(1.15);fork.add(board);for(const x of [-.32,.32])box(board,x,.27,0,.06,.78,.06);box(board,0,.62,0,.74,.42,.05);const post=new T.Group();post.position.set(.1,0,.35);fork.add(post);box(post,0,.27,0,.05,.72,.05);centers.get('fork').obstacles=walkingObstacles(fork,0);
 for(const [id,c]of centers)if(STOPS[id]?.ledge)c.obstacles=[];
 const graph=buildGraph(centers);
-export {centers,graph,arch};
+export {centers,graph,arch,models};

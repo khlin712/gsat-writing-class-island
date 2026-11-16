@@ -57,3 +57,9 @@ test('斷裂橋板持續下墜並離場，修復時不會從下方浮回',()=>{
  h.update(.1);r.update(.1,4);assert.equal(h.span(0).phase,'safe');for(const i of indices){deck.getMatrixAt(i,m);assert.deepEqual(m.elements,base[i].elements);}
  });
 
+
+test('標記區告示牌兩側柱腳完整落在六角島面內',async()=>{
+ const {models}=await import('./fixtures/island-models.js');const fork=models.get('fork'),board=fork.children.find(g=>g.type==='Group'&&Math.abs(g.position.x+.5)<1e-6&&Math.abs(g.position.z+.62)<1e-6);assert.ok(board);
+ const geo=new THREE.CylinderGeometry(1.34,1.34,.08,6);geo.rotateY(Math.PI/6);const points=[];const pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);if(Math.hypot(x,z)>1&& !points.some(p=>Math.hypot(p.x-x,p.z-z)<1e-5))points.push({x,z});}points.sort((a,b)=>Math.atan2(a.z,a.x)-Math.atan2(b.z,b.x));fork.updateMatrixWorld(true);
+ for(const pillar of board.children.slice(0,2))for(const x of [-.5,.5])for(const z of [-.5,.5]){const p=fork.worldToLocal(pillar.localToWorld(new THREE.Vector3(x,-.5,z)));for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length];assert.ok((b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x)>=-1e-6,'柱腳不得超出島面');}assert.ok(Math.abs(p.y-.25)<.01,'柱腳貼合島面');}
+});

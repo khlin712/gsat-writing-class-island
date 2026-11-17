@@ -4,7 +4,7 @@
 
 ## 待追蹤
 
-- [Safari 整頁黑屏／WebGL 中斷／閃屏](CASE-20261117-safari-webgl-black-screen.md)：**待復現、未定因**；目前暫時正常，不代表已修復。
+- [Safari 整頁黑屏／WebGL 中斷／閃屏](CASE-20261117-safari-webgl-black-screen.md)：**原始根因未定；有界緩解已實作**。Chrome 恢復通過；Safari 重複中斷已停止循環，成功恢復未驗證。
 
 ## 既有案例
 

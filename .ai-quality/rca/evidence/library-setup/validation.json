@@ -6,5 +6,6 @@
   "case_index_coverage": "all",
   "safari_samples": 10,
   "runtime_changes": false,
-  "browser_fault_injection": "NOT_RUN：本輪僅整理病例庫"
+  "browser_fault_injection": "NOT_RUN：本輪僅整理病例庫",
+  "github_sync": "NOT_RUN：包含Safari截圖與診斷證據的push被自動審核拒絕，等待明確對外上傳授權；本機檔案與Git提交已建立。"
 }

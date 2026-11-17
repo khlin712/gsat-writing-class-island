@@ -1,5 +1,6 @@
 # 本專案開發
-先讀 .ai-quality/rca/index.md 與相關案例。根目錄另有 ../.. 的 AGENTS.md 與 RCA。
+先讀 .ai-quality/rca/README.md、index.md 與相關案例；這裡是正式且受 Git 管理的唯一病例庫，根目錄 RCA 僅為入口。
+接力必分清使用者回報、觀測事實、假說與未驗證事項；先核對版本，不能把討論方案寫成已實作，或把暫時正常寫成已修復。WebGL／閃屏／畫質修改前必讀 CASE-20261117-safari-webgl-black-screen.md。根目錄另有 ../.. 的 AGENTS.md。
 人物比例變更須驗證頭下緣與衣領接合；導航變更須驗證島中央可達、建物避讓、多人落點及橋斷後恢復。不能用舊截圖驗收新場景。
 帶路／跌落／重生變更須驗角色、鏡頭與導覽卡的完整恢復；依 CASE-20261115-guide-fall.md 執行。
 橋上人物初始路徑須同驗from/to與幾何前進方向，見CASE-20261115-trail-direction.md。

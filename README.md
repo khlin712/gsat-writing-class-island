@@ -179,3 +179,7 @@ Three.js 0.180.0 與附屬模組隨站提供；第三方 MIT 授權位於 dist/v
 - 獎盃兩側是重新設計的耳形捲把手：從杯口下方向外上捲成小渦，沿杯身外側往下彎，再收回杯腰；捲渦中心與收尾處各有一顆金色小圓珠。沒有翅膀。
 
 第二站鏡位：`world.js` 的 `FORK_DIR` 與 `focusStation()` 決定左橋右棧道構圖；第二站以牌面可讀為優先，桌機距離4.2、手機3.05，並分別調整注視中心。告示牌與箭頭柱異動須同步 `tests/fixtures/island-models.js`。導覽同步抵達後不可再次覆蓋站點鏡位，見 `tests/tour-camera.test.js`。驗證見 `research/evidence/fork-camera`。
+
+## 接力前先讀 RCA
+
+正式病例庫與持久化事故證據位於 [.ai-quality/rca/index.md](.ai-quality/rca/index.md)，包含 [使用方式](.ai-quality/rca/README.md) 與 [範本](.ai-quality/rca/TEMPLATE.md)。Safari 黑屏目前為待復現、未定因；詳見案例，不以對話記憶或「目前正常」代替原因與驗收。

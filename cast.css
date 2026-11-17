@@ -143,3 +143,6 @@ body.autotour .map-caption{display:none}
 
 .recovery-message{z-index:5;max-width:420px;margin:auto;box-shadow:0 4px 20px #20372a22;pointer-events:auto}.recovery-message p{margin:0 0 12px}.recovery-message button{min-height:44px;padding:10px 16px;border-radius:8px;background:#304c3e;color:white}.recovery-message small{display:block;margin-top:10px;font-size:13px}
 @media(max-width:720px){.recovery-message{top:110px;left:12px;right:76px;padding:14px}}
+
+/* Card headings receive focus for reading order, rather than acting as controls. */
+#detail-title:focus{outline:none}

@@ -23,3 +23,5 @@
 - [第二站牌面太小](CASE-20261117-sign-readable.md)：第二站以牌面近景為準，驗桌機/手機與夜間實際文字；不可只驗完整入鏡。有效，2026-11-17。
 
 - [七站標籤過大](CASE-20261117-station-label-size.md)：字體簡寫無效，須核對computed style與外框尺寸，不能把CSS字面值當成實際字級。
+
+- [卡片標題藍色焦點框](CASE-20261117-card-title-focus.md)：非互動標題可隱藏outline，但須保留程式焦點及控制項focus-visible。

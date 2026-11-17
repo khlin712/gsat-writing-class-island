@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "scope": "文件、索引與證據一致性；不是事故修復驗收",
+  "cases": 13,
+  "relative_links_checked": 27,
+  "case_index_coverage": "all",
+  "safari_samples": 10,
+  "runtime_changes": false,
+  "browser_fault_injection": "NOT_RUN：本輪僅整理病例庫"
+}

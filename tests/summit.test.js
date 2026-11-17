@@ -10,7 +10,7 @@ const unit=new THREE.BoxGeometry(1,1,1),mesh=(g,geo,c,x,y,z,sx=1,sy=1,sz=1)=>{co
 const kit=createArchitecture({mesh,box:(g,x,y,z,w,h,d,c)=>mesh(g,unit,c,x,y+h/2,z,w,h,d),tree(g,x,z,s){mesh(g,unit,'#698760',x,.25+s/2,z,s*.2,s,s*.2);}});
 
 test('七站依序：起點、指引牌、橋、大學、行事曆、報名、聯繫',()=>{assert.deepEqual(STATIONS.map(s=>s.id),['start','fork','bridge','university','calendar','signup','contact']);assert.deepEqual(STATIONS[0].themes.map(t=>t.q),['為什麼高中一定要學國寫？','為什麼要選擇我？為什麼要選擇這堂課？']);assert.ok(STATIONS[0].themes.every(t=>t.body===''));for(let i=0;i<STATIONS.length-1;i++)assert.equal(STATIONS[i].next,STATIONS[i+1].id);
- assert.deepEqual(STATIONS[1].paths.map(p=>p.id),['cliff','wall']);assert.ok(!('lava' in STOPS),'岩漿洞已移除');assert.equal(STATIONS[2].lead,'這是我能陪你走的一條路。');
+ assert.deepEqual(STATIONS[1].paths.map(p=>p.id),['cliff','cliff2','wall']);assert.ok(!('lava' in STOPS),'岩漿洞已移除');assert.equal(STATIONS[2].lead,'這是我能陪你走的一條路。');
  assert.equal(STATIONS[1].lead,'寫出高分作文的路不只一條。這座橋呈現的是我經過驗證「有效」且「高效」的學習路徑；另一側呈現大多學生學習作文遇到的誤區。');
  for(const t of [STATIONS[1].lead,STATIONS[1].view,STATIONS[1].right.ends,STATIONS[1].right.caption,STATIONS[2].lead,STATIONS[2].note])assert.ok(!/正確的路|對的路|錯的路|走錯/.test(t),`不把兩邊說成對錯：${t}`);});
 test('未提供的回饋、開班狀態及報名連結仍留白',()=>{assert.equal(FEEDBACK.length,0);assert.equal(CLASSES.length,0);assert.ok(Object.values(LINKS).every(v=>v===''));assert.ok(!isLink('javascript:alert(1)')&&!isLink('http://x')&&isLink('https://forms.gle/x'));});

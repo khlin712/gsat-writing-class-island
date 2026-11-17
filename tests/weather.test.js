@@ -23,3 +23,5 @@ test('晴夜星月啟用、白天隱藏，月亮固定世界座標不跟隨鏡�
  let stars;scene.traverse(o=>{if(o.isPoints)stars=o;});assert.ok(stars.visible);assert.equal(stars.material.opacity,1);assert.equal(stars.geometry.attributes.position.count,500);
  sky.blend('day','day',0,0,0);assert.ok(!moon.visible&&!stars.visible);
 });
+
+test('恢復省電模式關閉雨滴與彩虹，不留下看不見的雨中跌落條件',()=>{const w=createWeather(new THREE.Scene(),{reduced:{matches:false}});w.setRain(true);for(let i=0;i<40;i++)w.update(.1,1);assert.ok(w.rain()>.5);w.lowPower();w.update(.1,1);assert.equal(w.rain(),0);assert.equal(w.state().rainbow,0);});

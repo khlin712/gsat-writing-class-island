@@ -26,11 +26,13 @@ export function createWeather(scene,{reduced,rnd=Math.random}={}){
    void main(){float edge=smoothstep(0.,.25,vBand.x)*smoothstep(1.,.75,vBand.x);float feet=smoothstep(0.,.18,vBand.y)*smoothstep(1.,.82,vBand.y);gl_FragColor=vec4(spectrum(vBand.x)*uAlpha*edge*feet,1.);}`});
  const arc=new THREE.Mesh(bowGeo,bowMat);arc.raycast=()=>{};arc.frustumCulled=false;bow.add(arc);
  bow.visible=false;
+ let lowPower=false;
  let light=1,rainAmt=0,raining=false,next=RAIN_GAP[0]+rnd()*(RAIN_GAP[1]-RAIN_GAP[0]),until=0,bowAmt=0,bowUntil=0,t=0;
  const pick=([a,b])=>a+rnd()*(b-a);
  return {
+  lowPower(){lowPower=true;rain.visible=bow.visible=false;rainAmt=bowAmt=0;},
   // daylight: 0 at night … 1 at noon (a rainbow needs the sun).
-  update(dt,daylight=1){light=daylight;if(reduced?.matches){rain.visible=bow.visible=false;rainAmt=bowAmt=0;return;}t+=dt;
+  update(dt,daylight=1){light=daylight;if(reduced?.matches||lowPower){rain.visible=bow.visible=false;rainAmt=bowAmt=0;return;}t+=dt;
    if(!raining&&t>=next){raining=true;until=t+pick(RAIN_LENGTH);}
    if(raining&&t>=until){raining=false;next=t+pick(RAIN_GAP);if(daylight>.45)bowUntil=t+RAINBOW_SECONDS;}
    rainAmt+=((raining?1:0)-rainAmt)*Math.min(1,dt*.8);rain.visible=rainAmt>.02;rainMat.opacity=rainAmt*.72;

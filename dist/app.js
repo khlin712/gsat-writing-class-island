@@ -383,7 +383,8 @@ $('#rotate').onclick=()=>{const rotate=$('#rotate').getAttribute('aria-pressed')
 function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.contains('sheet-peek'):!document.body.classList.contains('index-collapsed');$('#list-toggle').setAttribute('aria-expanded',open);$('#list-toggle').classList.toggle('active',open);}
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
-try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+let safeMode=false;try{safeMode=sessionStorage.getItem('writing-island-safe-mode')==='1';}catch{}
+try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook,safeMode});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
 clockLast=performance.now();clockHoldUntil=clockLast+5000;tickClock();
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});

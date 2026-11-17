@@ -71,7 +71,7 @@ export function createRoute({scene,centers,walkways,bridge:stairs,descent=[],sli
  for(const [segment,seg] of trail.entries()){if(seg.length<2)continue;const tf=frames(seg);const list=tf.map((x,i)=>{const a=seg[Math.max(0,i-1)],b=seg[Math.min(seg.length-1,i+1)],run=Math.hypot(b.x-a.x,b.z-a.z)||1;return {p:x.p.clone().setY(x.p.y-.04),yaw:x.yaw+(i%3-1)*.05,rx:-Math.atan2(b.y-a.y,run),s:new THREE.Vector3(TRAIL_WIDTH,.05,Math.hypot(run,b.y-a.y)/((i>0&&i<seg.length-1)?2:1)*.95)};});
   const deck=instanced(unit,plank,list);deck.name='wrong-route-deck';deck.frustumCulled=false;
   // Tapping the rough way opens ② with the pitfall it leads to: the two cliff tops, or (the last stretch) the steep wall.
-  deck.userData.path=segment===trail.length-1?'wall':'cliff';group.add(deck);roughDecks.push({deck,list,segment});
+  deck.userData.path=segment===trail.length-1?'wall':segment===0?'cliff':'cliff2';group.add(deck);roughDecks.push({deck,list,segment});
   // Sagging support ropes beneath both sides, without adding protective handrails.
   for(const k of [-1,1]){const rope=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tf.map(x=>x.p.clone().addScaledVector(x.side,k*TRAIL_WIDTH/2).setY(x.p.y-.13))),tf.length*2,.012,5,false),ropeMat);group.add(rope);roughDecks.at(-1).ropes??=[];roughDecks.at(-1).ropes.push(rope);}}
  // ② The steep wall: several knotted ropes hanging from the trophy island's rim down to the ledge; climbers go up them hand over hand.

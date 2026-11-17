@@ -39,3 +39,11 @@ Chrome 使用獨立 Playwright profile，Mac Chrome headless Metal，1440×900�
 無新增依賴、資料後端、遠端監測上傳；事件紀錄最多 40 筆留在頁面記憶體。唯一新增持久值是分頁的省電旗標；無清除討論清單。回滾可重發先前 `dist`，但會失去防循環保護。
 
 瀏覽器規格依據：[Khronos WEBGL_lose_context](https://registry.khronos.org/webgl/extensions/WEBGL_lose_context/)。測試使用擴充功能注入不等於實際 GPU 故障；正式程式不以擴充功能強制復原。
+
+## 正式發布後驗證
+
+PR #41 合併 source `dddd7ac9839e290b4a8e4d5c76b62051e1761137`；gh-pages `ae0d0f03a87aa81a4c6d083e14f75298fe844788`。首次檢查 Pages 尚未更新；等新模組可存取後才重驗，沒有把舊頁結果當作通過。
+
+[正式資源雜湊](production-bytes.json)：world/recovery/resolution/weather/app/index/cast 七個資源與發布 dist 全部逐位元一致。[正式 Chrome 驗收](production-smoke.json)、[腳本](production-smoke.mjs)：首次受控中斷恢復、鏡頭／卡片保留、低負載；第二次停 manual 並維持 contextLost。唯一 navigation 為首次載入，沒有 pageerror。這是隔離 profile 的公開站故障注入，並非 Safari 硬體成功恢復證據。
+
+人工驗收仍待使用者確認；Safari 與實機限制維持上文，不因發布而解除。

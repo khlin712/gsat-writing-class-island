@@ -231,7 +231,7 @@ const guideTour={active:false,index:0,walking:false};
 const SKIP_WALK='<button class="ask-topic" id="tour-skip">跳過走路，直接抵達 →</button>';
 function skipTourWalk(){if(!guideTour.active||!guideTour.walking)return;const id=guideTour.detour||GUIDE_ROUTE[guideTour.index];if(!world?.guideAppear(id,{instant:true}))return;world.stopFollow();const detour=guideTour.detour;onGuide(id);if(detour||!TOUR_VIEW.has(id))world.walkerFocus(world.guide(),{...insets(),instant:true});}
 const stopName=id=>placeOf(id)?.title||'';
-const DETOURS=[['pass1','cliff','帶我去看懸崖'],['wallfoot','wall','帶我去看陡峭山壁']];
+const DETOURS=STATIONS.find(s=>s.id==='fork').paths.map(p=>[p.stop,p.id,'帶我去看'+p.name]);
 function tourBar(){if(!guideTour.active)return '';const k=guideTour.index,last=k>=GUIDE_ROUTE.length-1,next=GUIDE_ROUTE[k+1];
  if(guideTour.detour)return `<div class="tour-bar" role="group" aria-label="導覽員帶路"><p><b>⚑ 導覽員帶你看練習的誤區</b> · ${escape(DETOURS.find(d=>d[0]===guideTour.detour)?.[2].replace('帶我去看','')||'')}</p><div class="tour-actions"><button class="ask-topic" id="tour-back">看完了，回到指引牌 →<small>再照著指引走上橋</small></button>${DETOURS.filter(d=>d[0]!==guideTour.detour).map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join('')}<button class="text-button" id="tour-stop">結束導覽</button></div></div>`;
  const extra=GUIDE_ROUTE[k]==='fork'?DETOURS.map(d=>`<button class="text-button" data-detour="${d[0]}">${d[2]}</button>`).join(''):'';
@@ -325,6 +325,8 @@ function openDocument(key){const doc=DOCUMENTS[key],urls=documentURLs(key);if(!d
  showModal(`<p class="kicker">課程文件 · PDF</p><h2 id="document-title">${escape(doc.title)}</h2><div class="document-bar"><p class="document-fallback">若預覽無法顯示，<a href="${escape(urls.view)}" target="_blank" rel="noopener noreferrer">另開完整 PDF ↗</a>。</p><button type="button" class="document-close" data-close-modal>關閉</button></div><div class="document-frame-wrap"><iframe class="document-frame" src="${escape(urls.preview)}" title="${escape(doc.title)} PDF 預覽" referrerpolicy="no-referrer" allowfullscreen></iframe></div>`,{pdf:true});modal.setAttribute('aria-labelledby','document-title');}
 function contactLink(c,content,kind,name=c?.label){return isLink(c?.href)?`<a class="contact-link ${kind}" href="${escape(c.href)}" target="_blank" rel="noopener noreferrer" aria-label="${escape(name)}，在新視窗開啟" title="${escape(name)}，在新視窗開啟">${content}<span class="contact-external" aria-hidden="true">↗</span></a>`:pending(c?.label||'聯繫方式');}
 function stationBody(st,extra={}){
+ const path=st.id==='fork'&&st.paths.find(p=>p.id===extra.path);
+ if(path)return `<section class="card-section">${path.body?`<p>${escape(path.body)}</p>`:''}<p class="helper">這裡呈現學習方式的誤區，不是指任何老師或補習班；有效的學習路徑不只一條。</p><button class="text-button" data-goto-station="fork">← 回到入口指引牌，比較兩條路</button></section>`;
  if(st.id==='bridge')return `${st.note?`<p class="stairs-note">${escape(st.note)}</p>`:''}`+(st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>老師想對你說</h3>${pending('說明')}</section>`);
  if(st.id==='start')return st.themes.map(t=>`<section class="card-section start-theme"><p class="eyebrow">${escape(t.label)}</p>${t.document?'':`<h3>${escape(t.q)}</h3>`}${t.body?`<p>${escape(t.body)}</p>`:t.document?'':pending('老師的回答')}${t.document?documentCard(t.document):''}</section>`).join('');
  if(st.id==='fork')return `<section class="card-section"><p class="helper">${escape(st.view||'')}</p><h3>左邊：有方向的練習</h3><button class="path-row right" data-goto-station="bridge"><b>${st.right.name}</b><span>${escape(st.right.caption)}</span><small>${st.right.ends} ↗</small></button></section><section class="card-section"><h3>右邊：容易繞遠的練習 · 點一處看看</h3><p class="helper">${escape(st.rough||'')}</p><ol class="path-rows">${st.paths.map(p=>`<li><button class="path-row ${p.id}${extra.path===p.id?' current':''}" data-path="${p.id}" aria-current="${extra.path===p.id}"><b>${p.name}</b><span>${escape(p.caption)}</span><small>${p.ends}</small></button></li>`).join('')}</ol><p class="helper">兩邊都是比喻：右邊說的是大多學生學習作文遇到的誤區，不是指任何老師或補習班的方法；寫出高分作文的路也不只這一條。</p></section>`;
@@ -342,15 +344,15 @@ function stationBody(st,extra={}){
  }
 
  return '';}
-function openStation(id,extra={}){const st=stationOf(id);if(!st)return;const k=STATIONS.indexOf(st),prev=STATIONS[k-1],next=st.next&&stationOf(st.next);
- openCastCard('station',`旅程 · ${st.n} ${st.short}`,`<div class="detail-head"><span class="detail-badge cast-badge station-badge" aria-hidden="true">${st.n}</span><div><p class="eyebrow">旅程第 ${k+1} / ${STATIONS.length} 站 · ${st.short}</p><h2 id="detail-title">${escape(st.title)}</h2></div></div>
- <div class="answer-first"><p class="lead">${escape(st.lead)}</p></div>${stationBody(st,extra)}
+function openStation(id,extra={}){const st=stationOf(id);if(!st)return;const path=st.id==='fork'&&st.paths.find(p=>p.id===extra.path),k=STATIONS.indexOf(st),prev=STATIONS[k-1],next=st.next&&stationOf(st.next);
+ openCastCard('station',`旅程 · ${st.n} ${st.short}`,`<div class="detail-head"><span class="detail-badge cast-badge station-badge" aria-hidden="true">${st.n}</span><div><p class="eyebrow">旅程第 ${k+1} / ${STATIONS.length} 站 · ${st.short}</p><h2 id="detail-title">${escape(path?.title||path?.name||st.title)}</h2></div></div>
+ <div class="answer-first"><p class="lead">${escape(path?.caption||st.lead)}</p></div>${stationBody(st,extra)}
  <nav class="step-nav" aria-label="切換旅程站">${prev?`<button data-goto-station="${prev.id}"><small>上一站</small><span>${prev.n} ${prev.short}</span></button>`:'<span></span>'}${next?`<button data-goto-station="${next.id}" class="next"><small>下一站</small><span>${next.n} ${escape(st.nextLabel||next.short)}</span></button>`:'<span></span>'}</nav>`);
  for(const b of document.querySelectorAll('#detail-content [data-video]'))b.onclick=()=>openVideo(b.dataset.video);
  for(const b of document.querySelectorAll('#detail-content [data-document]'))b.onclick=()=>openDocument(b.dataset.document);
  for(const b of document.querySelectorAll('#detail-content [data-goto-station]'))b.onclick=()=>openStation(b.dataset.gotoStation);
  for(const b of document.querySelectorAll('#detail-content [data-path]'))b.onclick=()=>openStation('fork',{path:b.dataset.path});
- world?.stationSelect(id);world?.climb(id==='bridge');if(extra.camera!==false)world?.focusStation(id,insets());cardTourUI(id);$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
+ world?.stationSelect(id);world?.climb(id==='bridge');if(extra.camera!==false)world?.focusStation(path?.stop||id,insets());cardTourUI(id);$('#map-message').textContent=`旅程 ${st.n} · ${st.short}`;$('#detail').scrollTop=0;$('#detail-title').setAttribute('tabindex','-1');$('#detail-title').focus({preventScroll:true});}
 $('#avatar-button').onclick=()=>{if(castCard==='avatar')closeDetail();else openAvatar();};
 // Keep live text on the open character card current while people walk.
 setInterval(()=>{if(!castCard||!world)return;const b=$('#cast-follow');if(b){b.textContent=followLabel();b.setAttribute('aria-pressed',world.following());}if(castCard==='guide'&&$('#guide-where'))$('#guide-where').textContent=guideWhere();if(castCard!=='avatar')$('#avatar-button').setAttribute('aria-expanded','false');},400);

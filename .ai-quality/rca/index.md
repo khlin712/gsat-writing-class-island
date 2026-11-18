@@ -25,3 +25,5 @@
 - [七站標籤過大](CASE-20261117-station-label-size.md)：字體簡寫無效，須核對computed style與外框尺寸，不能把CSS字面值當成實際字級。
 
 - [卡片標題藍色焦點框](CASE-20261117-card-title-focus.md)：非互動標題可隱藏outline，但須保留程式焦點及控制項focus-visible。
+
+- [本機瀏覽器測試讀到舊檔案](CASE-20261118-stale-module-cache.md)：本機驗證前先確認伺服器不快取（Cache-Control: no-store）、Chrome 測試每次清除設定檔，並用 `fetch` 比對內容；不能因為畫面有變化就認定所有模組都是新的。

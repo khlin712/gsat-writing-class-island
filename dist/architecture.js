@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
+import {LOOP,LOOP_STATIONS,loopPoint,loopDirection} from './loop.js';
 
 // Original course miniatures: shared construction details, nine distinct silhouettes.
 export function createArchitecture({box,mesh,tree}){
@@ -16,6 +17,51 @@ export function createArchitecture({box,mesh,tree}){
  const signMat=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});
  if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=512;c.height=300;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,512,300);x.fillStyle='#c4612f';x.font='bold 40px "Noto Sans TC",sans-serif';x.textAlign='center';x.font='bold 42px "Noto Sans TC",sans-serif';x.fillText('為何高中一定要學國寫？',256,120);
   x.fillStyle='#2f3b33';x.font='bold 46px "Noto Sans TC",sans-serif';x.fillText('為什麼選這堂課？',256,215);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;signMat.map=tex;signMat.color.set('#ffffff');}
+ // 02's question lamp stays lit whatever the time of day ("問題不限時間都可以問"): its own material, brighter as it gets darker.
+ const askLamp=new THREE.MeshStandardMaterial({color:'#ffe2a1',roughness:.4,emissive:'#ffc15a',emissiveIntensity:.9}),screenMat=new THREE.MeshStandardMaterial({color:'#7cc7c9',roughness:.35,emissive:'#4fa8ad',emissiveIntensity:.45});
+ let askHalo=null,askBase=.9;
+ function askSignMaterial(){const m=new THREE.MeshStandardMaterial({color:'#fff4d6',roughness:.9});if(typeof document==='undefined')return m;
+  const c=document.createElement('canvas');c.width=512;c.height=170;const x=c.getContext('2d');x.fillStyle='#fff4d6';x.fillRect(0,0,512,170);x.strokeStyle='#c99a3a';x.lineWidth=8;x.strokeRect(6,6,500,158);
+  x.fillStyle='#8a5a1f';x.font='bold 84px "Noto Sans TC",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('隨時可以問',256,90);
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;m.map=tex;m.color.set('#ffffff');m.emissive.set('#fff4d6');m.emissiveMap=tex;m.emissiveIntensity=.35;return m;}
+ function haloSprite(){if(typeof document==='undefined')return null;const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,214,130,.95)');g.addColorStop(.35,'rgba(255,190,90,.38)');g.addColorStop(1,'rgba(255,170,60,0)');x.fillStyle=g;x.fillRect(0,0,128,128);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.3}));sp.raycast=()=>{};sp.name='ask-lamp-halo';return sp;}
+ // 02: the writing loop. A flat ring path round the classroom with arrows, and five small stations in teaching order (see loop.js).
+ const loopRing=(()=>{const outer=new THREE.Shape();outer.absellipse(LOOP.cx,LOOP.cz,LOOP.rx+LOOP.half,LOOP.rz+LOOP.half,0,Math.PI*2,false,0);const hole=new THREE.Path();hole.absellipse(LOOP.cx,LOOP.cz,LOOP.rx-LOOP.half,LOOP.rz-LOOP.half,0,Math.PI*2,true,0);outer.holes.push(hole);const geom=new THREE.ShapeGeometry(outer,96);geom.rotateX(-Math.PI/2);return geom;})();
+ const loopArrow=(()=>{const a=new THREE.Shape();a.moveTo(.058,0);a.lineTo(-.04,.052);a.lineTo(-.014,0);a.lineTo(-.04,-.052);a.closePath();const geom=new THREE.ShapeGeometry(a);geom.rotateX(-Math.PI/2);return geom;})();
+ const playTriangle=(()=>{const a=new THREE.Shape();a.moveTo(-.02,-.028);a.lineTo(-.02,.028);a.lineTo(.034,0);a.closePath();return new THREE.ShapeGeometry(a);})();
+ function flat(m){m.castShadow=false;return m;}
+ function writingLoop(g){const y0=LOOP.y;
+  flat(mesh(g,loopRing,'#f1dca8',0,y0+.006,0));
+  for(const phi of [153,116,72,20,-45,-85,-125,-160]){const p=loopPoint(phi),d=loopDirection(phi),a=flat(mesh(g,loopArrow,'#d9884a',p.x,y0+.012,p.z));a.rotation.y=Math.atan2(-d.z,d.x);}
+  const P=Object.fromEntries(LOOP_STATIONS.map(st=>[st.id,loopPoint(st.phi)]));
+  // 1 製作教材: a bookshelf with a stack of handouts on top
+  {const {x,z}=P.material,cols=['#d98f6a','#6f9bb8','#8fb07a','#e3b85a','#a688bd','#5f8fb4'];box(g,x,y0,z,.14,.31,.09,'#a47b52');
+   for(const h of [.1,.2,.3])box(g,x,y0+h,z+.002,.142,.012,.092,'#8a6340');
+   for(let r=0;r<3;r++)for(let i=0;i<4;i++)box(g,x-.048+i*.032,y0+.014+r*.1,z+.047,.024,.074,.014,cols[(r*4+i)%cols.length]);
+   box(g,x,y0+.31,z,.11,.018,.075,'#fbf3df');box(g,x+.005,y0+.328,z,.1,.014,.07,'#f2e8cf').rotation.y=.1;}
+  // 2 看教學: a screen on a stand showing a play button
+  {const {x,z}=P.lesson;flat(box(g,x,y0,z,.11,.014,.07,'#59656b'));box(g,x,y0+.014,z,.022,.12,.022,'#59656b');box(g,x,y0+.13,z,.22,.15,.026,'#2f3b42');
+   const scr=box(g,x,y0+.142,z+.014,.19,.12,.006,'#7cc7c9');scr.material=screenMat;scr.castShadow=false;const tri=flat(mesh(g,playTriangle,'#ffffff',x,y0+.202,z+.0185));tri.material=new THREE.MeshBasicMaterial({color:'#ffffff'});}
+  // 3 寫作文: a student's desk with a page being written and a pencil
+  {const {x,z}=P.write;box(g,x,y0+.15,z,.24,.03,.14,'#c9a06c');for(const [dx,dz] of [[-.1,-.055],[.1,-.055],[-.1,.055],[.1,.055]])box(g,x+dx,y0,z+dz,.022,.15,.022,'#8a6a48');
+   box(g,x-.04,y0+.18,z,.09,.006,.07,'#fbf3df').rotation.y=.12;for(const k of [0,1,2])flat(box(g,x-.065+k*.0,y0+.186,z-.02+k*.02,.06,.002,.003,'#6f9bb8'));box(g,x+.06,y0+.18,z+.01,.075,.01,.01,'#e3b85a').rotation.y=-.3;}
+  // 4 線上傳給老師批改: a red mail box with a letter in the slot
+  {const {x,z}=P.send;box(g,x,y0,z,.035,.24,.035,'#6b5a45');box(g,x,y0+.24,z,.17,.11,.1,'#d0483a');box(g,x,y0+.35,z,.15,.014,.09,'#b53a2e');
+   box(g,x,y0+.29,z+.051,.1,.014,.004,'#2f2a25');box(g,x+.03,y0+.3,z+.035,.07,.004,.04,'#fbf3df').rotation.z=.15;box(g,x+.1,y0+.26,z,.012,.08,.012,'#6b5a45');box(g,x+.125,y0+.32,z,.05,.03,.008,'#d9884a');}
+  // 5 老師批改後傳回: the teacher's desk: a pile of pages, one marked in red, and a red pen
+  {const {x,z}=P.grade;box(g,x,y0+.15,z,.22,.03,.14,'#c9a06c');for(const [dx,dz] of [[-.1,-.055],[.1,-.055],[-.1,.055],[.1,.055]])box(g,x+dx,y0,z+dz,.022,.15,.022,'#8a6a48');
+   box(g,x-.05,y0+.18,z,.09,.022,.07,'#fbf3df');const top=box(g,x-.045,y0+.202,z,.09,.005,.07,'#fbf3df');top.rotation.y=-.1;
+   for(const [dx,dz] of [[-.02,-.015],[.015,.005],[-.005,.02]])box(g,x-.045+dx,y0+.208,z+dz,.022,.003,.005,'#d0483a');box(g,x+.06,y0+.18,z+.015,.085,.011,.011,'#d0483a').rotation.y=.25;}
+ }
+ function questionLamp(g){
+  // A small beacon on the classroom roof: a lantern that is never dark, with a halo, and a sign that says 隨時可以問.
+  const x=-.3,z=.05;box(g,x,1.04,z,.026,.22,.026,'#536961');const lantern=mesh(g,geo.ball,'#ffe2a1',x,1.3,z,.062,.075,.062);lantern.material=askLamp;lantern.castShadow=false;lantern.name='ask-lamp';
+  mesh(g,geo.cylinder,'#536961',x,1.375,z,.04,.014,.04);box(g,x+.06,1.16,z,.1,.012,.012,'#536961');
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.27,.09),askSignMaterial());sign.position.set(x+.12,1.1,z+.02);sign.name='ask-sign';sign.userData.textSign=true;sign.castShadow=false;g.add(sign);
+  box(g,x+.12,1.145,z+.01,.01,.04,.01,'#536961');
+  askHalo=haloSprite();if(askHalo){askHalo.position.set(x,1.3,z);askHalo.scale.setScalar(.5);g.add(askHalo);}
+ }
  const pond=new THREE.MeshStandardMaterial({color:'#8fc7de',roughness:.15,metalness:.1,emissive:'#5fa8c8',emissiveIntensity:.15});
  const lava=new THREE.MeshStandardMaterial({color:'#ff7a2a',emissive:'#ff4d00',emissiveIntensity:1.6,roughness:.4});
  const glass=new THREE.MeshStandardMaterial({color:'#638d97',roughness:.32,metalness:.08,emissive:'#ffc874',emissiveIntensity:0});
@@ -55,7 +101,8 @@ export function createArchitecture({box,mesh,tree}){
    box(g,.3,.4,.17,.18,.4,.03,'#59756b');glazed(g,.3,.68,.17,.1,.08);
    mesh(g,geo.cylinder,'#b7a58a',.25,1.12,-.15,.18,.1,.18);mesh(g,geo.dome,'#739799',.25,1.17,-.15,.18,.16,.18);
    const scope=mesh(g,geo.cylinder,'#c8b787',.33,1.32,-.12,.04,.3,.04);scope.rotation.z=-.85;mesh(g,geo.cylinder,'#3e646e',.44,1.42,-.12,.05,.02,.05).rotation.z=-.85;
-   planter(g,-.62,.42);lamp(g,.62,.4);
+   // The writing loop (the teaching mode) and the question lamp that is never dark.
+   writingLoop(g);questionLamp(g);
   }else if(t.kind==='trees'){
    box(g,0,.25,.05,1.12,.08,.92,'#b79c70');for(let i=0;i<6;i++)box(g,-.5+i*.2,.33,.05,.012,.008,.92,'#927b59');
    for(const x of [-.48,.48])for(const z of [-.3,.36])box(g,x,.33,z,.035,.62,.035,'#e1d1ab');for(const x of [-.44,-.22,0,.22,.44])box(g,x,.95,.03,.045,.045,.86,'#e1d1ab');
@@ -157,5 +204,7 @@ export function createArchitecture({box,mesh,tree}){
   }
   return g;
  }
- return {build,shine(v){gold.emissiveIntensity=v*.6;},time(name){glass.color.set(name==='night'?'#ffd99a':'#638d97');glass.emissiveIntensity=name==='night'?1.35:name==='dusk'?.35:0;}};
+ return {build,shine(v){gold.emissiveIntensity=v*.6;},// A letter reaching the question lamp makes it flare for a moment (k from 1 down to 0).
+  askPulse(k){askLamp.emissiveIntensity=askBase*(1+.9*k);if(askHalo)askHalo.scale.setScalar(.5*(1+.25*k));},
+  time(name){askBase=name==='night'?1.9:name==='dusk'?1.3:.9;askLamp.emissiveIntensity=askBase;if(askHalo)askHalo.material.opacity=name==='night'?.9:name==='dusk'?.55:.28;glass.color.set(name==='night'?'#ffd99a':'#638d97');glass.emissiveIntensity=name==='night'?1.35:name==='dusk'?.35:0;}};
 }

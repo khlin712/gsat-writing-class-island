@@ -146,3 +146,36 @@ body.autotour .map-caption{display:none}
 
 /* Card headings receive focus for reading order, rather than acting as controls. */
 #detail-title:focus{outline:none}
+/* Paper-plane letters. The plane's own button is clear (the 3D plane shows through); its hint appears on hover or focus. */
+.letter-plane{pointer-events:auto;width:48px;height:48px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer;position:relative}
+.letter-plane span{position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);white-space:nowrap;padding:3px 9px;border-radius:999px;background:#fffaf0;color:#5b3d12;border:1px solid #e3cf9f;font-size:12px;font-weight:600;box-shadow:0 2px 8px #1f2a2422;opacity:0;pointer-events:none;transition:opacity .15s}
+.letter-plane:hover span,.letter-plane:focus-visible span{opacity:1}
+.letter-plane:focus-visible{outline:3px solid #ffe08a;outline-offset:2px}
+.labels-off .letter-plane span{display:none}
+/* The letter: warm white paper, faint fibres, the creases of the plane it was folded into, soft shadow, faint ruled lines. */
+.shell dialog.pdf-viewer.letter-viewer{height:auto;max-height:92dvh;width:min(560px,calc(100vw - 24px));padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+.letter-viewer #modal-content{display:flex;flex-direction:column;gap:12px;min-height:0}
+.letter-viewer .close{top:10px;right:10px;background:#fffaf0cc;border-radius:50%}
+.letter{position:relative;flex:0 1 auto;min-height:0;overflow:auto;padding:38px 30px 26px;border-radius:6px;color:#2f2a22;
+ /* The creases of the plane it was folded from: a centre fold and two folds running down from the top centre. */
+ background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23b9a27a' stroke-opacity='.28' stroke-width='1' vector-effect='non-scaling-stroke'%3E%3Cpath d='M50 0V100M50 0L0 38M50 0L100 38' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E") 0 0/100% 100% no-repeat,
+  radial-gradient(circle at 20% 15%,#ffffff 0,#fbf5e6 55%,#f3e9d2 100%);
+ box-shadow:0 18px 40px #1f2a2440,0 2px 0 #e7dbc0 inset;transform-origin:50% 0;animation:letter-unfold .55s cubic-bezier(.2,.8,.2,1) both}
+.letter-viewer #modal-content{flex:0 1 auto}
+/* Faint ruled lines that sit under each line of text. */
+.letter-body{min-height:160px;background:repeating-linear-gradient(180deg,transparent 0 31px,#9fb6c840 31px 32px)}
+.letter::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:6px;opacity:.35;mix-blend-mode:multiply;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .36 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E")}
+.letter-kicker{margin:0 0 14px;font-size:13px;letter-spacing:.2em;color:#a4683a;font-weight:700}
+.letter-body p{margin:0 0 0;font-size:17px;line-height:32px;color:#2f2a22;white-space:pre-wrap}
+.letter-body p+p{margin-top:0}
+.letter-empty{color:#6c5a3e!important}
+.letter-sign{margin:22px 0 0;text-align:right;font-size:16px;color:#4a3b25;font-weight:600}
+.letter-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.letter-actions button{min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #e3cf9f;background:#fffaf0;color:#3f3322;font-size:15px}
+.letter-actions .document-close{background:#496550;border-color:#496550;color:#fff}
+@keyframes letter-unfold{from{opacity:0;transform:perspective(900px) rotateX(-75deg) scale(.55);clip-path:polygon(50% 0,100% 60%,50% 100%,0 60%)}60%{opacity:1;clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}to{opacity:1;transform:none;clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}}
+@media (prefers-reduced-motion:reduce){.letter{animation:letter-fade .2s ease both}}
+@keyframes letter-fade{from{opacity:0}to{opacity:1}}
+@media(max-width:720px){.letter{padding:32px 20px 20px}.letter-body p{font-size:16px;line-height:30px}}

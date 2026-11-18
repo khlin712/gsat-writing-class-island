@@ -42,8 +42,13 @@ export const STATIONS=[
   next:null}
 ];
 
-// ④ Student feedback, word for word, only with the student's consent. e.g. {text:'……',who:'高二學生'}
+// ④ Student feedback, word for word, only with the student's consent to publish it. Each one:
+//   {text:'學生的原話……', school:'景美女中', name:'黃同學', consent:true}
+// The signature reads 「景美女中 黃同學」. An item without consent:true (or without text) is never shown — not on ④, and not in
+// the paper-plane letters floating over the islands. Line breaks in text are kept.
 export const FEEDBACK=[];
+export const feedbackSignature=f=>[f.school,f.name].map(s=>typeof s==='string'?s.trim():'').filter(Boolean).join(' ')||(typeof f.who==='string'?f.who.trim():'');
+export function publicFeedback(list=FEEDBACK){return list.filter(f=>f&&f.consent===true&&typeof f.text==='string'&&f.text.trim());}
 
 // ⑤ Open classes by grade. status 'open' (有開班，可報名) or 'preregister' (年紀還小，只開放預先登記).
 // e.g. {grade:'高一',status:'open',schedule:'每週六 10:00–12:00',start:'2027/2/15',note:''}

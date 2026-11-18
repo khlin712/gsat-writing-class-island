@@ -2,7 +2,8 @@ import {createWorld} from './world.js';
 import {topics,findTopics,makeOutline,explorationRoute,readStored,entryRoutes,concerns,concernsFor,introSteps,INTRO_KEY,stepParts,CIRCLED} from './content.js';
 import {buildRelations,findRelations} from './relations.js';
 import {SUMMIT,SPAWN_FROM} from './summit.js';
-import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,PRICING,isLink,DOCUMENTS,documentURLs,videoSource} from './journey.js';
+import {STATIONS,FEEDBACK,CLASSES,LINKS,CONTACTS,PRICING,isLink,DOCUMENTS,documentURLs,videoSource,publicFeedback,feedbackSignature} from './journey.js';
+import {pickLetter,loadRead,saveRead} from './letters.js';
 import {mapInsets} from './motion.js';
 import {tourCues,cueAt,clock} from './autotour.js';
 import {bindSheet} from './sheets.js';
@@ -141,12 +142,12 @@ function updateCount(){$('#saved-count').textContent=saved.size;renderList();}
 // ---- Dialogs: discussion list, outline, about, tours. ----
 // A PDF opened on a phone: the back button / gesture closes it instead of leaving the page.
 let pdfHistory=false;
-function showModal(html,{pdf=false}={}){if(pdf&&!pdfHistory){try{history.pushState({pdfViewer:true},'');pdfHistory=true;}catch{}}modal.classList.toggle('pdf-viewer',pdf);if(!pdf)modal.removeAttribute('aria-labelledby');if(!modal.open)previousFocus=document.activeElement;$('#modal-content').innerHTML=html;if(!modal.open)modal.showModal();$('#close-modal').focus();}
+function showModal(html,{pdf=false,letter=false}={}){modal.classList.toggle('letter-viewer',letter);if(pdf&&!pdfHistory){try{history.pushState({pdfViewer:true},'');pdfHistory=true;}catch{}}modal.classList.toggle('pdf-viewer',pdf);if(!pdf)modal.removeAttribute('aria-labelledby');if(!modal.open)previousFocus=document.activeElement;$('#modal-content').innerHTML=html;if(!modal.open)modal.showModal();$('#close-modal').focus();}
 $('#close-modal').onclick=()=>modal.close();
 // The PDF viewer also closes from its own 關閉 button and from a tap outside the window.
 modal.addEventListener('click',e=>{if(e.target.closest?.('[data-close-modal]')){modal.close();return;}if(e.target!==modal||!modal.classList.contains('pdf-viewer'))return;const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)modal.close();});
 addEventListener('popstate',()=>{if(!pdfHistory)return;pdfHistory=false;if(modal.open&&modal.classList.contains('pdf-viewer'))modal.close();});
-modal.addEventListener('close',()=>{world?.hold(false);if(modal.classList.contains('pdf-viewer')){modal.classList.remove('pdf-viewer');modal.removeAttribute('aria-labelledby');$('#modal-content').innerHTML='';if(pdfHistory){pdfHistory=false;try{history.back();}catch{}}}if(document.activeElement===document.body||modal.contains(document.activeElement))previousFocus?.focus();});
+modal.addEventListener('close',()=>{world?.hold(false);if(modal.classList.contains('pdf-viewer')){modal.classList.remove('pdf-viewer','letter-viewer');modal.removeAttribute('aria-labelledby');$('#modal-content').innerHTML='';if(pdfHistory){pdfHistory=false;try{history.back();}catch{}}}if(document.activeElement===document.body||modal.contains(document.activeElement))previousFocus?.focus();});
 const stepper=current=>`<ol class="stepper" aria-label="整理提綱的步驟">${['挑問題','寫情況','帶提綱'].map((s,i)=>`<li${i===current?' aria-current="step"':''}><b>0${i+1}</b>${s}</li>`).join('')}</ol>`;
 function discussion(){showModal(`<p class="kicker">MY DISCUSSION LIST · 討論清單</p><h2>讓我們從問題開始。</h2>${stepper(consultQuestions.length||saved.size?1:0)}<p>不用先想好答案，帶著一個真實的困難就好。</p>
  <section class="consult-block"><h3>想帶進討論的問題 <span>${consultQuestions.length}</span></h3>${consultQuestions.length?`<div class="consult-context">${consultQuestions.map((q,i)=>`<div class="consult-question"><p>${escape(q)}</p><button data-remove-question="${i}" aria-label="移除問題：${escape(q)}">×</button></div>`).join('')}</div>`:'<p class="helper">在主題卡片按「就這件事問老師」，問題會出現在這裡。</p>'}</section>
@@ -321,6 +322,17 @@ function openVideoSource(v){world?.hold(true);
  video.addEventListener('error',()=>{k++;if(v.files[k]){video.src=v.files[k];video.play().catch(()=>{});}else{const m=modal.querySelector('.video-msg');m.hidden=false;m.textContent='影片暫時無法播放，可以改用「另開影片」觀看。';}});
  video.src=v.files[0];video.play().catch(()=>{});}
 window.__videoTest=v=>openVideoSource(v);
+// Paper-plane letters (an extra way to find student feedback; ④ always lists all of it). Each open unfolds one letter the
+// visitor has not read yet; with no consented feedback yet, the letter says so instead of inventing anything.
+let letterRead=loadRead(),lastLetter=-1;
+function openLetter(){autoTourStop({quiet:true});const list=publicFeedback(),k=pickLetter(list.length,letterRead,Math.random,lastLetter),f=list[k];
+ if(f){letterRead.add(k);saveRead(letterRead);lastLetter=k;}
+ const body=f?f.text.trim().split(/\n+/).map(t=>`<p>${escape(t)}</p>`).join(''):'<p class="letter-empty">這封信還在路上：學生回饋待老師提供。</p>',sig=f?feedbackSignature(f):'';
+ showModal(`<article class="letter"><p class="letter-kicker" id="letter-title">一封學生來信</p><div class="letter-body">${body}</div>${sig?`<p class="letter-sign">— ${escape(sig)}</p>`:''}</article><div class="letter-actions">${list.length>1?'<button type="button" data-letter-next>再讀一封</button>':''}<button type="button" data-letter-all>看全部學生回饋（第 ④ 站）</button><button type="button" class="document-close" data-close-modal>關閉</button></div>`,{pdf:true,letter:true});
+ modal.setAttribute('aria-labelledby','letter-title');
+ modal.querySelector('[data-letter-next]')?.addEventListener('click',openLetter);
+ modal.querySelector('[data-letter-all]')?.addEventListener('click',()=>{modal.close();openStation('university');});}
+window.__letterPoints=()=>world?.letterPoints();window.__openLetter=()=>openLetter();
 function openDocument(key){const doc=DOCUMENTS[key],urls=documentURLs(key);if(!doc||!urls)return;
  showModal(`<p class="kicker">課程文件 · PDF</p><h2 id="document-title">${escape(doc.title)}</h2><div class="document-bar"><p class="document-fallback">若預覽無法顯示，<a href="${escape(urls.view)}" target="_blank" rel="noopener noreferrer">另開完整 PDF ↗</a>。</p><button type="button" class="document-close" data-close-modal>關閉</button></div><div class="document-frame-wrap"><iframe class="document-frame" src="${escape(urls.preview)}" title="${escape(doc.title)} PDF 預覽" referrerpolicy="no-referrer" allowfullscreen></iframe></div>`,{pdf:true});modal.setAttribute('aria-labelledby','document-title');}
 function contactLink(c,content,kind,name=c?.label){return isLink(c?.href)?`<a class="contact-link ${kind}" href="${escape(c.href)}" target="_blank" rel="noopener noreferrer" aria-label="${escape(name)}，在新視窗開啟" title="${escape(name)}，在新視窗開啟">${content}<span class="contact-external" aria-hidden="true">↗</span></a>`:pending(c?.label||'聯繫方式');}
@@ -330,7 +342,7 @@ function stationBody(st,extra={}){
  if(st.id==='bridge')return `${st.note?`<p class="stairs-note">${escape(st.note)}</p>`:''}`+(st.body?`<section class="card-section"><p>${escape(st.body)}</p></section>`:`<section class="card-section"><h3>老師想對你說</h3>${pending('說明')}</section>`);
  if(st.id==='start')return st.themes.map(t=>`<section class="card-section start-theme"><p class="eyebrow">${escape(t.label)}</p>${t.document?'':`<h3>${escape(t.q)}</h3>`}${t.body?`<p>${escape(t.body)}</p>`:t.document?'':pending('老師的回答')}${t.document?documentCard(t.document):''}</section>`).join('');
  if(st.id==='fork')return `<section class="card-section"><p class="helper">${escape(st.view||'')}</p><h3>左邊：有方向的練習</h3><button class="path-row right" data-goto-station="bridge"><b>${st.right.name}</b><span>${escape(st.right.caption)}</span><small>${st.right.ends} ↗</small></button></section><section class="card-section"><h3>右邊：容易繞遠的練習 · 點一處看看</h3><p class="helper">${escape(st.rough||'')}</p><ol class="path-rows">${st.paths.map(p=>`<li><button class="path-row ${p.id}${extra.path===p.id?' current':''}" data-path="${p.id}" aria-current="${extra.path===p.id}"><b>${p.name}</b><span>${escape(p.caption)}</span><small>${p.ends}</small></button></li>`).join('')}</ol><p class="helper">兩邊都是比喻：右邊說的是大多學生學習作文遇到的誤區，不是指任何老師或補習班的方法；寫出高分作文的路也不只這一條。</p></section>`;
- if(st.id==='university')return `<section class="card-section"><h3>學生的回饋</h3>${FEEDBACK.length?`<ul class="feedback-list">${FEEDBACK.map(f=>`<li><p>${escape(f.text)}</p>${f.who?`<small>— ${escape(f.who)}</small>`:''}</li>`).join('')}</ul>`:pending('學生回饋（會先取得學生同意再放上）')}<p class="helper">大學建築只象徵升學目標，不代表錄取紀錄，也沒有與任何學校合作。</p></section>`;
+ if(st.id==='university'){const list=publicFeedback();return `<section class="card-section"><h3>學生的回饋</h3>${list.length?`<ul class="feedback-list">${list.map(f=>`<li><p>${escape(f.text.trim())}</p>${feedbackSignature(f)?`<small>— ${escape(feedbackSignature(f))}</small>`:''}</li>`).join('')}</ul>`:pending('學生回饋（會先取得學生同意再放上）')}<p class="helper">島上也藏著幾架紙飛機，點開會讀到一封學生來信。</p><p class="helper">大學建築只象徵升學目標，不代表錄取紀錄，也沒有與任何學校合作。</p></section>`;}
  if(st.id==='calendar'){const open=CLASSES.filter(c=>c.status==='open'),pre=CLASSES.filter(c=>c.status==='preregister');
   return `<section class="card-section">${documentCard(st.document)}</section><section class="card-section"><h3>有開班的年級</h3>${open.length?`<ul class="class-list">${open.map(c=>`<li><b>${escape(c.grade)}</b><span>${escape([c.schedule,c.start&&('開課 '+c.start),c.note].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul><button class="ask-topic" data-goto-station="signup">已開班，前往報名 ↗</button>`:pending('最新開班資訊')}</section>
   <section class="card-section"><h3>收費與安排</h3>${PRICING.facts.length?`<dl class="topic-facts">${PRICING.facts.map(([k,v])=>`<div><dt>${escape(k)}</dt><dd>${escape(v)}</dd></div>`).join('')}</dl>`:pending('正式收費與規則')}<p class="helper">報名前可以先確認：</p><ul class="class-list">${PRICING.questions.map(q=>`<li><span>${escape(q)}</span></li>`).join('')}</ul></section>
@@ -386,7 +398,7 @@ function syncListToggle(){const open=isPhone()?!$('#index-panel').classList.cont
 $('#list-toggle').onclick=()=>{if(isPhone())indexSheet.set(indexSheet.state()==='peek'?'half':'peek');else{document.body.classList.toggle('index-collapsed');syncListToggle();}};
 
 let safeMode=false;try{safeMode=sessionStorage.getItem('writing-island-safe-mode')==='1';}catch{}
-try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,avatar:avatarLook,safeMode});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
+try{world=createWorld($('#map'),topics,id=>selectTopic(id),{onRelation:openRelation,onStation:(id,extra)=>openStation(id,extra),onGuide,onWalker,onArrive,onLog:logEvent,onPlace,onLetter:()=>openLetter(),avatar:avatarLook,safeMode});setPaused(matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(error){$('#map').innerHTML='<p class="webgl-message">這個瀏覽器無法開啟 3D 地圖。請使用主題清單繼續探索。</p>';console.error(error);}
 clockLast=performance.now();clockHoldUntil=clockLast+5000;tickClock();
 function syncPhone(){document.body.classList.toggle('shell-mobile',isPhone());}
 syncPhone();phone.addEventListener('change',()=>{syncPhone();syncListToggle();requestAnimationFrame(refitView);});

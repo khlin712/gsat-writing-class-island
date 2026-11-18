@@ -18,7 +18,7 @@ import {createRecovery} from './recovery.js';
 import {createTrailHazards} from './hazards.js';
 import {createWalkers} from './walkers.js';
 
-export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()=>{},onWalker=()=>{},onArrive=()=>{},onLog=()=>{},onPlace=()=>{},onGuide=()=>{},avatar=null,safeMode=false}={}){
+export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()=>{},onWalker=()=>{},onArrive=()=>{},onLog=()=>{},onPlace=()=>{},onGuide=()=>{},onLetter=()=>{},avatar=null,safeMode=false}={}){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const scene=new THREE.Scene();scene.fog=new THREE.Fog('#cbe0ee',30,95);
  const camera=new THREE.PerspectiveCamera(38,1,.1,120);
@@ -64,8 +64,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const side of [-1,1]){const page=mesh(pages,geometries.box,'#fff4d9',side*.16,0,0,.31,.014,.4);page.rotation.z=side*.18;}
  box(pages,0,-.025,0,.025,.025,.42,'#b68b55');
  const plane=new THREE.BufferGeometry();plane.setAttribute('position',new THREE.Float32BufferAttribute([0,0,-.3,-.24,0,.22,0,.07,.08,0,0,-.3,0,.07,.08,.24,0,.22],3));plane.computeVertexNormals();
- const paper=new THREE.Mesh(plane,new THREE.MeshStandardMaterial({color:'#f5e7c5',side:THREE.DoubleSide,roughness:1}));paper.name='paper-plane';paper.position.set(1.15,.65,2.85);paper.rotation.set(.1,.5,-.18);scenery.add(paper);
- floaters.push({mesh:pages,y:pages.position.y,phase:1},{mesh:paper,y:paper.position.y,phase:3});
+ // (The paper plane that used to float here became one of the clickable letter planes below.)
+ floaters.push({mesh:pages,y:pages.position.y,phase:1});
  // The selected island gets a dark outline around its rim.
  function hexRing(inner,outer){const corner=(r,i)=>new THREE.Vector3(r*Math.sin(i*Math.PI/3),0,r*Math.cos(i*Math.PI/3)).applyAxisAngle(new THREE.Vector3(0,1,0),Math.PI/6);const shape=new THREE.Shape(),hole=new THREE.Path();for(let i=0;i<=6;i++){const o=corner(outer,i),n=corner(inner,i);i?shape.lineTo(o.x,o.z):shape.moveTo(o.x,o.z);i?hole.lineTo(n.x,n.z):hole.moveTo(n.x,n.z);}shape.holes.push(hole);const geometry=new THREE.ShapeGeometry(shape);geometry.rotateX(Math.PI/2);return geometry;}
  const ringGeometry=hexRing(1.37,1.5),ringMaterial=new THREE.MeshBasicMaterial({color:'#2f3b33',side:THREE.DoubleSide});const rings=new Map();
@@ -122,6 +122,30 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const p of st('fork').paths){const {stop,id:path}=p,label='path-'+path,s=STOPS[stop];stationLabel(label,`<span>${p.name}</span>`,new THREE.Vector3(s.x,s.y+(path==='wall'?1.3:1.05),s.z),'path '+(path.startsWith('cliff')?'cliff':path),'fork',{path});}
  // Walkways, ② the climb, ③ the golden bridge to the trophy and the stairs down from the university (see summit.js / route3d.js).
  const centers=new Map(positions);centers.set(UNIVERSITY,uniGroup.position.clone());for(const [id,s]of Object.entries(STOPS))centers.set(id,new THREE.Vector3(s.x,s.y,s.z));for(const [id,s]of Object.entries(STOPS))if(s.ring)centers.get(id).ring=s.ring;
+ // ---- Paper-plane letters: a few planes drift near ④ (the university), ⑥ (the lecture hall) and 04 (the trophy). Each is a
+ // student's letter folded up; tapping one opens it (see app.js openLetter). On screen a plane never shrinks below a size you
+ // can tap, a clear button sits on it for mouse, touch and keyboard, and now and then its paper catches the light.
+ const LETTER_SPOTS=[
+  {at:()=>new THREE.Vector3(UNIVERSITY_AT.x,UNIVERSITY_AT.y,UNIVERSITY_AT.z),off:[-1.7,1.85,.15],phase:0},
+  {at:()=>{const s=STOPS.signup;return new THREE.Vector3(s.x,s.y||0,s.z);},off:[1.45,.85,-.95],phase:2.1},
+  {at:()=>positions.get(SUMMIT).clone(),off:[1.95,2.35,-.55],phase:4.2}];
+ const letterPlanes=LETTER_SPOTS.map((spot,k)=>{const mat=new THREE.MeshStandardMaterial({color:'#fbf3df',side:THREE.DoubleSide,roughness:.85,emissive:'#fff4cf',emissiveIntensity:0});
+  const m=new THREE.Mesh(plane,mat);m.name='letter-plane';m.castShadow=true;m.raycast=()=>{};scene.add(m);
+  const crease=new THREE.Mesh(new THREE.BoxGeometry(.006,.006,.36),new THREE.MeshBasicMaterial({color:'#d9c9a3'}));crease.position.set(0,.035,-.1);m.add(crease);
+  const el=document.createElement('button');el.type='button';el.className='letter-plane';el.setAttribute('aria-label','打開一封學生來信');el.innerHTML='<span>一封學生來信</span>';
+  const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,hover:0,lift:0};
+  el.onclick=e=>{e.stopPropagation();onLetter(k);};el.onpointerenter=()=>{p.hover=1;};el.onpointerleave=()=>{p.hover=0;};el.onfocus=()=>{p.hover=1;};el.onblur=()=>{p.hover=0;};
+  p.label=new CSS2DObject(el);scene.add(p.label);return p;});
+ const LETTER_MIN_PX=40,letterV=new THREE.Vector3();
+ function updateLetters(t,dt){const still=reduced.matches,h=host.clientHeight||1,unit=h/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
+  for(const p of letterPlanes){p.lift+=((p.hover?1:0)-p.lift)*Math.min(1,dt*8);const a=still?p.phase:p.phase+(p.hover?0:t*.22);
+   p.mesh.position.set(p.center.x+Math.cos(a)*.38,p.center.y+(still?0:Math.sin(t*1.3+p.phase)*.07)+p.lift*.14,p.center.z+Math.sin(a)*.38);
+   p.mesh.rotation.set(still?.08:.08+Math.sin(t*1.1+p.phase)*.06,-a+(still?0:Math.PI),still?-.12:-.12+Math.sin(t*.9+p.phase)*.08);
+   // Never smaller on screen than LETTER_MIN_PX across, so it can be seen and tapped from the overview.
+   const d=p.mesh.position.distanceTo(camera.position),px=.48*unit/d;p.mesh.scale.setScalar(Math.max(1,LETTER_MIN_PX/px)*(1+p.lift*.12));
+   p.label.position.copy(p.mesh.position);
+   // A short glint every few seconds (none with reduced motion).
+   const g=still?0:Math.max(0,1-Math.abs(((t+p.phase*2.3)%7)-.4)/.4);p.mat.emissiveIntensity=.12+g*.55+p.lift*.25;}}
  const bridge=bridgePath(centers.get('fork'),positions.get(SUMMIT)),graph=buildGraph(centers);
  // ② The steep wall: a sheer rock face on the trophy island's outer side, rising from the ledge at its foot.
  // (The climb itself is a set of ropes hanging from the trophy island's rim — see route3d.js.)
@@ -292,7 +316,7 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   recovery.tick();if(held||!recovery.drawable)return;
   // Boards with words on them are never drawn soft: while one is close enough to read and on screen, the image stays at full
   // sharpness whatever the frame rate (see resolution.js lock).
-  {if(fly||gestures.busy())resolution.defer(now);else{textSigns??=collectTextSigns();const lock=resolution.lock(textSigns.some(readable),now);setRatio(lock??resolution.sample(now,frameMs,document.hidden));}}if(!paused)elapsed+=delta;hazards.update(paused?0:delta);walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));try{renderer.render(scene,camera);if(renderer.getContext().isContextLost())return;recovery.rendered();}catch(error){console.error(error);recovery.failed();return;}// While the bridge lights up with the camera pulled back, the trophy is small on screen and its pins would pile up: they wait
+  {if(fly||gestures.busy())resolution.defer(now);else{textSigns??=collectTextSigns();const lock=resolution.lock(textSigns.some(readable),now);setRatio(lock??resolution.sample(now,frameMs,document.hidden));}}if(!paused)elapsed+=delta;hazards.update(paused?0:delta);walkers.update(delta,paused);followStep();if(fly?.ride){const t=Math.min(1,(now-fly.time)/RIDE_MS),[p,tg]=fly.path(t);camera.position.copy(p);controls.target.copy(tg);if(t===1)fly=null;}else if(fly){const t=Math.min(1,(now-fly.time)/FLY_MS),v=easeInOutCubic(t);camera.position.lerpVectors(fly.from,fly.to,v);controls.target.lerpVectors(fly.old,fly.target,v);if(t===1)fly=null;}gestures.update(delta*1000);controls.update();sky.update(elapsed,camera);weather.update(paused?0:delta,phase.daylight);if(now-lightAt>100){lightAt=now;applyLight();}updateStairs(now,delta);if(zoomAt&&now>=zoomAt&&!fly)trophyZoom();if(!reduced.matches)for(const f of floaters)f.mesh.position.y=f.y+Math.sin(elapsed*.8+f.phase)*.07;updateLetters(elapsed,delta);for(let i=0;i<flows.length;i++)if(flows[i].dot.visible)flows[i].dot.position.copy(flows[i].curve.getPoint((elapsed*.12+i*.13)%1));try{renderer.render(scene,camera);if(renderer.getContext().isContextLost())return;recovery.rendered();}catch(error){console.error(error);recovery.failed();return;}// While the bridge lights up with the camera pulled back, the trophy is small on screen and its pins would pile up: they wait
   // until the camera has finished closing in on the trophy.
   pinGroup.visible=!(zoomAt&&framing?.kind==='climb'||framing?.kind==='climb-done'&&fly);labels.render(scene,camera);declutterPins();if(now-lastLayout>120){layoutLabels();lastLayout=now;}}
  frame=requestAnimationFrame(animate);
@@ -308,6 +332,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   // The auto-play tour drives the camera itself: while it plays, dragging, pinching and the wheel are switched off.
   // While a video plays the scene stops drawing (and moving) until it is closed.
   hold(on){held=!!on;},held:()=>held,
+  // QA: where each letter plane is on screen.
+  letterPoints(){const r=renderer.domElement.getBoundingClientRect();return letterPlanes.map(p=>{const v=p.mesh.position.clone().project(camera);return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height,scale:Math.round(p.mesh.scale.x*100)/100};});},
   // QA: where a point on the rough way (segment, 0…1 along it) is on screen.
   trailPoint(seg,u){const pts=trails[seg];if(!pts)return null;const p=pts[Math.round(Math.max(0,Math.min(1,u))*(pts.length-1))],v=new THREE.Vector3(p.x,p.y,p.z).project(camera),r=renderer.domElement.getBoundingClientRect();return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height};},
   lockControls(on){controls.enabled=!on;if(on){gestures.stop();follow=null;}},

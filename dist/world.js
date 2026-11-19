@@ -143,23 +143,27 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  for(const p of st('fork').paths){const {stop,id:path}=p,label='path-'+path,s=STOPS[stop];stationLabel(label,`<span>${p.name}</span>`,new THREE.Vector3(s.x,s.y+(path==='wall'?1.3:1.05),s.z),'path '+(path.startsWith('cliff')?'cliff':path),'fork',{path});}
  // Walkways, ② the climb, ③ the golden bridge to the trophy and the stairs down from the university (see summit.js / route3d.js).
  const centers=new Map(positions);centers.set(UNIVERSITY,uniGroup.position.clone());for(const [id,s]of Object.entries(STOPS))centers.set(id,new THREE.Vector3(s.x,s.y,s.z));for(const [id,s]of Object.entries(STOPS))if(s.ring)centers.get(id).ring=s.ring;
- // ---- Paper-plane letters: a few planes drift near ④ (the university), ⑥ (the lecture hall) and 04 (the trophy). Each is a
+ // ---- Paper-plane letters: five planes drift near ④ (the university), ⑥ (the lecture hall), 04 (the trophy), 02 (the
+ // teaching island) and ⑤ (the calendar). Each is a
  // student's letter folded up; tapping one opens it (see app.js openLetter). On screen a plane never shrinks below a size you
- // can tap, a clear button sits on it for mouse, touch and keyboard, and now and then its paper catches the light.
+ // can tap, a clear button sits on it for mouse, touch and keyboard, and now and then its paper catches the light. While the
+ // pointer is on a plane it stops where it is on its circle (it must not jump away from under the pointer).
  const LETTER_SPOTS=[
   {at:()=>new THREE.Vector3(UNIVERSITY_AT.x,UNIVERSITY_AT.y,UNIVERSITY_AT.z),off:[-1.7,1.85,.15],phase:0},
   {at:()=>{const s=STOPS.signup;return new THREE.Vector3(s.x,s.y||0,s.z);},off:[1.45,.85,-.95],phase:2.1},
-  {at:()=>positions.get(SUMMIT).clone(),off:[1.95,2.35,-.55],phase:4.2}];
+  {at:()=>positions.get(SUMMIT).clone(),off:[1.95,2.35,-.55],phase:4.2},
+  {at:()=>positions.get('teaching').clone(),off:[-1.1,1.9,-.6],phase:1.0},
+  {at:()=>{const s=STOPS.calendar;return new THREE.Vector3(s.x,s.y||0,s.z);},off:[-1.2,1.1,.8],phase:3.1}];
  const letterPlanes=LETTER_SPOTS.map((spot,k)=>{const mat=new THREE.MeshStandardMaterial({color:'#fbf3df',side:THREE.DoubleSide,roughness:.85,emissive:'#fff4cf',emissiveIntensity:0});
   const m=new THREE.Mesh(plane,mat);m.name='letter-plane';m.castShadow=true;m.raycast=()=>{};scene.add(m);
   const crease=new THREE.Mesh(new THREE.BoxGeometry(.006,.006,.36),new THREE.MeshBasicMaterial({color:'#d9c9a3'}));crease.position.set(0,.035,-.1);m.add(crease);
   const el=document.createElement('button');el.type='button';el.className='letter-plane';el.setAttribute('aria-label','打開一封學生來信');el.innerHTML='<span>一封學生來信</span>';
-  const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,hover:0,lift:0};
+  const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,orbit:0,hover:0,lift:0};
   el.onclick=e=>{e.stopPropagation();onLetter(k);};el.onpointerenter=()=>{p.hover=1;};el.onpointerleave=()=>{p.hover=0;};el.onfocus=()=>{p.hover=1;};el.onblur=()=>{p.hover=0;};
   p.label=new CSS2DObject(el);scene.add(p.label);return p;});
  const LETTER_MIN_PX=40,letterV=new THREE.Vector3();
  function updateLetters(t,dt){const still=reduced.matches,h=host.clientHeight||1,unit=h/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
-  for(const p of letterPlanes){p.lift+=((p.hover?1:0)-p.lift)*Math.min(1,dt*8);const a=still?p.phase:p.phase+(p.hover?0:t*.22);
+  for(const p of letterPlanes){p.lift+=((p.hover?1:0)-p.lift)*Math.min(1,dt*8);const step=Math.min(.1,Math.max(0,t-(p.lastT??t)));p.lastT=t;if(!p.hover)p.orbit+=step*.22;const a=still?p.phase:p.phase+p.orbit;
    p.mesh.position.set(p.center.x+Math.cos(a)*.38,p.center.y+(still?0:Math.sin(t*1.3+p.phase)*.07)+p.lift*.14,p.center.z+Math.sin(a)*.38);
    p.mesh.rotation.set(still?.08:.08+Math.sin(t*1.1+p.phase)*.06,-a+(still?0:Math.PI),still?-.12:-.12+Math.sin(t*.9+p.phase)*.08);
    // Never smaller on screen than LETTER_MIN_PX across, so it can be seen and tapped from the overview.

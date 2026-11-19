@@ -145,7 +145,8 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
  const centers=new Map(positions);centers.set(UNIVERSITY,uniGroup.position.clone());for(const [id,s]of Object.entries(STOPS))centers.set(id,new THREE.Vector3(s.x,s.y,s.z));for(const [id,s]of Object.entries(STOPS))if(s.ring)centers.get(id).ring=s.ring;
  // ---- Paper-plane letters: a few planes drift near ④ (the university), ⑥ (the lecture hall) and 04 (the trophy). Each is a
  // student's letter folded up; tapping one opens it (see app.js openLetter). On screen a plane never shrinks below a size you
- // can tap, a clear button sits on it for mouse, touch and keyboard, and now and then its paper catches the light.
+ // can tap, a clear button sits on it for mouse, touch and keyboard, and now and then its paper catches the light. While the
+ // pointer is on a plane it stops where it is on its circle (it must not jump away from under the pointer).
  const LETTER_SPOTS=[
   {at:()=>new THREE.Vector3(UNIVERSITY_AT.x,UNIVERSITY_AT.y,UNIVERSITY_AT.z),off:[-1.7,1.85,.15],phase:0},
   {at:()=>{const s=STOPS.signup;return new THREE.Vector3(s.x,s.y||0,s.z);},off:[1.45,.85,-.95],phase:2.1},
@@ -154,12 +155,12 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   const m=new THREE.Mesh(plane,mat);m.name='letter-plane';m.castShadow=true;m.raycast=()=>{};scene.add(m);
   const crease=new THREE.Mesh(new THREE.BoxGeometry(.006,.006,.36),new THREE.MeshBasicMaterial({color:'#d9c9a3'}));crease.position.set(0,.035,-.1);m.add(crease);
   const el=document.createElement('button');el.type='button';el.className='letter-plane';el.setAttribute('aria-label','打開一封學生來信');el.innerHTML='<span>一封學生來信</span>';
-  const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,hover:0,lift:0};
+  const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,orbit:0,hover:0,lift:0};
   el.onclick=e=>{e.stopPropagation();onLetter(k);};el.onpointerenter=()=>{p.hover=1;};el.onpointerleave=()=>{p.hover=0;};el.onfocus=()=>{p.hover=1;};el.onblur=()=>{p.hover=0;};
   p.label=new CSS2DObject(el);scene.add(p.label);return p;});
  const LETTER_MIN_PX=40,letterV=new THREE.Vector3();
  function updateLetters(t,dt){const still=reduced.matches,h=host.clientHeight||1,unit=h/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
-  for(const p of letterPlanes){p.lift+=((p.hover?1:0)-p.lift)*Math.min(1,dt*8);const a=still?p.phase:p.phase+(p.hover?0:t*.22);
+  for(const p of letterPlanes){p.lift+=((p.hover?1:0)-p.lift)*Math.min(1,dt*8);const step=Math.min(.1,Math.max(0,t-(p.lastT??t)));p.lastT=t;if(!p.hover)p.orbit+=step*.22;const a=still?p.phase:p.phase+p.orbit;
    p.mesh.position.set(p.center.x+Math.cos(a)*.38,p.center.y+(still?0:Math.sin(t*1.3+p.phase)*.07)+p.lift*.14,p.center.z+Math.sin(a)*.38);
    p.mesh.rotation.set(still?.08:.08+Math.sin(t*1.1+p.phase)*.06,-a+(still?0:Math.PI),still?-.12:-.12+Math.sin(t*.9+p.phase)*.08);
    // Never smaller on screen than LETTER_MIN_PX across, so it can be seen and tapped from the overview.

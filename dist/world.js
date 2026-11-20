@@ -154,9 +154,12 @@ export function createWorld(host,topics,onSelect,{onRelation=()=>{},onStation=()
   {at:()=>positions.get(SUMMIT).clone(),off:[1.95,2.35,-.55],phase:4.2},
   {at:()=>positions.get('teaching').clone(),off:[-1.1,1.9,-.6],phase:1.0},
   {at:()=>{const s=STOPS.calendar;return new THREE.Vector3(s.x,s.y||0,s.z);},off:[-1.2,1.1,.8],phase:3.1}];
+ const creaseGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.001,-.3),new THREE.Vector3(0,.071,.08)]),creaseMaterial=new THREE.LineBasicMaterial({color:'#d9c9a3'});
+ const creaseLine=()=>{const l=new THREE.Line(creaseGeometry,creaseMaterial);l.raycast=()=>{};return l;};
  const letterPlanes=LETTER_SPOTS.map((spot,k)=>{const mat=new THREE.MeshStandardMaterial({color:'#fbf3df',side:THREE.DoubleSide,roughness:.85,emissive:'#fff4cf',emissiveIntensity:0});
   const m=new THREE.Mesh(plane,mat);m.name='letter-plane';m.castShadow=true;m.raycast=()=>{};scene.add(m);
-  const crease=new THREE.Mesh(new THREE.BoxGeometry(.006,.006,.36),new THREE.MeshBasicMaterial({color:'#d9c9a3'}));crease.position.set(0,.035,-.1);m.add(crease);
+  // The centre fold: a hairline lying exactly on the ridge from the nose to the back (a stick here poked out like a needle).
+  m.add(creaseLine());
   const el=document.createElement('button');el.type='button';el.className='letter-plane';el.setAttribute('aria-label','打開一封學生來信');el.innerHTML='<span>一封學生來信</span>';
   const p={mesh:m,mat,el,label:null,center:spot.at().add(new THREE.Vector3(...spot.off)),phase:spot.phase+k,orbit:0,hover:0,lift:0};
   el.onclick=e=>{e.stopPropagation();onLetter(k);};el.onpointerenter=()=>{p.hover=1;};el.onpointerleave=()=>{p.hover=0;};el.onfocus=()=>{p.hover=1;};el.onblur=()=>{p.hover=0;};
